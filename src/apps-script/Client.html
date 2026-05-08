@@ -1,0 +1,60 @@
+﻿<script>
+  let dashboardData = null;
+
+  function setup() {
+    google.script.run.withSuccessHandler(() => refresh()).setupDatabase();
+  }
+
+  function refresh() {
+    google.script.run.withSuccessHandler((data) => {
+      dashboardData = data;
+      renderBudget(data.budgetSummary);
+      renderCashFlow(data.cashFlowOverview);
+      renderBudgetOptions(data.budgetItems);
+      toggleCard();
+    }).getDashboardData();
+  }
+
+  function renderBudget(rows) {
+    const html = [
+      "<table><thead><tr><th>Item</th><th>Budget</th><th>Used</th><th>Remaining</th><th>Status</th></tr></thead><tbody>",
+      ...rows.map((row) => `<tr class="${row.status}"><td>${row.budget_item}</td><td>${row.annual_budget}</td><td>${row.used}</td><td>${row.remaining}</td><td>${row.status}</td></tr>`),
+      "</tbody></table>",
+    ].join("");
+    document.getElementById("budgetSummary").innerHTML = html;
+  }
+
+  function renderCashFlow(rows) {
+    const html = [
+      "<table><thead><tr><th>Month</th><th>Income</th><th>Payments</th><th>Net</th></tr></thead><tbody>",
+      ...rows.map((row) => `<tr><td>${row.month}</td><td>${row.income_total}</td><td>${row.payment_total}</td><td>${row.net_cash_flow}</td></tr>`),
+      "</tbody></table>",
+    ].join("");
+    document.getElementById("cashFlowOverview").innerHTML = html;
+  }
+
+  function renderBudgetOptions(items) {
+    const select = document.getElementById("budgetItemSelect");
+    select.innerHTML = items.map((item) => `<option value="${item.budget_item}">${item.budget_item}</option>`).join("");
+  }
+
+  function toggleCard() {
+    const isCard = document.getElementById("paymentToolType").value === "credit_card";
+    document.getElementById("cardField").style.display = isCard ? "grid" : "none";
+  }
+
+  function submitExpense(event) {
+    event.preventDefault();
+    const formData = new FormData(event.target);
+    const input = Object.fromEntries(formData.entries());
+    google.script.run.withSuccessHandler((result) => {
+      document.getElementById("expenseResult").textContent = JSON.stringify(result, null, 2);
+      event.target.reset();
+      refresh();
+    }).withFailureHandler((error) => {
+      document.getElementById("expenseResult").textContent = error.message;
+    }).createManualExpense(input);
+  }
+
+  refresh();
+</script>

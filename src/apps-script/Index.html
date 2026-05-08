@@ -1,0 +1,66 @@
+﻿<!doctype html>
+<html>
+  <head>
+    <base target="_top">
+    <?!= include("Styles"); ?>
+  </head>
+  <body>
+    <main class="app">
+      <section class="toolbar">
+        <h1>Accounting Automation</h1>
+        <div class="actions">
+          <button type="button" onclick="setup()">Setup Sheets</button>
+          <button type="button" onclick="refresh()">Refresh</button>
+        </div>
+      </section>
+
+      <section class="grid">
+        <section>
+          <h2>Budget Status</h2>
+          <div id="budgetSummary" class="table"></div>
+        </section>
+        <section>
+          <h2>Cash Flow</h2>
+          <div id="cashFlowOverview" class="table"></div>
+        </section>
+      </section>
+
+      <section>
+        <h2>New Manual Expense</h2>
+        <form id="expenseForm" onsubmit="submitExpense(event)">
+          <label>Consumption Date <input name="consumption_date" type="date" required></label>
+          <label>Purchase Item <input name="purchase_item" required></label>
+          <label>Amount <input name="amount" type="number" min="1" required></label>
+          <label>Channel <input name="channel" required></label>
+          <label>Budget Item <select name="budget_item" id="budgetItemSelect" required></select></label>
+          <label>Payment Type
+            <select name="payment_tool_type" id="paymentToolType" onchange="toggleCard()">
+              <option value="cash">Cash</option>
+              <option value="credit_card">Credit Card</option>
+            </select>
+          </label>
+          <label id="cardField">Credit Card
+            <select name="credit_card_name">
+              <option value="YuShan">YuShan</option>
+              <option value="Union">Union</option>
+              <option value="Cathay">Cathay</option>
+              <option value="Fubon">Fubon</option>
+              <option value="CTBC">CTBC</option>
+            </select>
+          </label>
+          <label>Installment
+            <select name="is_installment">
+              <option value="no">No</option>
+              <option value="yes">Yes</option>
+            </select>
+          </label>
+          <label>Installment Count <input name="installment_count" type="number" min="1" value="1"></label>
+          <label>Notes <input name="notes"></label>
+          <button type="submit">Save Expense</button>
+        </form>
+        <pre id="expenseResult"></pre>
+      </section>
+    </main>
+    <?!= include("Client"); ?>
+  </body>
+</html>
