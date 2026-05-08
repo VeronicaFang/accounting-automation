@@ -37,3 +37,9 @@ See:
 - [Rules](docs/rules.md)
 - [Reports](docs/reports.md)
 
+
+## Google Apps Script MVP
+
+The first implementation target is a Google Apps Script web app backed by Google Sheets.
+
+See [Apps Script MVP instructions](src/apps-script/README.md).
