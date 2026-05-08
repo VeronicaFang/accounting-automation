@@ -1,0 +1,2 @@
+carrier_name,invoice_date,invoice_month,invoice_number,invoice_amount,invoice_status,allowance,seller_tax_id,seller_name,seller_address,buyer_tax_id,item_quantity,item_unit_price,item_amount,item_name,suggested_budget_item,final_budget_item,classification_status,payment_tool_type,credit_card_name,is_installment,installment_count,notes
+Mobile Barcode,2026-01-05,202601,AA00000001,120,confirmed,no,00000000,Sample Convenience Store,Sample Address,,1,120,120,lunch box,23. 餐費,23. 餐費,auto_confirmed,credit_card,Union,no,1,Anonymized sample

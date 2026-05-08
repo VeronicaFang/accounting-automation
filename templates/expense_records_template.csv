@@ -1,0 +1,2 @@
+expense_id,source_type,source_record_id,consumption_date,budget_month,merchant_tax_id,merchant_name,item_description,budget_item,suggested_budget_item,classification_status,classification_basis,amount,payment_tool_type,credit_card_name,is_installment,installment_count,expense_status,notes
+

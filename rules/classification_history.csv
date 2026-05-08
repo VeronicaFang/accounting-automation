@@ -1,0 +1,2 @@
+confirmed_at,source_type,merchant_tax_id,merchant_name,item_description,suggested_budget_item,final_budget_item,changed_by_user,notes
+2026-05-08,invoice_import,00000000,Sample Convenience Store,lunch box,23. 餐費,23. 餐費,false,Anonymized example

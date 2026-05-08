@@ -1,0 +1,7 @@
+credit_card_name,card_group,cutoff_day,payment_day,is_default_for_other_cards,notes
+YuShan,yushan,12,23,false,YuShan purchases from day 1 to 12 pay on the 23rd of the same month
+Union,other,5,17,true,Other cards purchases from day 1 to 5 pay on the 17th of the same month
+Cathay,other,5,17,true,Other cards purchases from day 1 to 5 pay on the 17th of the same month
+Fubon,other,5,17,true,Other cards purchases from day 1 to 5 pay on the 17th of the same month
+CTBC,other,5,17,true,Other cards purchases from day 1 to 5 pay on the 17th of the same month
+

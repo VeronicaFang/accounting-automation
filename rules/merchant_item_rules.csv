@@ -1,0 +1,3 @@
+merchant_tax_id,merchant_name,item_keyword,default_budget_item,candidate_budget_items,confidence_status,recent_5_confirmations,last_updated,notes
+00000000,Sample Convenience Store,lunch,23. 餐費,"23. 餐費;10. 日常用品",high,"23. 餐費;23. 餐費;23. 餐費;23. 餐費;23. 餐費",2026-05-08,Anonymized example
+00000000,Sample Convenience Store,tissue,10. 日常用品,"10. 日常用品;23. 餐費",needs_review,"10. 日常用品;10. 日常用品;23. 餐費;10. 日常用品;10. 日常用品",2026-05-08,Anonymized example

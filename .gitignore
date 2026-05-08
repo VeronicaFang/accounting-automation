@@ -1,0 +1,10 @@
+*.xlsx
+*.xls
+data/
+exports/
+local/
+*.csv.local
+~$*
+.DS_Store
+Thumbs.db
+

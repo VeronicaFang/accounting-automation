@@ -1,0 +1,4 @@
+year,category,budget_item,annual_budget,is_valid_expense_item,notes
+2026,家庭,10. 日常用品,10000,true,Example from 2026Budget
+2026,個人,23. 餐費,120000,true,Example from 2026Budget
+2026,,預算總額,1088859.33,false,Summary row must be excluded from expense classification

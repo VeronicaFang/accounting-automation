@@ -1,0 +1,4 @@
+income_id,income_date,income_month,income_item,income_amount,income_status,source,notes
+I0001,2026-01-05,2026-01,Salary,65000,estimated,salary_structure,Anonymized sample
+I0002,2026-02-15,2026-02,Year-end Bonus,100000,estimated,manual,Anonymized sample
+

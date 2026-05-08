@@ -1,0 +1,2 @@
+consumption_date,purchase_item,amount,channel,payment_tool_type,credit_card_name,is_installment,installment_count,suggested_budget_item,final_budget_item,classification_status,notes
+2026-02-10,overseas online order,1200,Sample Overseas Store,credit_card,YuShan,no,1,25. 奢侈娛樂,25. 奢侈娛樂,needs_review,Anonymized sample
