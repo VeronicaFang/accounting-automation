@@ -1,7 +1,7 @@
-﻿function createIncome(input) {
-  if (!input.income_date) throw new Error("Income date is required.");
-  if (!input.income_item) throw new Error("Income item is required.");
-  if (Number(input.income_amount) <= 0) throw new Error("Income amount must be greater than 0.");
+function createIncome(input) {
+  if (!input.income_date) throw new Error("請填寫收入日期。");
+  if (!input.income_item) throw new Error("請填寫收入項目。");
+  if (Number(input.income_amount) <= 0) throw new Error("收入金額必須大於 0。");
   const incomeDate = toDateText_(input.income_date);
   const record = {
     income_id: makeId_("I"),
@@ -18,12 +18,17 @@
 }
 
 function getCashFlowOverview() {
-  const incomes = readObjects_("IncomeSchedule");
-  const payments = readObjects_("PaymentSchedule").filter((payment) => payment.payment_status !== "offset");
+  const incomes = readObjects_("IncomeSchedule")
+    .map((income) => Object.assign({}, income, { income_month: normalizeMonthKey_(income.income_month) }))
+    .filter((income) => income.income_month);
+  const payments = readObjects_("PaymentSchedule")
+    .filter((payment) => payment.payment_status !== "offset")
+    .map((payment) => Object.assign({}, payment, { cash_flow_month: normalizeMonthKey_(payment.cash_flow_month) }))
+    .filter((payment) => payment.cash_flow_month);
   const monthKeys = Array.from(new Set([
     ...incomes.map((income) => income.income_month),
     ...payments.map((payment) => payment.cash_flow_month),
-  ])).filter(Boolean).sort();
+  ])).sort();
 
   return monthKeys.map((month) => {
     const incomeTotal = incomes
@@ -51,6 +56,7 @@ function getUpcomingCreditCardPayments(monthLimit) {
   const payments = readObjects_("PaymentSchedule")
     .filter((payment) => payment.payment_tool_type === "credit_card")
     .filter((payment) => payment.payment_status !== "paid" && payment.payment_status !== "offset")
+    .map((payment) => Object.assign({}, payment, { cash_flow_month: normalizeMonthKey_(payment.cash_flow_month) }))
     .filter((payment) => allowedMonths.includes(payment.cash_flow_month));
 
   const grouped = {};
@@ -63,5 +69,19 @@ function getUpcomingCreditCardPayments(monthLimit) {
     };
     grouped[key].amount += Number(payment.payment_amount || 0);
   });
-  return Object.values(grouped).sort((a, b) => a.month.localeCompare(b.month) || a.credit_card_name.localeCompare(b.credit_card_name));
+  return Object.values(grouped).sort((a, b) => a.month.localeCompare(b.month) || String(a.credit_card_name || "").localeCompare(String(b.credit_card_name || "")));
+}
+
+function normalizeMonthKey_(value) {
+  if (!value) return "";
+  if (Object.prototype.toString.call(value) === "[object Date]" && !isNaN(value.getTime())) {
+    return Utilities.formatDate(value, "Asia/Taipei", "yyyy-MM");
+  }
+  const text = String(value).trim();
+  if (/^\d{4}-\d{2}$/.test(text)) return text;
+  if (/^\d{4}-\d{2}-\d{2}/.test(text)) {
+    const date = new Date(text);
+    if (!isNaN(date.getTime())) return Utilities.formatDate(date, "Asia/Taipei", "yyyy-MM");
+  }
+  return text;
 }

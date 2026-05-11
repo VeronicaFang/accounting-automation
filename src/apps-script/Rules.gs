@@ -1,4 +1,4 @@
-﻿function toDateText_(value) {
+function toDateText_(value) {
   if (Object.prototype.toString.call(value) === "[object Date]") {
     return Utilities.formatDate(value, "Asia/Taipei", "yyyy-MM-dd");
   }
@@ -32,7 +32,7 @@ function getPaymentDate_(consumptionDate, paymentToolType, creditCardName) {
 function splitInstallments_(totalAmount, installmentCount) {
   const count = Number(installmentCount || 1);
   if (!Number.isInteger(count) || count < 1) {
-    throw new Error("Installment count must be a positive integer.");
+    throw new Error("分期期數必須是大於 0 的整數。");
   }
   const amount = Number(totalAmount);
   const base = Math.floor(amount / count);
@@ -47,3 +47,4 @@ function getBudgetStatus_(usageRatio) {
   if (usageRatio >= 0.7) return "reminder";
   return "normal";
 }
+

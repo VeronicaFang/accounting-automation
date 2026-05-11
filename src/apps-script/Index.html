@@ -1,4 +1,4 @@
-﻿<!doctype html>
+<!doctype html>
 <html>
   <head>
     <base target="_top">
@@ -7,58 +7,73 @@
   <body>
     <main class="app">
       <section class="toolbar">
-        <h1>Accounting Automation</h1>
+        <h1>個人記帳管理</h1>
         <div class="actions">
-          <button type="button" onclick="setup()">Setup Sheets</button>
-          <button type="button" onclick="refresh()">Refresh</button>
+          <button type="button" onclick="setup()">建立表格</button>
+          <button type="button" onclick="refresh()">重新整理</button>
         </div>
       </section>
 
-      <pre id="dashboardDebug">Loading dashboard data...</pre>
+      <pre id="dashboardDebug">正在載入儀表板資料...</pre>
 
       <section class="grid">
         <section>
-          <h2>Budget Status</h2>
+          <h2>預算狀態</h2>
+          <p class="hint">依使用比例與警示程度排序，已使用或接近超支的項目會優先顯示。</p>
           <div id="budgetSummary" class="table"></div>
         </section>
         <section>
-          <h2>Cash Flow</h2>
+          <h2>現金流</h2>
+          <p class="hint">收入依收入月份計入，支出依付款月份計入；信用卡分期會依付款排程分月顯示。</p>
           <div id="cashFlowOverview" class="table"></div>
         </section>
       </section>
 
+      <section class="grid">
+        <section>
+          <h2>未來信用卡付款</h2>
+          <p class="hint">只顯示尚未付款、未沖銷的信用卡付款排程。</p>
+          <div id="upcomingPayments" class="table"></div>
+        </section>
+        <section>
+          <h2>最近新增消費</h2>
+          <p class="hint">用來確認剛新增的消費是否正確；已取消的紀錄不會顯示在這裡。</p>
+          <div id="recentExpenses" class="table"></div>
+        </section>
+      </section>
+
       <section>
-        <h2>New Manual Expense</h2>
+        <h2>新增手動消費</h2>
         <form id="expenseForm" onsubmit="submitExpense(event)">
-          <label>Consumption Date <input name="consumption_date" type="date" required></label>
-          <label>Purchase Item <input name="purchase_item" required></label>
-          <label>Amount <input name="amount" type="number" min="1" required></label>
-          <label>Channel <input name="channel" required></label>
-          <label>Budget Item <select name="budget_item" id="budgetItemSelect" required></select></label>
-          <label>Payment Type
+          <label>消費日 <input name="consumption_date" type="date" required></label>
+          <label>購買品項 <input name="purchase_item" required></label>
+          <label>消費金額 <input name="amount" type="number" min="1" required></label>
+          <label>消費通路 <input name="channel" required></label>
+          <label>預算項目 <select name="budget_item" id="budgetItemSelect" required></select></label>
+          <label>支付工具類型
             <select name="payment_tool_type" id="paymentToolType" onchange="toggleCard()">
-              <option value="cash">Cash</option>
-              <option value="credit_card">Credit Card</option>
+              <option value="cash">現金</option>
+              <option value="credit_card">信用卡</option>
             </select>
           </label>
-          <label id="cardField">Credit Card
+          <label id="cardField">信用卡名稱
             <select name="credit_card_name">
-              <option value="YuShan">YuShan</option>
-              <option value="Union">Union</option>
-              <option value="Cathay">Cathay</option>
-              <option value="Fubon">Fubon</option>
-              <option value="CTBC">CTBC</option>
+              <option value="YuShan">玉山</option>
+              <option value="Union">聯邦</option>
+              <option value="Cathay">國泰</option>
+              <option value="Fubon">富邦</option>
+              <option value="CTBC">中信</option>
             </select>
           </label>
-          <label>Installment
+          <label>是否分期
             <select name="is_installment">
-              <option value="no">No</option>
-              <option value="yes">Yes</option>
+              <option value="no">否</option>
+              <option value="yes">是</option>
             </select>
           </label>
-          <label>Installment Count <input name="installment_count" type="number" min="1" value="1"></label>
-          <label>Notes <input name="notes"></label>
-          <button type="submit">Save Expense</button>
+          <label>分期期數 <input name="installment_count" type="number" min="1" value="1"></label>
+          <label>備註 <input name="notes"></label>
+          <button type="submit">儲存消費</button>
         </form>
         <pre id="expenseResult"></pre>
       </section>
@@ -66,4 +81,3 @@
     <?!= include("Client"); ?>
   </body>
 </html>
-

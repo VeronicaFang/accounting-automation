@@ -1,4 +1,4 @@
-﻿function getBudgetItems() {
+function getBudgetItems() {
   return readObjects_("BudgetItems")
     .filter((item) => item.is_valid_expense_item === true || String(item.is_valid_expense_item).toLowerCase() === "true")
     .map((item) => ({
@@ -35,7 +35,7 @@ function getBudgetSummary() {
 function getBudgetImpact(consumptionDate, budgetItem, amount) {
   const summary = getBudgetSummary().find((row) => row.budget_item === budgetItem);
   if (!summary) {
-    throw new Error(`Budget item not found: ${budgetItem}`);
+    throw new Error(`找不到預算項目：${budgetItem}`);
   }
   const amountNumber = Number(amount || 0);
   const afterUsed = summary.used + amountNumber;
@@ -50,3 +50,4 @@ function getBudgetImpact(consumptionDate, budgetItem, amount) {
     after_status: getBudgetStatus_(afterRatio),
   };
 }
+

@@ -1,4 +1,4 @@
-﻿function createManualExpense(input) {
+function createManualExpense(input) {
   validateManualExpense_(input);
   const expenseId = makeId_("E");
   const consumptionDate = toDateText_(input.consumption_date);
@@ -40,15 +40,15 @@
 }
 
 function validateManualExpense_(input) {
-  if (!input.consumption_date) throw new Error("Consumption date is required.");
-  if (!input.purchase_item) throw new Error("Purchase item is required.");
-  if (!input.channel) throw new Error("Channel is required.");
-  if (!input.budget_item) throw new Error("Budget item is required.");
-  if (!input.payment_tool_type) throw new Error("Payment tool type is required.");
+  if (!input.consumption_date) throw new Error("請填寫消費日。");
+  if (!input.purchase_item) throw new Error("請填寫購買品項。");
+  if (!input.channel) throw new Error("請填寫消費通路。");
+  if (!input.budget_item) throw new Error("請選擇預算項目。");
+  if (!input.payment_tool_type) throw new Error("請選擇支付工具類型。");
   if (input.payment_tool_type === "credit_card" && !input.credit_card_name) {
-    throw new Error("Credit card name is required for credit-card payments.");
+    throw new Error("信用卡付款請選擇信用卡名稱。");
   }
-  if (Number(input.amount) <= 0) throw new Error("Amount must be greater than 0.");
+  if (Number(input.amount) <= 0) throw new Error("消費金額必須大於 0。");
 }
 
 function createPaymentSchedulesForExpense_(expense) {
@@ -70,3 +70,30 @@ function createPaymentSchedulesForExpense_(expense) {
     };
   });
 }
+function getRecentExpenses(limit) {
+  return readObjects_("ExpenseRecords")
+    .filter((expense) => expense.expense_status !== "cancelled")
+    .sort((a, b) => {
+      const dateCompare = String(b.consumption_date || "").localeCompare(String(a.consumption_date || ""));
+      if (dateCompare !== 0) return dateCompare;
+      return String(b.expense_id || "").localeCompare(String(a.expense_id || ""));
+    })
+    .slice(0, Number(limit || 10))
+    .map((expense) => ({
+      expense_id: expense.expense_id,
+      consumption_date: expense.consumption_date,
+      merchant_name: expense.merchant_name,
+      item_description: expense.item_description,
+      budget_item: expense.budget_item,
+      amount: Number(expense.amount || 0),
+      payment_label: getPaymentLabel_(expense),
+      expense_status: expense.expense_status,
+    }));
+}
+
+function getPaymentLabel_(expense) {
+  if (expense.payment_tool_type === "credit_card") return `信用卡 ${expense.credit_card_name || ""}`.trim();
+  return "現金";
+}
+
+

@@ -1,7 +1,7 @@
-﻿function doGet() {
+function doGet() {
   return HtmlService.createTemplateFromFile("Index")
     .evaluate()
-    .setTitle("Accounting Automation")
+    .setTitle("個人記帳管理")
     .setXFrameOptionsMode(HtmlService.XFrameOptionsMode.ALLOWALL);
 }
 
@@ -13,7 +13,8 @@ function getDashboardData() {
   return {
     budgetSummary: getBudgetSummary(),
     cashFlowOverview: getCashFlowOverview(),
-    upcomingCreditCardPayments: getUpcomingCreditCardPayments(3),
+    upcomingCreditCardPayments: getUpcomingCreditCardPayments(6),
+    recentExpenses: getRecentExpenses(10),
     budgetItems: getBudgetItems(),
     enums: ENUMS,
   };

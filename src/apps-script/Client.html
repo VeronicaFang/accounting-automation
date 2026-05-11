@@ -1,28 +1,28 @@
-﻿<script>
+<script>
   let dashboardData = null;
 
   function setup() {
-    setDebug("Setting up sheets...");
+    setDebug("正在建立 Google Sheet 表格...");
     google.script.run
       .withSuccessHandler(() => refresh())
-      .withFailureHandler((error) => setDebug(`Setup failed: ${error.message}`))
+      .withFailureHandler((error) => setDebug(`建立表格失敗：${error.message}`))
       .setupDatabase();
   }
 
   function refresh() {
-    setDebug("Loading dashboard data...");
+    setDebug("正在載入儀表板資料...");
     google.script.run
       .withSuccessHandler((payload) => {
         let data = null;
         try {
           data = typeof payload === "string" ? JSON.parse(payload) : payload;
         } catch (error) {
-          setDebug(`Dashboard parse failed: ${error.message}`);
+          setDebug(`儀表板資料解析失敗：${error.message}`);
           return;
         }
 
         if (!data) {
-          setDebug("Dashboard returned no data. Re-deploy the latest Apps Script version and try Refresh again.");
+          setDebug("沒有讀到儀表板資料。請重新部署最新 Apps Script 版本後，再按重新整理。");
           return;
         }
 
@@ -30,23 +30,27 @@
         const budgetSummary = data.budgetSummary || [];
         const cashFlowOverview = data.cashFlowOverview || [];
         const budgetItems = data.budgetItems || [];
+        const upcomingPayments = data.upcomingCreditCardPayments || [];
+        const recentExpenses = data.recentExpenses || [];
         renderBudget(budgetSummary);
         renderCashFlow(cashFlowOverview);
+        renderUpcomingPayments(upcomingPayments);
+        renderRecentExpenses(recentExpenses);
         renderBudgetOptions(budgetItems);
         toggleCard();
-        setDebug(`Loaded ${budgetItems.length} budget item(s), ${budgetSummary.length} budget row(s), ${cashFlowOverview.length} cash-flow month(s).`);
+        setDebug(`已載入 ${budgetItems.length} 個預算項目、${budgetSummary.length} 筆預算狀態、${cashFlowOverview.length} 個現金流月份。`);
       })
       .withFailureHandler((error) => {
-        setDebug(`Dashboard load failed: ${error.message}`);
+        setDebug(`儀表板載入失敗：${error.message}`);
       })
       .getDashboardDataJson();
   }
 
   function renderBudget(rows) {
     const html = [
-      "<table><thead><tr><th>Item</th><th>Budget</th><th>Used</th><th>Remaining</th><th>Status</th></tr></thead><tbody>",
-      ...rows.map((row) => `<tr class="${row.status}"><td>${row.budget_item}</td><td>${row.annual_budget}</td><td>${row.used}</td><td>${row.remaining}</td><td>${row.status}</td></tr>`),
-      rows.length === 0 ? '<tr><td colspan="5">No budget items loaded.</td></tr>' : "",
+      "<table><thead><tr><th>預算項目</th><th>年度預算</th><th>已使用</th><th>剩餘</th><th>狀態</th></tr></thead><tbody>",
+      ...rows.map((row) => `<tr class="${row.status}"><td>${escapeHtml(row.budget_item)}</td><td>${formatMoney(row.annual_budget)}</td><td>${formatMoney(row.used)}</td><td>${formatMoney(row.remaining)}</td><td>${translateStatus(row.status)}</td></tr>`),
+      rows.length === 0 ? '<tr><td colspan="5">尚未載入預算項目。</td></tr>' : "",
       "</tbody></table>",
     ].join("");
     document.getElementById("budgetSummary").innerHTML = html;
@@ -54,21 +58,41 @@
 
   function renderCashFlow(rows) {
     const html = [
-      "<table><thead><tr><th>Month</th><th>Income</th><th>Payments</th><th>Net</th></tr></thead><tbody>",
-      ...rows.map((row) => `<tr><td>${formatMonth(row.month)}</td><td>${row.income_total}</td><td>${row.payment_total}</td><td>${row.net_cash_flow}</td></tr>`),
-      rows.length === 0 ? '<tr><td colspan="4">No cash-flow rows loaded.</td></tr>' : "",
+      "<table><thead><tr><th>月份</th><th>收入</th><th>付款支出</th><th>淨現金流</th></tr></thead><tbody>",
+      ...rows.map((row) => `<tr><td>${formatMonth(row.month)}</td><td>${formatMoney(row.income_total)}</td><td>${formatMoney(row.payment_total)}</td><td>${formatMoney(row.net_cash_flow)}</td></tr>`),
+      rows.length === 0 ? '<tr><td colspan="4">尚未載入現金流資料。</td></tr>' : "",
       "</tbody></table>",
     ].join("");
     document.getElementById("cashFlowOverview").innerHTML = html;
   }
 
+  function renderUpcomingPayments(rows) {
+    const html = [
+      "<table><thead><tr><th>付款月份</th><th>信用卡</th><th>預估金額</th></tr></thead><tbody>",
+      ...rows.map((row) => `<tr><td>${formatMonth(row.month)}</td><td>${translateCreditCard(row.credit_card_name)}</td><td>${formatMoney(row.amount)}</td></tr>`),
+      rows.length === 0 ? '<tr><td colspan="3">未來 6 個月沒有待付款信用卡排程。</td></tr>' : "",
+      "</tbody></table>",
+    ].join("");
+    document.getElementById("upcomingPayments").innerHTML = html;
+  }
+
+  function renderRecentExpenses(rows) {
+    const html = [
+      "<table><thead><tr><th>消費日</th><th>通路</th><th>品項</th><th>預算項目</th><th>金額</th><th>支付方式</th></tr></thead><tbody>",
+      ...rows.map((row) => `<tr><td>${formatDate(row.consumption_date)}</td><td>${escapeHtml(row.merchant_name)}</td><td>${escapeHtml(row.item_description)}</td><td>${escapeHtml(row.budget_item)}</td><td>${formatMoney(row.amount)}</td><td>${translatePaymentLabel(row.payment_label)}</td></tr>`),
+      rows.length === 0 ? '<tr><td colspan="6">尚未有消費紀錄。</td></tr>' : "",
+      "</tbody></table>",
+    ].join("");
+    document.getElementById("recentExpenses").innerHTML = html;
+  }
+
   function renderBudgetOptions(items) {
     const select = document.getElementById("budgetItemSelect");
     if (items.length === 0) {
-      select.innerHTML = '<option value="">No budget items loaded</option>';
+      select.innerHTML = '<option value="">尚未載入預算項目</option>';
       return;
     }
-    select.innerHTML = items.map((item) => `<option value="${item.budget_item}">${item.budget_item}</option>`).join("");
+    select.innerHTML = items.map((item) => `<option value="${escapeHtml(item.budget_item)}">${escapeHtml(item.budget_item)}</option>`).join("");
   }
 
   function toggleCard() {
@@ -80,18 +104,70 @@
     event.preventDefault();
     const formData = new FormData(event.target);
     const input = Object.fromEntries(formData.entries());
+    document.getElementById("expenseResult").textContent = "正在儲存消費...";
     google.script.run.withSuccessHandler((result) => {
-      document.getElementById("expenseResult").textContent = JSON.stringify(result, null, 2);
+      const impact = result.budget_impact || {};
+      document.getElementById("expenseResult").textContent = `已儲存。這筆消費後，${impact.budget_item || "此項目"} 剩餘 ${formatMoney(impact.after_remaining)}，狀態：${translateStatus(impact.after_status)}。`;
       event.target.reset();
       refresh();
     }).withFailureHandler((error) => {
-      document.getElementById("expenseResult").textContent = error.message;
+      document.getElementById("expenseResult").textContent = `儲存失敗：${error.message}`;
     }).createManualExpense(input);
   }
 
   function formatMonth(value) {
     if (typeof value === "string" && /^\d{4}-\d{2}/.test(value)) return value.slice(0, 7);
     return value || "";
+  }
+
+  function formatDate(value) {
+    if (typeof value === "string" && /^\d{4}-\d{2}-\d{2}/.test(value)) return value.slice(0, 10);
+    return value || "";
+  }
+
+  function formatMoney(value) {
+    return Number(value || 0).toLocaleString("zh-TW", { maximumFractionDigits: 0 });
+  }
+
+  function translateStatus(status) {
+    const labels = {
+      normal: "正常",
+      reminder: "提醒",
+      warning: "警示",
+      over_budget: "已超支",
+      estimated: "預估",
+      reconciled: "已對帳",
+      paid: "已付款",
+      corrected: "已修正",
+      offset: "已沖銷",
+      cancelled: "已取消",
+    };
+    return labels[status] || status || "";
+  }
+
+  function translateCreditCard(value) {
+    const labels = { YuShan: "玉山", Union: "聯邦", Cathay: "國泰", Fubon: "富邦", CTBC: "中信" };
+    return labels[value] || value || "";
+  }
+
+  function translatePaymentLabel(value) {
+    if (!value) return "";
+    if (value === "現金") return value;
+    return value
+      .replace("YuShan", "玉山")
+      .replace("Union", "聯邦")
+      .replace("Cathay", "國泰")
+      .replace("Fubon", "富邦")
+      .replace("CTBC", "中信");
+  }
+
+  function escapeHtml(value) {
+    return String(value || "")
+      .replace(/&/g, "&amp;")
+      .replace(/</g, "&lt;")
+      .replace(/>/g, "&gt;")
+      .replace(/"/g, "&quot;")
+      .replace(/'/g, "&#039;");
   }
 
   function setDebug(message) {

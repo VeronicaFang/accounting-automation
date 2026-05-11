@@ -1,4 +1,4 @@
-﻿import test from "node:test";
+import test from "node:test";
 import assert from "node:assert/strict";
 import { getCashFlowOverview, getUpcomingCreditCardPayments } from "../src/core/cash-flow.mjs";
 
@@ -26,3 +26,31 @@ test("upcoming credit card payments exclude paid offset and cash rows", () => {
     { month: "2026-05", credit_card_name: "YuShan", amount: 10000 },
   ]);
 });
+test("cash flow overview normalizes date-like month values before grouping", () => {
+  const result = getCashFlowOverview(
+    [
+      { income_month: "2026-06", income_amount: 65000 },
+      { income_month: "2026-05-31T16:00:00.000Z", income_amount: 5000 },
+    ],
+    [
+      { cash_flow_month: "2026-06", payment_amount: 3000, payment_status: "estimated" },
+      { cash_flow_month: "2026-05-31T16:00:00.000Z", payment_amount: 2000, payment_status: "estimated" },
+    ],
+  );
+
+  assert.deepEqual(result, [
+    { month: "2026-06", income_total: 70000, payment_total: 5000, net_cash_flow: 65000 },
+  ]);
+});
+
+test("upcoming credit card payments normalize date-like month values before grouping", () => {
+  const result = getUpcomingCreditCardPayments([
+    { cash_flow_month: "2026-05-31T16:00:00.000Z", payment_amount: 1000, payment_status: "estimated", payment_tool_type: "credit_card", credit_card_name: "YuShan" },
+    { cash_flow_month: "2026-06", payment_amount: 2000, payment_status: "estimated", payment_tool_type: "credit_card", credit_card_name: "YuShan" },
+  ], ["2026-06"]);
+
+  assert.deepEqual(result, [
+    { month: "2026-06", credit_card_name: "YuShan", amount: 3000 },
+  ]);
+});
+
