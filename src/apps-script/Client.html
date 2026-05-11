@@ -2,23 +2,35 @@
   let dashboardData = null;
 
   function setup() {
-    google.script.run.withSuccessHandler(() => refresh()).setupDatabase();
+    setDebug("Setting up sheets...");
+    google.script.run
+      .withSuccessHandler(() => refresh())
+      .withFailureHandler((error) => setDebug(`Setup failed: ${error.message}`))
+      .setupDatabase();
   }
 
   function refresh() {
-    google.script.run.withSuccessHandler((data) => {
-      dashboardData = data;
-      renderBudget(data.budgetSummary);
-      renderCashFlow(data.cashFlowOverview);
-      renderBudgetOptions(data.budgetItems);
-      toggleCard();
-    }).getDashboardData();
+    setDebug("Loading dashboard data...");
+    google.script.run
+      .withSuccessHandler((data) => {
+        dashboardData = data;
+        renderBudget(data.budgetSummary || []);
+        renderCashFlow(data.cashFlowOverview || []);
+        renderBudgetOptions(data.budgetItems || []);
+        toggleCard();
+        setDebug(`Loaded ${data.budgetItems.length} budget item(s), ${data.budgetSummary.length} budget row(s), ${data.cashFlowOverview.length} cash-flow month(s).`);
+      })
+      .withFailureHandler((error) => {
+        setDebug(`Dashboard load failed: ${error.message}`);
+      })
+      .getDashboardData();
   }
 
   function renderBudget(rows) {
     const html = [
       "<table><thead><tr><th>Item</th><th>Budget</th><th>Used</th><th>Remaining</th><th>Status</th></tr></thead><tbody>",
       ...rows.map((row) => `<tr class="${row.status}"><td>${row.budget_item}</td><td>${row.annual_budget}</td><td>${row.used}</td><td>${row.remaining}</td><td>${row.status}</td></tr>`),
+      rows.length === 0 ? '<tr><td colspan="5">No budget items loaded.</td></tr>' : "",
       "</tbody></table>",
     ].join("");
     document.getElementById("budgetSummary").innerHTML = html;
@@ -28,6 +40,7 @@
     const html = [
       "<table><thead><tr><th>Month</th><th>Income</th><th>Payments</th><th>Net</th></tr></thead><tbody>",
       ...rows.map((row) => `<tr><td>${row.month}</td><td>${row.income_total}</td><td>${row.payment_total}</td><td>${row.net_cash_flow}</td></tr>`),
+      rows.length === 0 ? '<tr><td colspan="4">No cash-flow rows loaded.</td></tr>' : "",
       "</tbody></table>",
     ].join("");
     document.getElementById("cashFlowOverview").innerHTML = html;
@@ -35,6 +48,10 @@
 
   function renderBudgetOptions(items) {
     const select = document.getElementById("budgetItemSelect");
+    if (items.length === 0) {
+      select.innerHTML = '<option value="">No budget items loaded</option>';
+      return;
+    }
     select.innerHTML = items.map((item) => `<option value="${item.budget_item}">${item.budget_item}</option>`).join("");
   }
 
@@ -54,6 +71,11 @@
     }).withFailureHandler((error) => {
       document.getElementById("expenseResult").textContent = error.message;
     }).createManualExpense(input);
+  }
+
+  function setDebug(message) {
+    const debug = document.getElementById("dashboardDebug");
+    if (debug) debug.textContent = message;
   }
 
   refresh();

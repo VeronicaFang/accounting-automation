@@ -10,11 +10,18 @@ function include(filename) {
 }
 
 function getDashboardData() {
-  return {
+  const data = {
     budgetSummary: getBudgetSummary(),
     cashFlowOverview: getCashFlowOverview(),
     upcomingCreditCardPayments: getUpcomingCreditCardPayments(3),
     budgetItems: getBudgetItems(),
     enums: ENUMS,
   };
+  return data;
+}
+
+function debugGetDashboardData() {
+  const data = getDashboardData();
+  Logger.log(JSON.stringify(data, null, 2));
+  return data;
 }
