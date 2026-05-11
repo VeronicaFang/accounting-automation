@@ -97,9 +97,9 @@
       { value: "credit_card", label: "信用卡" },
     ].map((option) => `<option value="${option.value}" ${option.value === selected ? "selected" : ""}>${option.label}</option>`).join("");
     const html = [
-      "<table><thead><tr><th>消費日</th><th>店家</th><th>品項</th><th>金額</th><th>預算項目</th><th>支付方式</th><th>信用卡</th><th>操作</th></tr></thead><tbody>",
-      ...rows.map((row, index) => `<tr><td>${formatDate(row.consumption_date)}</td><td>${escapeHtml(row.merchant_name)}</td><td>${escapeHtml(row.item_description)}</td><td>${formatMoney(row.amount)}</td><td><select id="invoiceBudget${index}">${budgetOptions(row.suggested_budget_item)}</select></td><td><select id="invoicePayment${index}">${paymentOptions(row.suggested_payment_tool_type || "cash")}</select></td><td><select id="invoiceCard${index}">${cardOptions(row.suggested_credit_card_name || "")}</select></td><td><button type="button" onclick="confirmInvoiceDraft(${index})">確認入帳</button></td></tr>`),
-      rows.length === 0 ? '<tr><td colspan="8">目前沒有待確認發票。</td></tr>' : "",
+      "<table><thead><tr><th>選取</th><th>消費日</th><th>店家</th><th>品項</th><th>金額</th><th>預算項目</th><th>支付方式</th><th>信用卡</th><th>操作</th></tr></thead><tbody>",
+      ...rows.map((row, index) => `<tr><td><input type="checkbox" id="invoiceSelect${index}" checked></td><td>${formatDate(row.consumption_date)}</td><td>${escapeHtml(row.merchant_name)}</td><td>${escapeHtml(row.item_description)}</td><td>${formatMoney(row.amount)}</td><td><select id="invoiceBudget${index}">${budgetOptions(row.suggested_budget_item)}</select></td><td><select id="invoicePayment${index}">${paymentOptions(row.suggested_payment_tool_type || "cash")}</select></td><td><select id="invoiceCard${index}">${cardOptions(row.suggested_credit_card_name || "")}</select></td><td><button type="button" onclick="confirmInvoiceDraft(${index})">確認入帳</button></td></tr>`),
+      rows.length === 0 ? '<tr><td colspan="9">目前沒有待確認發票。</td></tr>' : "",
       "</tbody></table>",
     ].join("");
     document.getElementById("pendingInvoiceDrafts").innerHTML = html;
@@ -121,6 +121,46 @@
     }).importInvoiceDraftsFromText(text);
   }
 
+
+  function selectAllInvoiceDrafts(checked) {
+    (dashboardData.pendingInvoiceDrafts || []).forEach((_, index) => {
+      const checkbox = document.getElementById(`invoiceSelect${index}`);
+      if (checkbox) checkbox.checked = checked;
+    });
+  }
+
+  function buildInvoiceConfirmationInput(index) {
+    const row = (dashboardData.pendingInvoiceDrafts || [])[index];
+    if (!row) return null;
+    const paymentToolType = document.getElementById(`invoicePayment${index}`).value;
+    return {
+      import_id: row.import_id,
+      budget_item: document.getElementById(`invoiceBudget${index}`).value,
+      payment_tool_type: paymentToolType,
+      credit_card_name: paymentToolType === "credit_card" ? document.getElementById(`invoiceCard${index}`).value : "",
+    };
+  }
+
+  function confirmSelectedInvoiceDrafts() {
+    const inputs = (dashboardData.pendingInvoiceDrafts || []).map((_, index) => {
+      const checkbox = document.getElementById(`invoiceSelect${index}`);
+      return checkbox && checkbox.checked ? buildInvoiceConfirmationInput(index) : null;
+    }).filter(Boolean);
+    if (inputs.length === 0) {
+      document.getElementById("invoiceImportResult").textContent = "請先勾選要確認入帳的發票。";
+      return;
+    }
+    document.getElementById("invoiceImportResult").textContent = `正在批次確認 ${inputs.length} 筆發票...`;
+    google.script.run.withSuccessHandler((result) => {
+      const errors = result.errors || [];
+      document.getElementById("invoiceImportResult").textContent = errors.length === 0
+        ? `已批次確認 ${result.confirmed_count || 0} 筆。`
+        : `已確認 ${result.confirmed_count || 0} 筆，失敗 ${errors.length} 筆：${errors.map((error) => error.message).join("；")}`;
+      refresh();
+    }).withFailureHandler((error) => {
+      document.getElementById("invoiceImportResult").textContent = `批次確認失敗：${error.message}`;
+    }).confirmInvoiceDraftsBatch(inputs);
+  }
   function confirmInvoiceDraft(index) {
     const row = (dashboardData.pendingInvoiceDrafts || [])[index];
     if (!row) return;

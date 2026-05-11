@@ -38,6 +38,19 @@ export function buildInvoiceDrafts(invoiceRows, paymentRules = [], itemRules = [
   });
 }
 
+
+export function buildSelectedInvoiceConfirmations(drafts, editsByImportId) {
+  return drafts
+    .filter((draft) => draft.import_status === "pending")
+    .map((draft) => ({ draft, edit: editsByImportId[draft.import_id] }))
+    .filter(({ edit }) => edit?.selected)
+    .map(({ draft, edit }) => ({
+      import_id: draft.import_id,
+      budget_item: edit.budget_item || draft.suggested_budget_item,
+      payment_tool_type: edit.payment_tool_type || draft.suggested_payment_tool_type || "cash",
+      credit_card_name: (edit.payment_tool_type || draft.suggested_payment_tool_type) === "credit_card" ? (edit.credit_card_name || draft.suggested_credit_card_name || "") : "",
+    }));
+}
 function normalizeInvoiceRow(row) {
   return {
     source_record_id: pickField(row, FIELD_ALIASES.source_record_id),

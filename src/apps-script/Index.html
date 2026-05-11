@@ -51,6 +51,11 @@
         </div>
         <pre id="invoiceImportResult"></pre>
         <h3>待確認發票</h3>
+        <div class="actions import-actions">
+          <button type="button" onclick="selectAllInvoiceDrafts(true)">全選</button>
+          <button type="button" onclick="selectAllInvoiceDrafts(false)">取消全選</button>
+          <button type="button" onclick="confirmSelectedInvoiceDrafts()">批次確認入帳</button>
+        </div>
         <div id="pendingInvoiceDrafts" class="table"></div>
       </section>
       <section>

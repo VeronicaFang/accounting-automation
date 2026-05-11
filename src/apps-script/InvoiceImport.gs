@@ -45,6 +45,25 @@ function confirmInvoiceDraft(input) {
   return result;
 }
 
+
+function confirmInvoiceDraftsBatch(inputs) {
+  const rows = Array.isArray(inputs) ? inputs : [];
+  if (rows.length === 0) throw new Error("請先勾選要確認入帳的發票。");
+  const results = [];
+  const errors = [];
+  rows.forEach((input) => {
+    try {
+      results.push(confirmInvoiceDraft(input));
+    } catch (error) {
+      errors.push({ import_id: input.import_id, message: error.message });
+    }
+  });
+  return {
+    confirmed_count: results.length,
+    error_count: errors.length,
+    errors,
+  };
+}
 function parseInvoiceText_(text) {
   const lines = String(text || "").split(/\r?\n/).filter((line) => line.trim() !== "");
   if (lines.length < 2) return [];

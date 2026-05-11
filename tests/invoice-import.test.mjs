@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { parseInvoiceText, buildInvoiceDrafts } from "../src/core/invoice-import.mjs";
+import { parseInvoiceText, buildInvoiceDrafts, buildSelectedInvoiceConfirmations } from "../src/core/invoice-import.mjs";
 
 const pastedText = `消費日\t賣方名稱\t賣方統一編號\t品名\t金額\t發票號碼
 2026/05/02\t統一超商\t12345678\t飯糰\t59\tAB12345678
@@ -67,4 +67,20 @@ test("parse finance ministry rows with unquoted commas in final item column", ()
   const [row] = parseInvoiceText(text);
   assert.equal(row.item_description, "好吃雞肉飯-加蔥辣,醬多");
   assert.equal(row.amount, 125);
+});
+test("batch confirmation payload only includes selected pending drafts", () => {
+  const drafts = [
+    { import_id: "I1", suggested_budget_item: "23. 餐費", suggested_payment_tool_type: "cash", suggested_credit_card_name: "", import_status: "pending" },
+    { import_id: "I2", suggested_budget_item: "10. 日常用品", suggested_payment_tool_type: "credit_card", suggested_credit_card_name: "玉山", import_status: "pending" },
+    { import_id: "I3", suggested_budget_item: "11. 勤動才藝課", suggested_payment_tool_type: "cash", suggested_credit_card_name: "", import_status: "confirmed" },
+  ];
+  const edits = {
+    I1: { selected: true, budget_item: "23. 餐費", payment_tool_type: "cash", credit_card_name: "" },
+    I2: { selected: false, budget_item: "10. 日常用品", payment_tool_type: "credit_card", credit_card_name: "玉山" },
+    I3: { selected: true, budget_item: "11. 勤動才藝課", payment_tool_type: "cash", credit_card_name: "" },
+  };
+
+  assert.deepEqual(buildSelectedInvoiceConfirmations(drafts, edits), [
+    { import_id: "I1", budget_item: "23. 餐費", payment_tool_type: "cash", credit_card_name: "" },
+  ]);
 });
