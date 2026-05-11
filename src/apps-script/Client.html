@@ -12,18 +12,34 @@
   function refresh() {
     setDebug("Loading dashboard data...");
     google.script.run
-      .withSuccessHandler((data) => {
+      .withSuccessHandler((payload) => {
+        let data = null;
+        try {
+          data = typeof payload === "string" ? JSON.parse(payload) : payload;
+        } catch (error) {
+          setDebug(`Dashboard parse failed: ${error.message}`);
+          return;
+        }
+
+        if (!data) {
+          setDebug("Dashboard returned no data. Re-deploy the latest Apps Script version and try Refresh again.");
+          return;
+        }
+
         dashboardData = data;
-        renderBudget(data.budgetSummary || []);
-        renderCashFlow(data.cashFlowOverview || []);
-        renderBudgetOptions(data.budgetItems || []);
+        const budgetSummary = data.budgetSummary || [];
+        const cashFlowOverview = data.cashFlowOverview || [];
+        const budgetItems = data.budgetItems || [];
+        renderBudget(budgetSummary);
+        renderCashFlow(cashFlowOverview);
+        renderBudgetOptions(budgetItems);
         toggleCard();
-        setDebug(`Loaded ${data.budgetItems.length} budget item(s), ${data.budgetSummary.length} budget row(s), ${data.cashFlowOverview.length} cash-flow month(s).`);
+        setDebug(`Loaded ${budgetItems.length} budget item(s), ${budgetSummary.length} budget row(s), ${cashFlowOverview.length} cash-flow month(s).`);
       })
       .withFailureHandler((error) => {
         setDebug(`Dashboard load failed: ${error.message}`);
       })
-      .getDashboardData();
+      .getDashboardDataJson();
   }
 
   function renderBudget(rows) {
@@ -39,7 +55,7 @@
   function renderCashFlow(rows) {
     const html = [
       "<table><thead><tr><th>Month</th><th>Income</th><th>Payments</th><th>Net</th></tr></thead><tbody>",
-      ...rows.map((row) => `<tr><td>${row.month}</td><td>${row.income_total}</td><td>${row.payment_total}</td><td>${row.net_cash_flow}</td></tr>`),
+      ...rows.map((row) => `<tr><td>${formatMonth(row.month)}</td><td>${row.income_total}</td><td>${row.payment_total}</td><td>${row.net_cash_flow}</td></tr>`),
       rows.length === 0 ? '<tr><td colspan="4">No cash-flow rows loaded.</td></tr>' : "",
       "</tbody></table>",
     ].join("");
@@ -71,6 +87,11 @@
     }).withFailureHandler((error) => {
       document.getElementById("expenseResult").textContent = error.message;
     }).createManualExpense(input);
+  }
+
+  function formatMonth(value) {
+    if (typeof value === "string" && /^\d{4}-\d{2}/.test(value)) return value.slice(0, 7);
+    return value || "";
   }
 
   function setDebug(message) {

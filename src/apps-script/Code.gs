@@ -10,14 +10,17 @@ function include(filename) {
 }
 
 function getDashboardData() {
-  const data = {
+  return {
     budgetSummary: getBudgetSummary(),
     cashFlowOverview: getCashFlowOverview(),
     upcomingCreditCardPayments: getUpcomingCreditCardPayments(3),
     budgetItems: getBudgetItems(),
     enums: ENUMS,
   };
-  return data;
+}
+
+function getDashboardDataJson() {
+  return JSON.stringify(getDashboardData());
 }
 
 function debugGetDashboardData() {
