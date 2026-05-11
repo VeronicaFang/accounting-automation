@@ -32,10 +32,12 @@
         const budgetItems = data.budgetItems || [];
         const upcomingPayments = data.upcomingCreditCardPayments || [];
         const recentExpenses = data.recentExpenses || [];
+        const pendingInvoiceDrafts = data.pendingInvoiceDrafts || [];
         renderBudget(budgetSummary);
         renderCashFlow(cashFlowOverview);
         renderUpcomingPayments(upcomingPayments);
         renderRecentExpenses(recentExpenses);
+        renderPendingInvoiceDrafts(pendingInvoiceDrafts, budgetItems);
         renderBudgetOptions(budgetItems);
         toggleCard();
         setDebug(`已載入 ${budgetItems.length} 個預算項目、${budgetSummary.length} 筆預算狀態、${cashFlowOverview.length} 個現金流月份。`);
@@ -86,6 +88,57 @@
     document.getElementById("recentExpenses").innerHTML = html;
   }
 
+
+  function renderPendingInvoiceDrafts(rows, budgetItems) {
+    const budgetOptions = (selected) => budgetItems.map((item) => `<option value="${escapeHtml(item.budget_item)}" ${item.budget_item === selected ? "selected" : ""}>${escapeHtml(item.budget_item)}</option>`).join("");
+    const cardOptions = (selected) => ["", "玉山", "聯邦", "國泰", "富邦", "中信"].map((name) => `<option value="${name}" ${name === selected ? "selected" : ""}>${name || "不適用"}</option>`).join("");
+    const paymentOptions = (selected) => [
+      { value: "cash", label: "現金" },
+      { value: "credit_card", label: "信用卡" },
+    ].map((option) => `<option value="${option.value}" ${option.value === selected ? "selected" : ""}>${option.label}</option>`).join("");
+    const html = [
+      "<table><thead><tr><th>消費日</th><th>店家</th><th>品項</th><th>金額</th><th>預算項目</th><th>支付方式</th><th>信用卡</th><th>操作</th></tr></thead><tbody>",
+      ...rows.map((row, index) => `<tr><td>${formatDate(row.consumption_date)}</td><td>${escapeHtml(row.merchant_name)}</td><td>${escapeHtml(row.item_description)}</td><td>${formatMoney(row.amount)}</td><td><select id="invoiceBudget${index}">${budgetOptions(row.suggested_budget_item)}</select></td><td><select id="invoicePayment${index}">${paymentOptions(row.suggested_payment_tool_type || "cash")}</select></td><td><select id="invoiceCard${index}">${cardOptions(row.suggested_credit_card_name || "")}</select></td><td><button type="button" onclick="confirmInvoiceDraft(${index})">確認入帳</button></td></tr>`),
+      rows.length === 0 ? '<tr><td colspan="8">目前沒有待確認發票。</td></tr>' : "",
+      "</tbody></table>",
+    ].join("");
+    document.getElementById("pendingInvoiceDrafts").innerHTML = html;
+  }
+
+  function importInvoices() {
+    const text = document.getElementById("invoiceImportText").value;
+    if (!text.trim()) {
+      document.getElementById("invoiceImportResult").textContent = "請先貼上發票明細。";
+      return;
+    }
+    document.getElementById("invoiceImportResult").textContent = "正在匯入待確認清單...";
+    google.script.run.withSuccessHandler((result) => {
+      document.getElementById("invoiceImportResult").textContent = `已匯入 ${result.imported_count || 0} 筆到待確認清單。`;
+      document.getElementById("invoiceImportText").value = "";
+      refresh();
+    }).withFailureHandler((error) => {
+      document.getElementById("invoiceImportResult").textContent = `匯入失敗：${error.message}`;
+    }).importInvoiceDraftsFromText(text);
+  }
+
+  function confirmInvoiceDraft(index) {
+    const row = (dashboardData.pendingInvoiceDrafts || [])[index];
+    if (!row) return;
+    const paymentToolType = document.getElementById(`invoicePayment${index}`).value;
+    const input = {
+      import_id: row.import_id,
+      budget_item: document.getElementById(`invoiceBudget${index}`).value,
+      payment_tool_type: paymentToolType,
+      credit_card_name: paymentToolType === "credit_card" ? document.getElementById(`invoiceCard${index}`).value : "",
+    };
+    document.getElementById("invoiceImportResult").textContent = "正在確認入帳...";
+    google.script.run.withSuccessHandler(() => {
+      document.getElementById("invoiceImportResult").textContent = "已確認入帳。";
+      refresh();
+    }).withFailureHandler((error) => {
+      document.getElementById("invoiceImportResult").textContent = `確認失敗：${error.message}`;
+    }).confirmInvoiceDraft(input);
+  }
   function renderBudgetOptions(items) {
     const select = document.getElementById("budgetItemSelect");
     if (items.length === 0) {

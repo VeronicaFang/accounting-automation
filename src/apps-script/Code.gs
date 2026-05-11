@@ -15,6 +15,7 @@ function getDashboardData() {
     cashFlowOverview: getCashFlowOverview(),
     upcomingCreditCardPayments: getUpcomingCreditCardPayments(6),
     recentExpenses: getRecentExpenses(10),
+    pendingInvoiceDrafts: getPendingInvoiceDrafts(50),
     budgetItems: getBudgetItems(),
     enums: ENUMS,
   };

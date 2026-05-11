@@ -1,4 +1,4 @@
-﻿function getDatabase_() {
+function getDatabase_() {
   return SpreadsheetApp.openById(SPREADSHEET_ID);
 }
 
@@ -80,4 +80,19 @@ function debugGetBudgetRows() {
 
 function debugGetDatabaseName() {
   return getDatabase_().getName();
+}
+function updateObjectById_(sheetName, idColumn, idValue, updates) {
+  const sheet = getDatabase_().getSheetByName(sheetName);
+  if (!sheet || sheet.getLastRow() < 2) throw new Error(`找不到工作表或資料：${sheetName}`);
+  const headers = sheet.getRange(1, 1, 1, sheet.getLastColumn()).getValues()[0];
+  const idIndex = headers.indexOf(idColumn);
+  if (idIndex < 0) throw new Error(`找不到欄位：${idColumn}`);
+  const values = sheet.getRange(2, 1, sheet.getLastRow() - 1, sheet.getLastColumn()).getValues();
+  const rowIndex = values.findIndex((row) => String(row[idIndex]) === String(idValue));
+  if (rowIndex < 0) throw new Error(`找不到資料：${idValue}`);
+  const rowNumber = rowIndex + 2;
+  Object.keys(updates).forEach((key) => {
+    const columnIndex = headers.indexOf(key);
+    if (columnIndex >= 0) sheet.getRange(rowNumber, columnIndex + 1).setValue(updates[key]);
+  });
 }

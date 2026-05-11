@@ -1,4 +1,4 @@
-﻿const SPREADSHEET_ID = "1CmdU1cM2eYSAQ-dCASlynAQFyGrG5FCvrlQOS3RZP38";
+const SPREADSHEET_ID = "1CmdU1cM2eYSAQ-dCASlynAQFyGrG5FCvrlQOS3RZP38";
 
 const SHEET_NAMES = {
   budgetItems: "BudgetItems",
@@ -10,6 +10,7 @@ const SHEET_NAMES = {
   merchantItemRules: "MerchantItemRules",
   classificationHistory: "ClassificationHistory",
   paymentChoiceHistory: "PaymentChoiceHistory",
+  importedInvoiceDrafts: "ImportedInvoiceDrafts",
 };
 
 const HEADERS = {
@@ -76,6 +77,59 @@ const HEADERS = {
     "source",
     "notes",
   ],
+  ImportedInvoiceDrafts: [
+    "import_id",
+    "source_type",
+    "source_record_id",
+    "consumption_date",
+    "merchant_tax_id",
+    "merchant_name",
+    "item_description",
+    "amount",
+    "suggested_payment_tool_type",
+    "suggested_credit_card_name",
+    "suggested_budget_item",
+    "classification_status",
+    "import_status",
+    "expense_id",
+    "notes",
+  ],
+  MerchantPaymentRules: [
+    "rule_id",
+    "merchant_tax_id",
+    "merchant_name_contains",
+    "payment_tool_type",
+    "credit_card_name",
+    "is_active",
+    "notes",
+  ],
+  MerchantItemRules: [
+    "rule_id",
+    "merchant_tax_id",
+    "merchant_name_contains",
+    "item_keyword_contains",
+    "budget_item",
+    "is_active",
+    "notes",
+  ],
+  ClassificationHistory: [
+    "history_id",
+    "merchant_tax_id",
+    "merchant_name",
+    "item_description",
+    "budget_item",
+    "confirmed_at",
+    "notes",
+  ],
+  PaymentChoiceHistory: [
+    "history_id",
+    "merchant_tax_id",
+    "merchant_name",
+    "payment_tool_type",
+    "credit_card_name",
+    "confirmed_at",
+    "notes",
+  ],
   CreditCardRules: [
     "credit_card_name",
     "card_group",
@@ -88,7 +142,7 @@ const HEADERS = {
 
 const ENUMS = {
   paymentToolTypes: ["cash", "credit_card"],
-  creditCards: ["YuShan", "Union", "Cathay", "Fubon", "CTBC"],
+  creditCards: ["玉山", "聯邦", "國泰", "富邦", "中信"],
   expenseStatuses: ["normal", "cancelled"],
   paymentStatuses: ["estimated", "reconciled", "paid", "corrected", "offset"],
   incomeStatuses: ["estimated", "received", "corrected"],

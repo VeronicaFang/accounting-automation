@@ -43,6 +43,17 @@
       </section>
 
       <section>
+        <h2>財政部發票匯入</h2>
+        <p class="hint">從 Excel 或 CSV 複製含標題列的發票明細貼到下方。系統會先放入待確認清單，不會直接寫入正式消費紀錄。</p>
+        <textarea id="invoiceImportText" rows="8" placeholder="請貼上財政部發票明細，第一列需包含欄位名稱"></textarea>
+        <div class="actions import-actions">
+          <button type="button" onclick="importInvoices()">匯入待確認清單</button>
+        </div>
+        <pre id="invoiceImportResult"></pre>
+        <h3>待確認發票</h3>
+        <div id="pendingInvoiceDrafts" class="table"></div>
+      </section>
+      <section>
         <h2>新增手動消費</h2>
         <form id="expenseForm" onsubmit="submitExpense(event)">
           <label>消費日 <input name="consumption_date" type="date" required></label>
