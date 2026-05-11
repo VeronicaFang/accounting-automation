@@ -105,6 +105,21 @@
     document.getElementById("pendingInvoiceDrafts").innerHTML = html;
   }
 
+
+  function loadInvoiceCsvFile(event) {
+    const file = event.target.files && event.target.files[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = () => {
+      const text = String(reader.result || "").replace(/^\uFEFF/, "");
+      document.getElementById("invoiceImportText").value = text;
+      document.getElementById("invoiceImportResult").textContent = `已讀取檔案：${file.name}。請按「匯入待確認清單」。`;
+    };
+    reader.onerror = () => {
+      document.getElementById("invoiceImportResult").textContent = "讀取 CSV 檔失敗，請改用複製貼上。";
+    };
+    reader.readAsText(file, "UTF-8");
+  }
   function importInvoices() {
     const text = document.getElementById("invoiceImportText").value;
     if (!text.trim()) {
@@ -113,7 +128,7 @@
     }
     document.getElementById("invoiceImportResult").textContent = "正在匯入待確認清單...";
     google.script.run.withSuccessHandler((result) => {
-      document.getElementById("invoiceImportResult").textContent = `已匯入 ${result.imported_count || 0} 筆到待確認清單。`;
+      document.getElementById("invoiceImportResult").textContent = `已匯入 ${result.imported_count || 0} 筆到待確認清單，略過重複 ${result.skipped_count || 0} 筆。`;
       document.getElementById("invoiceImportText").value = "";
       refresh();
     }).withFailureHandler((error) => {

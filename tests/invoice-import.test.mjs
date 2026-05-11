@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { parseInvoiceText, buildInvoiceDrafts, buildSelectedInvoiceConfirmations } from "../src/core/invoice-import.mjs";
+import { parseInvoiceText, buildInvoiceDrafts, buildSelectedInvoiceConfirmations, filterNewInvoiceDrafts } from "../src/core/invoice-import.mjs";
 
 const pastedText = `消費日\t賣方名稱\t賣方統一編號\t品名\t金額\t發票號碼
 2026/05/02\t統一超商\t12345678\t飯糰\t59\tAB12345678
@@ -83,4 +83,20 @@ test("batch confirmation payload only includes selected pending drafts", () => {
   assert.deepEqual(buildSelectedInvoiceConfirmations(drafts, edits), [
     { import_id: "I1", budget_item: "23. 餐費", payment_tool_type: "cash", credit_card_name: "" },
   ]);
+});
+test("invoice drafts include stable duplicate keys with occurrence numbers", () => {
+  const text = `消費日\t賣方名稱\t賣方統一編號\t品名\t金額\t發票號碼
+2026/05/02\t同店家\t12345678\t同品項\t59\tAB12345678
+2026/05/02\t同店家\t12345678\t同品項\t59\tAB12345678`;
+  const drafts = buildInvoiceDrafts(parseInvoiceText(text), [], []);
+
+  assert.equal(drafts[0].source_line_key, "AB12345678|12345678|2026-05-02|同品項|59|1");
+  assert.equal(drafts[1].source_line_key, "AB12345678|12345678|2026-05-02|同品項|59|2");
+});
+
+test("duplicate invoice drafts already imported are skipped", () => {
+  const drafts = buildInvoiceDrafts(parseInvoiceText(pastedText), [], []);
+  const existing = [{ source_line_key: drafts[0].source_line_key }];
+
+  assert.deepEqual(filterNewInvoiceDrafts(drafts, existing).map((draft) => draft.source_record_id), ["CD12345678"]);
 });

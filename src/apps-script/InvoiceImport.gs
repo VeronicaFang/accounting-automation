@@ -1,8 +1,10 @@
 function importInvoiceDraftsFromText(text) {
   const rows = parseInvoiceText_(text);
   const drafts = buildInvoiceDrafts_(rows);
-  drafts.forEach((draft) => appendObject_("ImportedInvoiceDrafts", draft));
-  return { imported_count: drafts.length, drafts };
+  const existingKeys = new Set(readObjects_("ImportedInvoiceDrafts").map((row) => row.source_line_key).filter(Boolean).map(String));
+  const newDrafts = drafts.filter((draft) => !existingKeys.has(String(draft.source_line_key || "")));
+  newDrafts.forEach((draft) => appendObject_("ImportedInvoiceDrafts", draft));
+  return { imported_count: newDrafts.length, skipped_count: drafts.length - newDrafts.length, drafts: newDrafts };
 }
 
 function getPendingInvoiceDrafts(limit) {
@@ -78,6 +80,7 @@ function parseInvoiceText_(text) {
 }
 
 function buildInvoiceDrafts_(rows) {
+  const keyCounts = {};
   const paymentRules = readObjects_("MerchantPaymentRules");
   const itemRules = readObjects_("MerchantItemRules");
   return rows.map((row, index) => {
@@ -97,6 +100,19 @@ function buildInvoiceDrafts_(rows) {
   });
 }
 
+
+function buildSourceLineKey_(row, keyCounts) {
+  const base = [
+    row.source_record_id,
+    row.merchant_tax_id,
+    row.consumption_date,
+    row.item_description,
+    row.amount,
+  ].map((value) => String(value == null ? "" : value).trim()).join("|");
+  const nextCount = (keyCounts[base] || 0) + 1;
+  keyCounts[base] = nextCount;
+  return `${base}|${nextCount}`;
+}
 function normalizeInvoiceRow_(row) {
   return {
     source_record_id: pickInvoiceField_(row, ["發票號碼", "發票字軌號碼", "字軌號碼", "invoice_number", "source_record_id"]),

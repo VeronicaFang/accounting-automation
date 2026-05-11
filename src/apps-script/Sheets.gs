@@ -9,6 +9,7 @@ function setupDatabase() {
     ensureHeaders_(sheet, HEADERS[sheetName]);
   });
   seedCreditCardRules_();
+  seedMerchantPaymentRules_();
   return { ok: true, message: "Database sheets are ready." };
 }
 
@@ -49,6 +50,24 @@ function seedCreditCardRules_() {
   });
 }
 
+
+function seedMerchantPaymentRules_() {
+  const existing = readObjects_("MerchantPaymentRules");
+  const existingKeys = new Set(existing.map((rule) => `${rule.merchant_tax_id || ""}|${rule.merchant_name_contains || ""}`));
+  INITIAL_MERCHANT_PAYMENT_RULES.forEach((rule, index) => {
+    const key = `${rule.merchant_tax_id || ""}|${rule.merchant_name_contains || ""}`;
+    if (existingKeys.has(key)) return;
+    appendObject_("MerchantPaymentRules", {
+      rule_id: `MPR_INIT_${String(index + 1).padStart(3, "0")}`,
+      merchant_tax_id: rule.merchant_tax_id,
+      merchant_name_contains: rule.merchant_name_contains,
+      payment_tool_type: rule.payment_tool_type,
+      credit_card_name: rule.credit_card_name,
+      is_active: true,
+      notes: rule.notes,
+    });
+  });
+}
 function appendObject_(sheetName, record) {
   const sheet = getDatabase_().getSheetByName(sheetName);
   const headers = sheet.getRange(1, 1, 1, sheet.getLastColumn()).getValues()[0];

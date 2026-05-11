@@ -24,11 +24,13 @@ export function parseInvoiceText(text) {
 }
 
 export function buildInvoiceDrafts(invoiceRows, paymentRules = [], itemRules = []) {
+  const keyCounts = new Map();
   return invoiceRows.map((row) => {
     const paymentRule = findPaymentRule(row, paymentRules);
     const itemRule = findItemRule(row, itemRules);
     return {
       ...row,
+      source_line_key: buildSourceLineKey(row, keyCounts),
       suggested_payment_tool_type: row.annotated_payment_tool_type || paymentRule?.payment_tool_type || "cash",
       suggested_credit_card_name: row.annotated_credit_card_name || paymentRule?.credit_card_name || "",
       suggested_budget_item: row.annotated_budget_item || itemRule?.budget_item || "",
@@ -39,6 +41,24 @@ export function buildInvoiceDrafts(invoiceRows, paymentRules = [], itemRules = [
 }
 
 
+
+export function filterNewInvoiceDrafts(drafts, existingRows = []) {
+  const existingKeys = new Set(existingRows.map((row) => row.source_line_key).filter(Boolean));
+  return drafts.filter((draft) => !existingKeys.has(draft.source_line_key));
+}
+
+function buildSourceLineKey(row, keyCounts) {
+  const base = [
+    row.source_record_id,
+    row.merchant_tax_id,
+    row.consumption_date,
+    row.item_description,
+    row.amount,
+  ].map((value) => String(value ?? "").trim()).join("|");
+  const nextCount = (keyCounts.get(base) || 0) + 1;
+  keyCounts.set(base, nextCount);
+  return `${base}|${nextCount}`;
+}
 export function buildSelectedInvoiceConfirmations(drafts, editsByImportId) {
   return drafts
     .filter((draft) => draft.import_status === "pending")
