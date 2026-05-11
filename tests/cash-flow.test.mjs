@@ -23,7 +23,7 @@ test("cash flow overview subtracts active payment rows from income", () => {
 
 test("upcoming credit card payments exclude paid offset and cash rows", () => {
   assert.deepEqual(getUpcomingCreditCardPayments(payments, ["2026-05", "2026-06"]), [
-    { month: "2026-05", credit_card_name: "YuShan", amount: 10000 },
+    { month: "2026-05", credit_card_name: "YuShan", credit_card_label: "玉山", amount: 10000 },
   ]);
 });
 test("cash flow overview normalizes date-like month values before grouping", () => {
@@ -50,7 +50,7 @@ test("upcoming credit card payments normalize date-like month values before grou
   ], ["2026-06"]);
 
   assert.deepEqual(result, [
-    { month: "2026-06", credit_card_name: "YuShan", amount: 3000 },
+    { month: "2026-06", credit_card_name: "YuShan", credit_card_label: "玉山", amount: 3000 },
   ]);
 });
 

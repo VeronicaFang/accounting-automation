@@ -69,7 +69,7 @@
   function renderUpcomingPayments(rows) {
     const html = [
       "<table><thead><tr><th>付款月份</th><th>信用卡</th><th>預估金額</th></tr></thead><tbody>",
-      ...rows.map((row) => `<tr><td>${formatMonth(row.month)}</td><td>${translateCreditCard(row.credit_card_name)}</td><td>${formatMoney(row.amount)}</td></tr>`),
+      ...rows.map((row) => `<tr><td>${formatMonth(row.month)}</td><td>${escapeHtml(row.credit_card_label || translateCreditCard(row.credit_card_name))}</td><td>${formatMoney(row.amount)}</td></tr>`),
       rows.length === 0 ? '<tr><td colspan="3">未來 6 個月沒有待付款信用卡排程。</td></tr>' : "",
       "</tbody></table>",
     ].join("");

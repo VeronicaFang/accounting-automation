@@ -92,8 +92,24 @@ function getRecentExpenses(limit) {
 }
 
 function getPaymentLabel_(expense) {
-  if (expense.payment_tool_type === "credit_card") return `信用卡 ${expense.credit_card_name || ""}`.trim();
+  if (expense.payment_tool_type === "credit_card") return `信用卡 ${getCreditCardLabel_(expense.credit_card_name)}`.trim();
   return "現金";
 }
 
 
+
+function getCreditCardLabel_(value) {
+  const labels = {
+    YuShan: "玉山",
+    Union: "聯邦",
+    Cathay: "國泰",
+    Fubon: "富邦",
+    CTBC: "中信",
+    玉山: "玉山",
+    聯邦: "聯邦",
+    國泰: "國泰",
+    富邦: "富邦",
+    中信: "中信",
+  };
+  return labels[value] || value || "";
+}

@@ -21,7 +21,7 @@ function getPaymentDate_(consumptionDate, paymentToolType, creditCardName) {
   if (paymentToolType === "cash") return consumptionDateText;
 
   const date = new Date(`${consumptionDateText}T00:00:00`);
-  const isYuShan = creditCardName === "YuShan";
+  const isYuShan = creditCardName === "YuShan" || creditCardName === "玉山";
   const cutoffDay = isYuShan ? 12 : 5;
   const paymentDay = isYuShan ? 23 : 17;
   const monthOffset = date.getDate() <= cutoffDay ? 0 : 1;

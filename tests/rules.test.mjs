@@ -1,4 +1,4 @@
-﻿import test from "node:test";
+import test from "node:test";
 import assert from "node:assert/strict";
 import {
   addMonths,
@@ -45,4 +45,7 @@ test("budget status thresholds match requirements", () => {
   assert.equal(getBudgetStatus(0.7), "reminder");
   assert.equal(getBudgetStatus(0.9), "warning");
   assert.equal(getBudgetStatus(1), "over_budget");
+});
+test("Chinese YuShan card name uses YuShan payment rule", () => {
+  assert.equal(getPaymentDate("2026-05-12", "credit_card", "玉山"), "2026-05-23");
 });

@@ -1,3 +1,5 @@
+import { getCreditCardLabel } from "./expenses.mjs";
+
 export function getCashFlowOverview(incomeRows, paymentRows) {
   const normalizedIncomes = incomeRows
     .map((income) => ({ ...income, income_month: normalizeMonthKey(income.income_month) }))
@@ -42,6 +44,7 @@ export function getUpcomingCreditCardPayments(paymentRows, monthKeys) {
     grouped[key] = grouped[key] || {
       month: payment.cash_flow_month,
       credit_card_name: payment.credit_card_name,
+      credit_card_label: getCreditCardLabel(payment.credit_card_name),
       amount: 0,
     };
     grouped[key].amount += Number(payment.payment_amount || 0);

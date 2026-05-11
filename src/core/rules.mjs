@@ -1,4 +1,4 @@
-﻿export function toMonthKey(dateText) {
+export function toMonthKey(dateText) {
   const date = parseLocalDate(dateText);
   const year = date.getFullYear();
   const month = String(date.getMonth() + 1).padStart(2, "0");
@@ -18,7 +18,7 @@ export function getPaymentDate(consumptionDateText, paymentToolType, creditCardN
 
   const date = parseLocalDate(consumptionDateText);
   const day = date.getDate();
-  const isYuShan = creditCardName === "YuShan";
+  const isYuShan = creditCardName === "YuShan" || creditCardName === "玉山";
   const cutoffDay = isYuShan ? 12 : 5;
   const paymentDay = isYuShan ? 23 : 17;
   const paymentMonthOffset = day <= cutoffDay ? 0 : 1;
