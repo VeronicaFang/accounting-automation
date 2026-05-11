@@ -1,5 +1,5 @@
 ﻿function getDatabase_() {
-  return SpreadsheetApp.getActiveSpreadsheet();
+  return SpreadsheetApp.openById(SPREADSHEET_ID);
 }
 
 function setupDatabase() {
@@ -72,4 +72,12 @@ function readObjects_(sheetName) {
 
 function makeId_(prefix) {
   return `${prefix}${Utilities.formatDate(new Date(), "Asia/Taipei", "yyyyMMddHHmmssSSS")}`;
+}
+
+function debugGetBudgetRows() {
+  return readObjects_("BudgetItems");
+}
+
+function debugGetDatabaseName() {
+  return getDatabase_().getName();
 }
