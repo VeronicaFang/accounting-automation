@@ -6,7 +6,7 @@ import {
   getPaymentDate,
   splitInstallments,
   toMonthKey,
-} from "./rules.fixture.mjs";
+} from "../src/core/rules.mjs";
 
 test("month key comes from consumption date", () => {
   assert.equal(toMonthKey("2026-02-10"), "2026-02");
