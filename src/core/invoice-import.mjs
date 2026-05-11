@@ -33,7 +33,7 @@ export function buildInvoiceDrafts(invoiceRows, paymentRules = [], itemRules = [
       source_line_key: buildSourceLineKey(row, keyCounts),
       suggested_payment_tool_type: row.annotated_payment_tool_type || paymentRule?.payment_tool_type || "cash",
       suggested_credit_card_name: row.annotated_credit_card_name || paymentRule?.credit_card_name || "",
-      suggested_budget_item: row.annotated_budget_item || itemRule?.budget_item || "",
+      suggested_budget_item: row.annotated_budget_item || paymentRule?.default_budget_item || itemRule?.budget_item || "",
       classification_status: "needs_review",
       import_status: "pending",
     };
@@ -59,6 +59,12 @@ function buildSourceLineKey(row, keyCounts) {
   keyCounts.set(base, nextCount);
   return `${base}|${nextCount}`;
 }
+export function buildSelectedInvoiceDeletions(drafts, selectionsByImportId) {
+  return drafts
+    .filter((draft) => draft.import_status === "pending")
+    .filter((draft) => selectionsByImportId[draft.import_id])
+    .map((draft) => ({ import_id: draft.import_id }));
+}
 export function buildSelectedInvoiceConfirmations(drafts, editsByImportId) {
   return drafts
     .filter((draft) => draft.import_status === "pending")
@@ -69,6 +75,7 @@ export function buildSelectedInvoiceConfirmations(drafts, editsByImportId) {
       budget_item: edit.budget_item || draft.suggested_budget_item,
       payment_tool_type: edit.payment_tool_type || draft.suggested_payment_tool_type || "cash",
       credit_card_name: (edit.payment_tool_type || draft.suggested_payment_tool_type) === "credit_card" ? (edit.credit_card_name || draft.suggested_credit_card_name || "") : "",
+      save_to_merchant_payment_rules: edit.save_to_merchant_payment_rules === true,
     }));
 }
 function normalizeInvoiceRow(row) {

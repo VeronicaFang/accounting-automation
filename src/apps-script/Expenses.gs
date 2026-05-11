@@ -32,10 +32,15 @@ function createManualExpense(input) {
   const schedules = createPaymentSchedulesForExpense_(expense);
   schedules.forEach((schedule) => appendObject_("PaymentSchedule", schedule));
 
+  const merchantPaymentRule = input.save_to_merchant_payment_rules === true || input.save_to_merchant_payment_rules === "yes"
+    ? saveMerchantPaymentRuleFromRecord_(expense)
+    : null;
+
   return {
     expense,
     payment_schedules: schedules,
     budget_impact: getBudgetImpact(consumptionDate, input.budget_item, amount),
+    merchant_payment_rule: merchantPaymentRule,
   };
 }
 

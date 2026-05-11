@@ -101,6 +101,7 @@ const HEADERS = {
     "merchant_name_contains",
     "payment_tool_type",
     "credit_card_name",
+    "default_budget_item",
     "is_active",
     "notes",
   ],

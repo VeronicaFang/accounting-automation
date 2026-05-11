@@ -44,6 +44,16 @@ function confirmInvoiceDraft(input) {
   });
   appendClassificationHistory_(draft, input.budget_item || draft.suggested_budget_item);
   appendPaymentChoiceHistory_(draft, paymentToolType, creditCardName);
+  if (input.save_to_merchant_payment_rules === true || input.save_to_merchant_payment_rules === "yes") {
+    result.merchant_payment_rule = saveMerchantPaymentRuleFromRecord_({
+      source_type: "invoice_import",
+      merchant_tax_id: draft.merchant_tax_id,
+      merchant_name: draft.merchant_name,
+      payment_tool_type: paymentToolType,
+      credit_card_name: creditCardName,
+      budget_item: input.budget_item || draft.suggested_budget_item,
+    });
+  }
   return result;
 }
 
@@ -79,6 +89,37 @@ function parseInvoiceText_(text) {
   }).filter((row) => row.consumption_date || row.merchant_name || Number(row.amount) > 0);
 }
 
+function deleteInvoiceDraft(input) {
+  const importId = input && input.import_id;
+  if (!importId) throw new Error("請先選擇要刪除的待確認發票。");
+  const draft = readObjects_("ImportedInvoiceDrafts").find((row) => String(row.import_id) === String(importId));
+  if (!draft) throw new Error("找不到待確認發票資料。");
+  if (draft.import_status !== "pending") throw new Error("這筆發票資料已處理過，不能刪除。");
+  updateObjectById_("ImportedInvoiceDrafts", "import_id", draft.import_id, {
+    import_status: "deleted",
+    notes: input.notes || "不是本人支付，已從待確認清單刪除",
+  });
+  return { deleted_count: 1, import_id: draft.import_id };
+}
+
+function deleteInvoiceDraftsBatch(inputs) {
+  const rows = Array.isArray(inputs) ? inputs : [];
+  if (rows.length === 0) throw new Error("請先勾選要刪除的待確認發票。");
+  const results = [];
+  const errors = [];
+  rows.forEach((input) => {
+    try {
+      results.push(deleteInvoiceDraft(input));
+    } catch (error) {
+      errors.push({ import_id: input.import_id, message: error.message });
+    }
+  });
+  return {
+    deleted_count: results.length,
+    error_count: errors.length,
+    errors,
+  };
+}
 function buildInvoiceDrafts_(rows) {
   const keyCounts = {};
   const paymentRules = readObjects_("MerchantPaymentRules");
@@ -91,7 +132,7 @@ function buildInvoiceDrafts_(rows) {
       source_type: "finance_ministry_invoice",
       suggested_payment_tool_type: row.annotated_payment_tool_type || (paymentRule ? paymentRule.payment_tool_type : "cash"),
       suggested_credit_card_name: row.annotated_credit_card_name || (paymentRule ? paymentRule.credit_card_name : ""),
-      suggested_budget_item: row.annotated_budget_item || (itemRule ? itemRule.budget_item : ""),
+      suggested_budget_item: row.annotated_budget_item || (paymentRule ? paymentRule.default_budget_item : "") || (itemRule ? itemRule.budget_item : ""),
       classification_status: "needs_review",
       import_status: "pending",
       expense_id: "",

@@ -48,3 +48,38 @@ function getBudgetStatus_(usageRatio) {
   return "normal";
 }
 
+
+function saveMerchantPaymentRuleFromRecord_(record) {
+  const merchantTaxId = String(record.merchant_tax_id || "").trim();
+  const merchantName = String(record.merchant_name || record.channel || "").trim();
+  if (!merchantTaxId && !merchantName) throw new Error("缺少店家資訊，無法寫入店家支付規則。");
+
+  const paymentToolType = record.payment_tool_type || "cash";
+  const creditCardName = paymentToolType === "credit_card" ? (record.credit_card_name || "") : "";
+  const budgetItem = record.budget_item || record.suggested_budget_item || "";
+  const rules = readObjects_("MerchantPaymentRules");
+  const existing = rules.find((rule) => {
+    const sameTaxId = merchantTaxId && String(rule.merchant_tax_id || "").trim() === merchantTaxId;
+    const sameName = !merchantTaxId && merchantName && String(rule.merchant_name_contains || "").trim() === merchantName;
+    return sameTaxId || sameName;
+  });
+
+  const updates = {
+    merchant_tax_id: merchantTaxId,
+    merchant_name_contains: merchantTaxId ? "" : merchantName,
+    payment_tool_type: paymentToolType,
+    credit_card_name: creditCardName,
+    default_budget_item: budgetItem,
+    is_active: true,
+    notes: `manual save from ${record.source_type || "expense"}`,
+  };
+
+  if (existing && existing.rule_id) {
+    updateObjectById_("MerchantPaymentRules", "rule_id", existing.rule_id, updates);
+    return Object.assign({ rule_id: existing.rule_id, action: "updated" }, updates);
+  }
+
+  const rule = Object.assign({ rule_id: makeId_("MPR") }, updates);
+  appendObject_("MerchantPaymentRules", rule);
+  return Object.assign({ action: "created" }, rule);
+}

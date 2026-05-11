@@ -1,13 +1,13 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { parseInvoiceText, buildInvoiceDrafts, buildSelectedInvoiceConfirmations, filterNewInvoiceDrafts } from "../src/core/invoice-import.mjs";
+import { parseInvoiceText, buildInvoiceDrafts, buildSelectedInvoiceConfirmations, buildSelectedInvoiceDeletions, filterNewInvoiceDrafts } from "../src/core/invoice-import.mjs";
 
 const pastedText = `消費日\t賣方名稱\t賣方統一編號\t品名\t金額\t發票號碼
 2026/05/02\t統一超商\t12345678\t飯糰\t59\tAB12345678
 2026/05/03\t全聯福利中心\t87654321\t洗衣精\t199\tCD12345678`;
 
 const paymentRules = [
-  { merchant_name_contains: "統一超商", payment_tool_type: "credit_card", credit_card_name: "玉山", is_active: "true" },
+  { merchant_name_contains: "統一超商", payment_tool_type: "credit_card", credit_card_name: "玉山", default_budget_item: "23. 餐費", is_active: "true" },
 ];
 
 const itemRules = [
@@ -75,13 +75,13 @@ test("batch confirmation payload only includes selected pending drafts", () => {
     { import_id: "I3", suggested_budget_item: "11. 勤動才藝課", suggested_payment_tool_type: "cash", suggested_credit_card_name: "", import_status: "confirmed" },
   ];
   const edits = {
-    I1: { selected: true, budget_item: "23. 餐費", payment_tool_type: "cash", credit_card_name: "" },
+    I1: { selected: true, budget_item: "23. 餐費", payment_tool_type: "cash", credit_card_name: "", save_to_merchant_payment_rules: true },
     I2: { selected: false, budget_item: "10. 日常用品", payment_tool_type: "credit_card", credit_card_name: "玉山" },
     I3: { selected: true, budget_item: "11. 勤動才藝課", payment_tool_type: "cash", credit_card_name: "" },
   };
 
   assert.deepEqual(buildSelectedInvoiceConfirmations(drafts, edits), [
-    { import_id: "I1", budget_item: "23. 餐費", payment_tool_type: "cash", credit_card_name: "" },
+    { import_id: "I1", budget_item: "23. 餐費", payment_tool_type: "cash", credit_card_name: "", save_to_merchant_payment_rules: true },
   ]);
 });
 test("invoice drafts include stable duplicate keys with occurrence numbers", () => {
@@ -99,4 +99,17 @@ test("duplicate invoice drafts already imported are skipped", () => {
   const existing = [{ source_line_key: drafts[0].source_line_key }];
 
   assert.deepEqual(filterNewInvoiceDrafts(drafts, existing).map((draft) => draft.source_record_id), ["CD12345678"]);
+});
+
+test("delete payload only includes selected pending invoice drafts", () => {
+  const drafts = [
+    { import_id: "I1", import_status: "pending" },
+    { import_id: "I2", import_status: "confirmed" },
+    { import_id: "I3", import_status: "pending" },
+  ];
+  const selections = { I1: true, I2: true, I3: false };
+
+  assert.deepEqual(buildSelectedInvoiceDeletions(drafts, selections), [
+    { import_id: "I1" },
+  ]);
 });

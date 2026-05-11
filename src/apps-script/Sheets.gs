@@ -18,15 +18,22 @@ function getOrCreateSheet_(spreadsheet, sheetName) {
 }
 
 function ensureHeaders_(sheet, headers) {
-  const range = sheet.getRange(1, 1, 1, headers.length);
+  const lastColumn = Math.max(sheet.getLastColumn(), headers.length);
+  const range = sheet.getRange(1, 1, 1, lastColumn);
   const current = range.getValues()[0];
   const hasHeaders = current.some((value) => String(value || "").trim() !== "");
   if (!hasHeaders) {
-    range.setValues([headers]);
+    sheet.getRange(1, 1, 1, headers.length).setValues([headers]);
+    sheet.setFrozenRows(1);
+    return;
+  }
+  const existingHeaders = current.map((value) => String(value || "").trim()).filter(Boolean);
+  const missingHeaders = headers.filter((header) => !existingHeaders.includes(header));
+  if (missingHeaders.length > 0) {
+    sheet.getRange(1, existingHeaders.length + 1, 1, missingHeaders.length).setValues([missingHeaders]);
     sheet.setFrozenRows(1);
   }
 }
-
 function seedCreditCardRules_() {
   const sheet = getDatabase_().getSheetByName("CreditCardRules");
   if (sheet.getLastRow() > 1) return;
@@ -63,6 +70,7 @@ function seedMerchantPaymentRules_() {
       merchant_name_contains: rule.merchant_name_contains,
       payment_tool_type: rule.payment_tool_type,
       credit_card_name: rule.credit_card_name,
+      default_budget_item: rule.default_budget_item || "",
       is_active: true,
       notes: rule.notes,
     });

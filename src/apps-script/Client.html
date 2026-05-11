@@ -98,7 +98,7 @@
     ].map((option) => `<option value="${option.value}" ${option.value === selected ? "selected" : ""}>${option.label}</option>`).join("");
     const html = [
       "<table><thead><tr><th>選取</th><th>消費日</th><th>店家</th><th>品項</th><th>金額</th><th>預算項目</th><th>支付方式</th><th>信用卡</th><th>操作</th></tr></thead><tbody>",
-      ...rows.map((row, index) => `<tr><td><input type="checkbox" id="invoiceSelect${index}" checked></td><td>${formatDate(row.consumption_date)}</td><td>${escapeHtml(row.merchant_name)}</td><td>${escapeHtml(row.item_description)}</td><td>${formatMoney(row.amount)}</td><td><select id="invoiceBudget${index}">${budgetOptions(row.suggested_budget_item)}</select></td><td><select id="invoicePayment${index}">${paymentOptions(row.suggested_payment_tool_type || "cash")}</select></td><td><select id="invoiceCard${index}">${cardOptions(row.suggested_credit_card_name || "")}</select></td><td><button type="button" onclick="confirmInvoiceDraft(${index})">確認入帳</button></td></tr>`),
+      ...rows.map((row, index) => `<tr><td><input type="checkbox" id="invoiceSelect${index}" checked></td><td>${formatDate(row.consumption_date)}</td><td>${escapeHtml(row.merchant_name)}</td><td>${escapeHtml(row.item_description)}</td><td>${formatMoney(row.amount)}</td><td><select id="invoiceBudget${index}">${budgetOptions(row.suggested_budget_item)}</select></td><td><select id="invoicePayment${index}">${paymentOptions(row.suggested_payment_tool_type || "cash")}</select></td><td><select id="invoiceCard${index}">${cardOptions(row.suggested_credit_card_name || "")}</select></td><td><button type="button" onclick="confirmInvoiceDraft(${index})">確認入帳</button><button type="button" onclick="confirmInvoiceDraft(${index}, true)">把本次紀錄匯入店家支付規則中</button><button type="button" class="secondary" onclick="deleteInvoiceDraft(${index})">刪除</button></td></tr>`),
       rows.length === 0 ? '<tr><td colspan="9">目前沒有待確認發票。</td></tr>' : "",
       "</tbody></table>",
     ].join("");
@@ -144,7 +144,7 @@
     });
   }
 
-  function buildInvoiceConfirmationInput(index) {
+  function buildInvoiceConfirmationInput(index, saveToRules) {
     const row = (dashboardData.pendingInvoiceDrafts || [])[index];
     if (!row) return null;
     const paymentToolType = document.getElementById(`invoicePayment${index}`).value;
@@ -153,13 +153,39 @@
       budget_item: document.getElementById(`invoiceBudget${index}`).value,
       payment_tool_type: paymentToolType,
       credit_card_name: paymentToolType === "credit_card" ? document.getElementById(`invoiceCard${index}`).value : "",
+      save_to_merchant_payment_rules: saveToRules === true,
     };
   }
 
-  function confirmSelectedInvoiceDrafts() {
+  function buildInvoiceDeletionInput(index) {
+    const row = (dashboardData.pendingInvoiceDrafts || [])[index];
+    return row ? { import_id: row.import_id } : null;
+  }
+
+  function deleteSelectedInvoiceDrafts() {
     const inputs = (dashboardData.pendingInvoiceDrafts || []).map((_, index) => {
       const checkbox = document.getElementById(`invoiceSelect${index}`);
-      return checkbox && checkbox.checked ? buildInvoiceConfirmationInput(index) : null;
+      return checkbox && checkbox.checked ? buildInvoiceDeletionInput(index) : null;
+    }).filter(Boolean);
+    if (inputs.length === 0) {
+      document.getElementById("invoiceImportResult").textContent = "請先勾選要刪除的待確認發票。";
+      return;
+    }
+    document.getElementById("invoiceImportResult").textContent = `正在刪除 ${inputs.length} 筆待確認發票...`;
+    google.script.run.withSuccessHandler((result) => {
+      const errors = result.errors || [];
+      document.getElementById("invoiceImportResult").textContent = errors.length === 0
+        ? `已刪除 ${result.deleted_count || 0} 筆。`
+        : `已刪除 ${result.deleted_count || 0} 筆，失敗 ${errors.length} 筆：${errors.map((error) => error.message).join("；")}`;
+      refresh();
+    }).withFailureHandler((error) => {
+      document.getElementById("invoiceImportResult").textContent = `批次刪除失敗：${error.message}`;
+    }).deleteInvoiceDraftsBatch(inputs);
+  }
+  function confirmSelectedInvoiceDrafts(saveToRules) {
+    const inputs = (dashboardData.pendingInvoiceDrafts || []).map((_, index) => {
+      const checkbox = document.getElementById(`invoiceSelect${index}`);
+      return checkbox && checkbox.checked ? buildInvoiceConfirmationInput(index, saveToRules === true) : null;
     }).filter(Boolean);
     if (inputs.length === 0) {
       document.getElementById("invoiceImportResult").textContent = "請先勾選要確認入帳的發票。";
@@ -176,7 +202,7 @@
       document.getElementById("invoiceImportResult").textContent = `批次確認失敗：${error.message}`;
     }).confirmInvoiceDraftsBatch(inputs);
   }
-  function confirmInvoiceDraft(index) {
+  function confirmInvoiceDraft(index, saveToRules) {
     const row = (dashboardData.pendingInvoiceDrafts || [])[index];
     if (!row) return;
     const paymentToolType = document.getElementById(`invoicePayment${index}`).value;
@@ -185,6 +211,7 @@
       budget_item: document.getElementById(`invoiceBudget${index}`).value,
       payment_tool_type: paymentToolType,
       credit_card_name: paymentToolType === "credit_card" ? document.getElementById(`invoiceCard${index}`).value : "",
+      save_to_merchant_payment_rules: saveToRules === true,
     };
     document.getElementById("invoiceImportResult").textContent = "正在確認入帳...";
     google.script.run.withSuccessHandler(() => {
@@ -193,6 +220,17 @@
     }).withFailureHandler((error) => {
       document.getElementById("invoiceImportResult").textContent = `確認失敗：${error.message}`;
     }).confirmInvoiceDraft(input);
+  }
+  function deleteInvoiceDraft(index) {
+    const input = buildInvoiceDeletionInput(index);
+    if (!input) return;
+    document.getElementById("invoiceImportResult").textContent = "正在刪除待確認發票...";
+    google.script.run.withSuccessHandler(() => {
+      document.getElementById("invoiceImportResult").textContent = "已刪除待確認發票。";
+      refresh();
+    }).withFailureHandler((error) => {
+      document.getElementById("invoiceImportResult").textContent = `刪除失敗：${error.message}`;
+    }).deleteInvoiceDraft(input);
   }
   function renderBudgetOptions(items) {
     const select = document.getElementById("budgetItemSelect");
@@ -212,6 +250,7 @@
     event.preventDefault();
     const formData = new FormData(event.target);
     const input = Object.fromEntries(formData.entries());
+    input.save_to_merchant_payment_rules = event.submitter && event.submitter.value === "yes" ? "yes" : "no";
     document.getElementById("expenseResult").textContent = "正在儲存消費...";
     google.script.run.withSuccessHandler((result) => {
       const impact = result.budget_impact || {};
