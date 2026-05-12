@@ -1,8 +1,8 @@
 function importInvoiceDraftsFromText(text) {
   const rows = parseInvoiceText_(text);
   const drafts = buildInvoiceDrafts_(rows);
-  const existingKeys = new Set(readObjects_("ImportedInvoiceDrafts").map((row) => row.source_line_key).filter(Boolean).map(String));
-  const newDrafts = drafts.filter((draft) => !existingKeys.has(String(draft.source_line_key || "")));
+  const existing = buildExistingInvoiceDuplicateIndex_(readObjects_("ImportedInvoiceDrafts").concat(readObjects_("ExpenseRecords")));
+  const newDrafts = drafts.filter((draft) => !isDuplicateInvoiceDraft_(draft, existing));
   newDrafts.forEach((draft) => appendObject_("ImportedInvoiceDrafts", draft));
   return { imported_count: newDrafts.length, skipped_count: drafts.length - newDrafts.length, drafts: newDrafts };
 }
@@ -134,6 +134,7 @@ function buildInvoiceDrafts_(rows) {
     return Object.assign({}, row, {
       import_id: makeId_("IMP") + String(index + 1).padStart(2, "0"),
       source_type: "finance_ministry_invoice",
+      source_line_key: buildSourceLineKey_(row, keyCounts),
       suggested_payment_tool_type: row.annotated_payment_tool_type || (paymentRule ? paymentRule.payment_tool_type : "cash"),
       suggested_credit_card_name: row.annotated_credit_card_name || (paymentRule ? paymentRule.credit_card_name : ""),
       suggested_budget_item: row.annotated_budget_item || (paymentRule ? paymentRule.default_budget_item : "") || (itemRule ? itemRule.budget_item : ""),
@@ -146,6 +147,34 @@ function buildInvoiceDrafts_(rows) {
 }
 
 
+function buildExistingInvoiceDuplicateIndex_(rows) {
+  const fullKeys = {};
+  const baseKeys = {};
+  rows.forEach((row) => {
+    const fullKey = String(row.source_line_key || "").trim();
+    if (fullKey) fullKeys[fullKey] = true;
+    const baseKey = buildInvoiceLineBaseKey_(row);
+    if (baseKey) baseKeys[baseKey] = true;
+  });
+  return { fullKeys, baseKeys };
+}
+
+function isDuplicateInvoiceDraft_(draft, existing) {
+  const fullKey = String(draft.source_line_key || "").trim();
+  const baseKey = buildInvoiceLineBaseKey_(draft);
+  return Boolean((fullKey && existing.fullKeys[fullKey]) || (baseKey && existing.baseKeys[baseKey]));
+}
+
+function buildInvoiceLineBaseKey_(row) {
+  const values = [
+    row.source_record_id,
+    row.merchant_tax_id,
+    row.consumption_date,
+    row.item_description || row.purchase_item,
+    row.amount,
+  ].map((value) => String(value == null ? "" : value).trim());
+  return values.some((value) => value !== "") ? values.join("|") : "";
+}
 function buildSourceLineKey_(row, keyCounts) {
   const base = [
     row.source_record_id,
@@ -283,4 +312,31 @@ function parseAnnotatedPayment_(value) {
   const cardName = cardLabels.find((label) => text.includes(label)) || "";
   if (text.includes("信用卡") || cardName) return { payment_tool_type: "credit_card", credit_card_name: cardName };
   return { payment_tool_type: "", credit_card_name: "" };
+}
+
+function backfillImportedInvoiceSourceLineKeys() {
+  const sheet = getDatabase_().getSheetByName("ImportedInvoiceDrafts");
+  if (!sheet || sheet.getLastRow() < 2) return { updated_count: 0 };
+  const headers = sheet.getRange(1, 1, 1, sheet.getLastColumn()).getValues()[0];
+  const sourceLineKeyIndex = headers.indexOf("source_line_key");
+  if (sourceLineKeyIndex < 0) throw new Error("ImportedInvoiceDrafts 缺少 source_line_key 欄位，請先執行 setupDatabase。");
+  const values = sheet.getRange(2, 1, sheet.getLastRow() - 1, sheet.getLastColumn()).getValues();
+  const keyCounts = {};
+  let updatedCount = 0;
+  values.forEach((row, rowIndex) => {
+    const record = {};
+    headers.forEach((header, index) => record[header] = row[index]);
+    const newKey = buildSourceLineKey_(record, keyCounts);
+    if (!String(record.source_line_key || "").trim()) {
+      sheet.getRange(rowIndex + 2, sourceLineKeyIndex + 1).setValue(newKey);
+      updatedCount += 1;
+    }
+  });
+  return { updated_count: updatedCount };
+}
+
+function debugBackfillImportedInvoiceSourceLineKeys() {
+  const result = backfillImportedInvoiceSourceLineKeys();
+  Logger.log(JSON.stringify(result, null, 2));
+  return result;
 }

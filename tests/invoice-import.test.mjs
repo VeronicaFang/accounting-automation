@@ -113,3 +113,29 @@ test("delete payload only includes selected pending invoice drafts", () => {
     { import_id: "I1" },
   ]);
 });
+test("legacy imported invoice rows without source_line_key are skipped", () => {
+  const [draft] = buildInvoiceDrafts(parseInvoiceText(pastedText), [], []);
+  const existing = [{
+    source_record_id: draft.source_record_id,
+    merchant_tax_id: draft.merchant_tax_id,
+    consumption_date: draft.consumption_date,
+    item_description: draft.item_description,
+    amount: draft.amount,
+  }];
+
+  assert.deepEqual(filterNewInvoiceDrafts([draft], existing), []);
+});
+
+test("expense records can also block invoice re-imports", () => {
+  const [draft] = buildInvoiceDrafts(parseInvoiceText(pastedText), [], []);
+  const existingExpense = [{
+    source_type: "finance_ministry_invoice",
+    source_record_id: draft.source_record_id,
+    merchant_tax_id: draft.merchant_tax_id,
+    consumption_date: draft.consumption_date,
+    item_description: draft.item_description,
+    amount: draft.amount,
+  }];
+
+  assert.deepEqual(filterNewInvoiceDrafts([draft], existingExpense), []);
+});

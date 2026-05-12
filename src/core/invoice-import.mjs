@@ -43,8 +43,35 @@ export function buildInvoiceDrafts(invoiceRows, paymentRules = [], itemRules = [
 
 
 export function filterNewInvoiceDrafts(drafts, existingRows = []) {
-  const existingKeys = new Set(existingRows.map((row) => row.source_line_key).filter(Boolean));
-  return drafts.filter((draft) => !existingKeys.has(draft.source_line_key));
+  const existing = buildExistingInvoiceDuplicateIndex(existingRows);
+  return drafts.filter((draft) => {
+    const fullKey = String(draft.source_line_key || "");
+    const baseKey = buildInvoiceLineBaseKey(draft);
+    return !existing.fullKeys.has(fullKey) && !existing.baseKeys.has(baseKey);
+  });
+}
+
+function buildExistingInvoiceDuplicateIndex(rows) {
+  const fullKeys = new Set();
+  const baseKeys = new Set();
+  rows.forEach((row) => {
+    const fullKey = String(row.source_line_key || "").trim();
+    if (fullKey) fullKeys.add(fullKey);
+    const baseKey = buildInvoiceLineBaseKey(row);
+    if (baseKey) baseKeys.add(baseKey);
+  });
+  return { fullKeys, baseKeys };
+}
+
+function buildInvoiceLineBaseKey(row) {
+  const values = [
+    row.source_record_id,
+    row.merchant_tax_id,
+    row.consumption_date,
+    row.item_description || row.purchase_item,
+    row.amount,
+  ].map((value) => String(value ?? "").trim());
+  return values.some(Boolean) ? values.join("|") : "";
 }
 
 function buildSourceLineKey(row, keyCounts) {
