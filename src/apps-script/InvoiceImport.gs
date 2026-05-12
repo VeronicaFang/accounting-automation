@@ -340,3 +340,59 @@ function debugBackfillImportedInvoiceSourceLineKeys() {
   Logger.log(JSON.stringify(result, null, 2));
   return result;
 }
+function backfillExpenseRecordInvoiceSourceFields() {
+  const drafts = readObjects_("ImportedInvoiceDrafts")
+    .filter((draft) => String(draft.import_status || "") === "confirmed")
+    .filter((draft) => String(draft.expense_id || "").trim() !== "");
+  if (drafts.length === 0) return { updated_count: 0, checked_count: 0 };
+
+  const sheet = getDatabase_().getSheetByName("ExpenseRecords");
+  if (!sheet || sheet.getLastRow() < 2) return { updated_count: 0, checked_count: drafts.length };
+  const headers = sheet.getRange(1, 1, 1, sheet.getLastColumn()).getValues()[0];
+  const values = sheet.getRange(2, 1, sheet.getLastRow() - 1, sheet.getLastColumn()).getValues();
+  const expenseIdIndex = headers.indexOf("expense_id");
+  if (expenseIdIndex < 0) throw new Error("ExpenseRecords 缺少 expense_id 欄位。");
+
+  const rowsByExpenseId = {};
+  values.forEach((row, index) => {
+    const expenseId = String(row[expenseIdIndex] || "").trim();
+    if (!expenseId) return;
+    rowsByExpenseId[expenseId] = { row, rowNumber: index + 2 };
+  });
+
+  let updatedCount = 0;
+  drafts.forEach((draft) => {
+    const match = rowsByExpenseId[String(draft.expense_id || "").trim()];
+    if (!match) return;
+    const updates = {};
+    const record = {};
+    headers.forEach((header, index) => record[header] = match.row[index]);
+
+    if (!String(record.source_record_id || "").trim() && String(draft.source_record_id || "").trim()) {
+      updates.source_record_id = draft.source_record_id;
+    }
+    if ((!String(record.source_type || "").trim() || record.source_type === "manual_no_invoice") && String(draft.source_type || "").trim()) {
+      updates.source_type = draft.source_type;
+    }
+    if (!String(record.merchant_tax_id || "").trim() && String(draft.merchant_tax_id || "").trim()) {
+      updates.merchant_tax_id = draft.merchant_tax_id;
+    }
+    if ((!String(record.classification_basis || "").trim() || record.classification_basis === "manual") && String(draft.source_type || "") === "finance_ministry_invoice") {
+      updates.classification_basis = "invoice_import";
+    }
+
+    Object.keys(updates).forEach((key) => {
+      const columnIndex = headers.indexOf(key);
+      if (columnIndex >= 0) sheet.getRange(match.rowNumber, columnIndex + 1).setValue(updates[key]);
+    });
+    if (Object.keys(updates).length > 0) updatedCount += 1;
+  });
+
+  return { updated_count: updatedCount, checked_count: drafts.length };
+}
+
+function debugBackfillExpenseRecordInvoiceSourceFields() {
+  const result = backfillExpenseRecordInvoiceSourceFields();
+  Logger.log(JSON.stringify(result, null, 2));
+  return result;
+}
