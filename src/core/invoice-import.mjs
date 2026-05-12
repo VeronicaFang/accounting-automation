@@ -67,7 +67,7 @@ function buildInvoiceLineBaseKey(row) {
   const values = [
     row.source_record_id,
     row.merchant_tax_id,
-    row.consumption_date,
+    normalizeKeyDate(row.consumption_date),
     row.item_description || row.purchase_item,
     row.amount,
   ].map((value) => String(value ?? "").trim());
@@ -78,7 +78,7 @@ function buildSourceLineKey(row, keyCounts) {
   const base = [
     row.source_record_id,
     row.merchant_tax_id,
-    row.consumption_date,
+    normalizeKeyDate(row.consumption_date),
     row.item_description,
     row.amount,
   ].map((value) => String(value ?? "").trim()).join("|");
@@ -124,6 +124,13 @@ function pickField(row, names) {
     if (Object.prototype.hasOwnProperty.call(row, name)) return String(row[name] || "").trim();
   }
   return "";
+}
+
+function normalizeKeyDate(value) {
+  if (Object.prototype.toString.call(value) === "[object Date]" && !Number.isNaN(value.getTime())) {
+    return `${value.getFullYear()}-${String(value.getMonth() + 1).padStart(2, "0")}-${String(value.getDate()).padStart(2, "0")}`;
+  }
+  return normalizeDate(value);
 }
 
 function normalizeDate(value) {

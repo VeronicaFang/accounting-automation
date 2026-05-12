@@ -139,3 +139,15 @@ test("expense records can also block invoice re-imports", () => {
 
   assert.deepEqual(filterNewInvoiceDrafts([draft], existingExpense), []);
 });
+test("date object existing invoice rows are normalized for duplicate checks", () => {
+  const [draft] = buildInvoiceDrafts(parseInvoiceText(pastedText), [], []);
+  const existing = [{
+    source_record_id: draft.source_record_id,
+    merchant_tax_id: draft.merchant_tax_id,
+    consumption_date: new Date("2026-05-02T00:00:00+08:00"),
+    item_description: draft.item_description,
+    amount: draft.amount,
+  }];
+
+  assert.deepEqual(filterNewInvoiceDrafts([draft], existing), []);
+});

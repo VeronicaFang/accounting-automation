@@ -169,7 +169,7 @@ function buildInvoiceLineBaseKey_(row) {
   const values = [
     row.source_record_id,
     row.merchant_tax_id,
-    row.consumption_date,
+    normalizeInvoiceKeyDate_(row.consumption_date),
     row.item_description || row.purchase_item,
     row.amount,
   ].map((value) => String(value == null ? "" : value).trim());
@@ -179,7 +179,7 @@ function buildSourceLineKey_(row, keyCounts) {
   const base = [
     row.source_record_id,
     row.merchant_tax_id,
-    row.consumption_date,
+    normalizeInvoiceKeyDate_(row.consumption_date),
     row.item_description,
     row.amount,
   ].map((value) => String(value == null ? "" : value).trim()).join("|");
@@ -207,6 +207,13 @@ function pickInvoiceField_(row, names) {
     if (Object.prototype.hasOwnProperty.call(row, name)) return String(row[name] || "").trim();
   }
   return "";
+}
+
+function normalizeInvoiceKeyDate_(value) {
+  if (Object.prototype.toString.call(value) === "[object Date]" && !isNaN(value.getTime())) {
+    return Utilities.formatDate(value, "Asia/Taipei", "yyyy-MM-dd");
+  }
+  return normalizeInvoiceDate_(value);
 }
 
 function normalizeInvoiceDate_(value) {
@@ -327,7 +334,7 @@ function backfillImportedInvoiceSourceLineKeys() {
     const record = {};
     headers.forEach((header, index) => record[header] = row[index]);
     const newKey = buildSourceLineKey_(record, keyCounts);
-    if (!String(record.source_line_key || "").trim()) {
+    if (String(record.source_line_key || "").trim() !== newKey) {
       sheet.getRange(rowIndex + 2, sourceLineKeyIndex + 1).setValue(newKey);
       updatedCount += 1;
     }
