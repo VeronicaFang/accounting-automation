@@ -99,6 +99,20 @@
           <button type="submit">儲存消費</button>
           <button type="submit" name="save_to_merchant_payment_rules" value="yes">把本次紀錄匯入店家支付規則中</button>
         </form>
+        <div class="manual-import-panel">
+          <h3>批次匯入手動消費</h3>
+          <p class="hint">適合沒有發票、海外網購或購物車多品項。第一列請放欄位名稱，支援 CSV 或從試算表複製貼上。</p>
+          <div class="file-import-row">
+            <label>選擇手動消費 CSV 檔
+              <input id="manualExpenseImportFile" type="file" accept=".csv,text/csv" onchange="loadManualExpenseCsvFile(event)">
+            </label>
+          </div>
+          <textarea id="manualExpenseImportText" rows="8" placeholder="建議欄位：消費日,購買品項,消費金額,消費通路,預算項目,支付方式,信用卡,備註"></textarea>
+          <div class="actions import-actions">
+            <button type="button" onclick="importManualExpenses(false)">批次匯入手動消費</button>
+            <button type="button" onclick="importManualExpenses(true)">批次匯入並寫入店家支付規則</button>
+          </div>
+        </div>
         <pre id="expenseResult"></pre>
       </section>
     </main>

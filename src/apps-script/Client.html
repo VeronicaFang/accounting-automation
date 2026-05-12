@@ -98,7 +98,7 @@
     ].map((option) => `<option value="${option.value}" ${option.value === selected ? "selected" : ""}>${option.label}</option>`).join("");
     const html = [
       "<table><thead><tr><th>選取</th><th>消費日</th><th>店家</th><th>品項</th><th>金額</th><th>預算項目</th><th>支付方式</th><th>信用卡</th><th>操作</th></tr></thead><tbody>",
-      ...rows.map((row, index) => `<tr><td><input type="checkbox" id="invoiceSelect${index}" checked></td><td>${formatDate(row.consumption_date)}</td><td>${escapeHtml(row.merchant_name)}</td><td>${escapeHtml(row.item_description)}</td><td>${formatMoney(row.amount)}</td><td><select id="invoiceBudget${index}">${budgetOptions(row.suggested_budget_item)}</select></td><td><select id="invoicePayment${index}">${paymentOptions(row.suggested_payment_tool_type || "cash")}</select></td><td><select id="invoiceCard${index}">${cardOptions(row.suggested_credit_card_name || "")}</select></td><td><button type="button" onclick="confirmInvoiceDraft(${index})">確認入帳</button><button type="button" onclick="confirmInvoiceDraft(${index}, true)">把本次紀錄匯入店家支付規則中</button><button type="button" class="secondary" onclick="deleteInvoiceDraft(${index})">刪除</button></td></tr>`),
+      ...rows.map((row, index) => `<tr><td><input type="checkbox" id="invoiceSelect${index}" checked></td><td>${formatDate(row.consumption_date)}</td><td>${escapeHtml(row.merchant_name)}</td><td>${escapeHtml(row.item_description)}</td><td>${formatMoney(row.amount)}</td><td><select id="invoiceBudget${index}">${budgetOptions(row.suggested_budget_item)}</select></td><td><select id="invoicePayment${index}">${paymentOptions(row.suggested_payment_tool_type || "cash")}</select></td><td><select id="invoiceCard${index}">${cardOptions(row.suggested_credit_card_name || "")}</select></td><td><button type="button" class="secondary" onclick="deleteInvoiceDraft(${index})">刪除</button></td></tr>`),
       rows.length === 0 ? '<tr><td colspan="9">目前沒有待確認發票。</td></tr>' : "",
       "</tbody></table>",
     ].join("");
@@ -119,6 +119,39 @@
       document.getElementById("invoiceImportResult").textContent = "讀取 CSV 檔失敗，請改用複製貼上。";
     };
     reader.readAsText(file, "UTF-8");
+  }
+  function loadManualExpenseCsvFile(event) {
+    const file = event.target.files && event.target.files[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = () => {
+      const text = String(reader.result || "").replace(/^\uFEFF/, "");
+      document.getElementById("manualExpenseImportText").value = text;
+      document.getElementById("expenseResult").textContent = `已讀取檔案「${file.name}」，確認內容後可批次匯入。`;
+    };
+    reader.onerror = () => {
+      document.getElementById("expenseResult").textContent = "讀取檔案失敗，請改用貼上來源值。";
+    };
+    reader.readAsText(file, "UTF-8");
+  }
+
+  function importManualExpenses(saveToRules) {
+    const text = document.getElementById("manualExpenseImportText").value;
+    if (!text.trim()) {
+      document.getElementById("expenseResult").textContent = "請先選擇 CSV 檔，或貼上手動消費清單。";
+      return;
+    }
+    document.getElementById("expenseResult").textContent = "正在批次匯入手動消費...";
+    google.script.run.withSuccessHandler((result) => {
+      const errors = result.errors || [];
+      document.getElementById("expenseResult").textContent = errors.length === 0
+        ? `已批次匯入 ${result.imported_count || 0} 筆手動消費。`
+        : `已批次匯入 ${result.imported_count || 0} 筆，失敗 ${errors.length} 筆：${errors.map((error) => `第 ${error.row_number} 列 ${error.item || ""} ${error.message}`).join("；")}`;
+      if (errors.length === 0) document.getElementById("manualExpenseImportText").value = "";
+      refresh();
+    }).withFailureHandler((error) => {
+      document.getElementById("expenseResult").textContent = `批次匯入失敗：${error.message}`;
+    }).importManualExpensesFromText(text, { save_to_merchant_payment_rules: saveToRules === true ? "yes" : "no" });
   }
   function importInvoices() {
     const text = document.getElementById("invoiceImportText").value;
