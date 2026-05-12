@@ -32,7 +32,7 @@
       <section class="grid">
         <section>
           <h2>付款排程</h2>
-          <p class="hint">付款日為依信用卡結帳規則推估；分期金額先平均拆分，實際帳單金額可在對帳後修正並更新狀態。</p>
+          <p class="hint">付款排程由消費紀錄、信用卡規則與分期設定自動產生；付款日為系統預估，只有對帳或修正帳單金額時才需要手動更新。</p>
           <div id="upcomingPayments" class="table"></div>
           <pre id="paymentStatusResult"></pre>
         </section>
@@ -45,10 +45,9 @@
 
       <section>
         <h2>預算查詢總覽</h2>
-        <p class="hint">花錢前可先查某個 Budget Item 的年度與月度剩餘金額，也可輸入預計消費金額試算花下去後的剩餘預算。</p>
+        <p class="hint">預設查詢本月預算；花錢前可先查某個 Budget Item 的年度與月度剩餘金額，也可輸入預計消費金額試算花下去後的剩餘預算。</p>
         <form id="budgetLookupForm" onsubmit="queryBudget(event)">
           <label>預算項目 <select name="budget_item" id="budgetLookupItemSelect" required></select></label>
-          <label>查詢月份 <input name="budget_month" type="month" required></label>
           <label>預計消費金額 <input name="preview_amount" type="number" min="0" value="0"></label>
           <button type="submit">查詢預算</button>
         </form>

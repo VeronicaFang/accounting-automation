@@ -59,3 +59,24 @@ test("budget lookup returns annual and monthly remaining budget with optional af
     after_monthly_status: "over_budget",
   });
 });
+
+test("budget lookup defaults to the current month when no month is provided", () => {
+  const currentMonth = new Intl.DateTimeFormat("en-CA", {
+    timeZone: "Asia/Taipei",
+    year: "numeric",
+    month: "2-digit",
+  }).format(new Date());
+  const monthField = `month_${currentMonth.slice(5, 7)}`;
+  const rows = [
+    { year: 2026, category: "個人", budget_item: "預設月份測試", annual_budget: 120000, [monthField]: 8000, is_valid_expense_item: true },
+  ];
+  const expenses = [
+    { budget_item: "預設月份測試", budget_month: currentMonth, amount: 3000, expense_status: "normal" },
+  ];
+
+  const lookup = getBudgetLookup(rows, expenses, "預設月份測試", undefined, 500);
+
+  assert.equal(lookup.monthly_budget, 8000);
+  assert.equal(lookup.monthly_used, 3000);
+  assert.equal(lookup.after_monthly_remaining, 4500);
+});

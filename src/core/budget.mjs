@@ -55,6 +55,7 @@ export function getBudgetImpact(budgetRows, expenseRows, consumptionDate, budget
 }
 
 export function getBudgetLookup(budgetRows, expenseRows, budgetItem, monthKey, previewAmount = 0) {
+  const lookupMonthKey = monthKey || getCurrentTaipeiMonthKey();
   const item = getBudgetItems(budgetRows).find((row) => row.budget_item === budgetItem);
   if (!item) {
     throw new Error(`Budget item not found: ${budgetItem}`);
@@ -66,9 +67,9 @@ export function getBudgetLookup(budgetRows, expenseRows, budgetItem, monthKey, p
     .reduce((sum, expense) => sum + Number(expense.amount || 0), 0);
   const monthlyUsed = activeExpenses
     .filter((expense) => expense.budget_item === budgetItem)
-    .filter((expense) => expense.budget_month === monthKey)
+    .filter((expense) => expense.budget_month === lookupMonthKey)
     .reduce((sum, expense) => sum + Number(expense.amount || 0), 0);
-  const monthlyBudget = Number(sourceRow[getMonthBudgetField(monthKey)] || 0);
+  const monthlyBudget = Number(sourceRow[getMonthBudgetField(lookupMonthKey)] || 0);
   const amount = Number(previewAmount || 0);
   const annualUsageRatio = item.annual_budget > 0 ? annualUsed / item.annual_budget : 0;
   const afterAnnualUsageRatio = item.annual_budget > 0 ? (annualUsed + amount) / item.annual_budget : 0;
@@ -104,4 +105,15 @@ function isValidExpenseItem(value) {
 function getMonthBudgetField(monthKey) {
   const month = String(monthKey || "").slice(5, 7);
   return `month_${month}`;
+}
+
+function getCurrentTaipeiMonthKey() {
+  const parts = new Intl.DateTimeFormat("en-CA", {
+    timeZone: "Asia/Taipei",
+    year: "numeric",
+    month: "2-digit",
+  }).formatToParts(new Date());
+  const year = parts.find((part) => part.type === "year").value;
+  const month = parts.find((part) => part.type === "month").value;
+  return `${year}-${month}`;
 }

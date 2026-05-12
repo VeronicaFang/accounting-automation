@@ -71,11 +71,17 @@
   function renderPaymentSchedule(rows) {
     const html = [
       "<table><thead><tr><th>付款月</th><th>付款日</th><th>金額</th><th>信用卡</th><th>狀態</th><th>來源消費</th><th>操作</th></tr></thead><tbody>",
-      ...rows.map((row, index) => `<tr><td>${formatMonth(row.payment_month || row.month)}</td><td>${formatDate(row.payment_date)}</td><td><input id="paymentAmount${index}" type="number" min="0" value="${Number(row.payment_amount || row.amount || 0)}"></td><td>${escapeHtml(row.credit_card_label || translateCreditCard(row.credit_card_name) || "現金")}</td><td><select id="paymentStatus${index}">${paymentStatusOptions(row.payment_status)}</select></td><td>${escapeHtml(row.source_expense || "")}</td><td><input id="paymentNotes${index}" placeholder="對帳備註" value="${escapeHtml(row.notes || "")}"><button type="button" class="secondary" onclick="updatePaymentStatusFromRow(${index})">更新</button></td></tr>`),
+      ...rows.map((row, index) => `<tr><td>${formatMonth(row.payment_month || row.month)}</td><td>${formatDate(row.payment_date)}</td><td>${formatMoney(row.payment_amount || row.amount)}</td><td>${escapeHtml(row.credit_card_label || translateCreditCard(row.credit_card_name) || "現金")}</td><td>${translateStatus(row.payment_status)}</td><td>${escapeHtml(row.source_expense || "")}</td><td><button type="button" class="secondary" onclick="togglePaymentReconcile(${index})">對帳/修正</button></td></tr><tr id="paymentReconcile${index}" class="reconcile-row" style="display:none;"><td colspan="7"><div class="inline-editor"><label>對帳金額 <input id="paymentAmount${index}" type="number" min="0" value="${Number(row.payment_amount || row.amount || 0)}"></label><label>付款狀態 <select id="paymentStatus${index}">${paymentStatusOptions(row.payment_status)}</select></label><label>對帳備註 <input id="paymentNotes${index}" placeholder="對帳備註" value="${escapeHtml(row.notes || "")}"></label><button type="button" onclick="updatePaymentStatusFromRow(${index})">更新付款排程</button></div></td></tr>`),
       rows.length === 0 ? '<tr><td colspan="7">未來 6 個月尚未有付款排程。</td></tr>' : "",
       "</tbody></table>",
     ].join("");
     document.getElementById("upcomingPayments").innerHTML = html;
+  }
+
+  function togglePaymentReconcile(index) {
+    const row = document.getElementById(`paymentReconcile${index}`);
+    if (!row) return;
+    row.style.display = row.style.display === "none" ? "table-row" : "none";
   }
 
   function paymentStatusOptions(selected) {
