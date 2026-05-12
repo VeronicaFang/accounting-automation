@@ -30,12 +30,12 @@
         const budgetSummary = data.budgetSummary || [];
         const cashFlowOverview = data.cashFlowOverview || [];
         const budgetItems = data.budgetItems || [];
-        const upcomingPayments = data.upcomingCreditCardPayments || [];
+        const paymentSchedule = data.paymentSchedule || data.upcomingCreditCardPayments || [];
         const recentExpenses = data.recentExpenses || [];
         const pendingInvoiceDrafts = data.pendingInvoiceDrafts || [];
         renderBudget(budgetSummary);
         renderCashFlow(cashFlowOverview);
-        renderUpcomingPayments(upcomingPayments);
+        renderPaymentSchedule(paymentSchedule);
         renderRecentExpenses(recentExpenses);
         renderPendingInvoiceDrafts(pendingInvoiceDrafts, budgetItems);
         renderBudgetOptions(budgetItems);
@@ -60,22 +60,45 @@
 
   function renderCashFlow(rows) {
     const html = [
-      "<table><thead><tr><th>月份</th><th>收入</th><th>付款支出</th><th>淨現金流</th></tr></thead><tbody>",
-      ...rows.map((row) => `<tr><td>${formatMonth(row.month)}</td><td>${formatMoney(row.income_total)}</td><td>${formatMoney(row.payment_total)}</td><td>${formatMoney(row.net_cash_flow)}</td></tr>`),
-      rows.length === 0 ? '<tr><td colspan="4">尚未載入現金流資料。</td></tr>' : "",
+      "<table><thead><tr><th>月份</th><th>收入</th><th>現金支出</th><th>信用卡付款</th><th>月淨流量</th></tr></thead><tbody>",
+      ...rows.map((row) => `<tr><td>${formatMonth(row.month)}</td><td>${formatMoney(row.income_total)}</td><td>${formatMoney(row.cash_expense_total)}</td><td>${formatMoney(row.credit_card_payment_total)}</td><td>${formatMoney(row.net_cash_flow)}</td></tr>`),
+      rows.length === 0 ? '<tr><td colspan="5">尚未載入現金流資料。</td></tr>' : "",
       "</tbody></table>",
     ].join("");
     document.getElementById("cashFlowOverview").innerHTML = html;
   }
 
-  function renderUpcomingPayments(rows) {
+  function renderPaymentSchedule(rows) {
     const html = [
-      "<table><thead><tr><th>付款月份</th><th>信用卡</th><th>預估金額</th></tr></thead><tbody>",
-      ...rows.map((row) => `<tr><td>${formatMonth(row.month)}</td><td>${escapeHtml(row.credit_card_label || translateCreditCard(row.credit_card_name))}</td><td>${formatMoney(row.amount)}</td></tr>`),
-      rows.length === 0 ? '<tr><td colspan="3">未來 6 個月沒有待付款信用卡排程。</td></tr>' : "",
+      "<table><thead><tr><th>付款月</th><th>付款日</th><th>金額</th><th>信用卡</th><th>狀態</th><th>來源消費</th><th>操作</th></tr></thead><tbody>",
+      ...rows.map((row, index) => `<tr><td>${formatMonth(row.payment_month || row.month)}</td><td>${formatDate(row.payment_date)}</td><td><input id="paymentAmount${index}" type="number" min="0" value="${Number(row.payment_amount || row.amount || 0)}"></td><td>${escapeHtml(row.credit_card_label || translateCreditCard(row.credit_card_name) || "現金")}</td><td><select id="paymentStatus${index}">${paymentStatusOptions(row.payment_status)}</select></td><td>${escapeHtml(row.source_expense || "")}</td><td><input id="paymentNotes${index}" placeholder="對帳備註" value="${escapeHtml(row.notes || "")}"><button type="button" class="secondary" onclick="updatePaymentStatusFromRow(${index})">更新</button></td></tr>`),
+      rows.length === 0 ? '<tr><td colspan="7">未來 6 個月尚未有付款排程。</td></tr>' : "",
       "</tbody></table>",
     ].join("");
     document.getElementById("upcomingPayments").innerHTML = html;
+  }
+
+  function paymentStatusOptions(selected) {
+    const statuses = (dashboardData && dashboardData.enums && dashboardData.enums.paymentStatuses) || ["estimated", "reconciled", "paid", "corrected", "offset"];
+    return statuses.map((status) => `<option value="${status}" ${status === selected ? "selected" : ""}>${translateStatus(status)}</option>`).join("");
+  }
+
+  function updatePaymentStatusFromRow(index) {
+    const row = (dashboardData.paymentSchedule || [])[index];
+    if (!row) return;
+    const input = {
+      payment_id: row.payment_id,
+      payment_amount: document.getElementById(`paymentAmount${index}`).value,
+      payment_status: document.getElementById(`paymentStatus${index}`).value,
+      notes: document.getElementById(`paymentNotes${index}`).value,
+    };
+    document.getElementById("paymentStatusResult").textContent = "正在更新付款狀態...";
+    google.script.run.withSuccessHandler(() => {
+      document.getElementById("paymentStatusResult").textContent = "付款狀態已更新。";
+      refresh();
+    }).withFailureHandler((error) => {
+      document.getElementById("paymentStatusResult").textContent = `更新失敗：${error.message}`;
+    }).updatePaymentStatus(input);
   }
 
   function renderRecentExpenses(rows) {
@@ -266,12 +289,16 @@
     }).deleteInvoiceDraft(input);
   }
   function renderBudgetOptions(items) {
-    const select = document.getElementById("budgetItemSelect");
+    const selects = [
+      document.getElementById("budgetItemSelect"),
+      document.getElementById("budgetLookupItemSelect"),
+    ].filter(Boolean);
     if (items.length === 0) {
-      select.innerHTML = '<option value="">尚未載入預算項目</option>';
+      selects.forEach((select) => select.innerHTML = '<option value="">尚未載入預算項目</option>');
       return;
     }
-    select.innerHTML = items.map((item) => `<option value="${escapeHtml(item.budget_item)}">${escapeHtml(item.budget_item)}</option>`).join("");
+    const html = items.map((item) => `<option value="${escapeHtml(item.budget_item)}">${escapeHtml(item.budget_item)}</option>`).join("");
+    selects.forEach((select) => select.innerHTML = html);
   }
 
   function toggleCard() {
@@ -289,10 +316,80 @@
       const impact = result.budget_impact || {};
       document.getElementById("expenseResult").textContent = `已儲存。這筆消費後，${impact.budget_item || "此項目"} 剩餘 ${formatMoney(impact.after_remaining)}，狀態：${translateStatus(impact.after_status)}。`;
       event.target.reset();
+      previewExpenseBudget();
       refresh();
     }).withFailureHandler((error) => {
       document.getElementById("expenseResult").textContent = `儲存失敗：${error.message}`;
     }).createManualExpense(input);
+  }
+
+  function submitIncome(event) {
+    event.preventDefault();
+    const formData = new FormData(event.target);
+    const input = Object.fromEntries(formData.entries());
+    document.getElementById("incomeResult").textContent = "正在儲存收入...";
+    google.script.run.withSuccessHandler((result) => {
+      document.getElementById("incomeResult").textContent = `已儲存收入：${escapeHtml(result.income_item)}，金額 ${formatMoney(result.income_amount)}。`;
+      event.target.reset();
+      refresh();
+    }).withFailureHandler((error) => {
+      document.getElementById("incomeResult").textContent = `儲存失敗：${error.message}`;
+    }).createIncome(input);
+  }
+
+  function submitSalarySchedule(event) {
+    event.preventDefault();
+    const formData = new FormData(event.target);
+    const input = Object.fromEntries(formData.entries());
+    document.getElementById("salaryScheduleResult").textContent = "正在建立薪資排程...";
+    google.script.run.withSuccessHandler((result) => {
+      document.getElementById("salaryScheduleResult").textContent = `已建立 ${result.created_count || 0} 筆薪資收入排程。`;
+      event.target.reset();
+      refresh();
+    }).withFailureHandler((error) => {
+      document.getElementById("salaryScheduleResult").textContent = `建立失敗：${error.message}`;
+    }).createMonthlySalarySchedule(input);
+  }
+
+  function queryBudget(event) {
+    event.preventDefault();
+    const formData = new FormData(event.target);
+    const input = Object.fromEntries(formData.entries());
+    document.getElementById("budgetLookupResult").innerHTML = "<pre>正在查詢預算...</pre>";
+    google.script.run.withSuccessHandler((row) => {
+      document.getElementById("budgetLookupResult").innerHTML = renderBudgetLookupTable(row);
+    }).withFailureHandler((error) => {
+      document.getElementById("budgetLookupResult").innerHTML = `<pre>查詢失敗：${escapeHtml(error.message)}</pre>`;
+    }).getBudgetLookup(input);
+  }
+
+  function previewExpenseBudget() {
+    const budgetItem = document.getElementById("budgetItemSelect").value;
+    const date = document.getElementById("expenseConsumptionDate").value;
+    const amount = document.getElementById("expenseAmount").value;
+    const target = document.getElementById("expenseBudgetPreview");
+    if (!target) return;
+    if (!budgetItem || !date || !amount) {
+      target.innerHTML = '<pre>選擇消費日、預算項目並輸入金額後，這裡會顯示花下去前後的年度與月度預算影響。</pre>';
+      return;
+    }
+    google.script.run.withSuccessHandler((row) => {
+      target.innerHTML = renderBudgetLookupTable(row);
+    }).withFailureHandler((error) => {
+      target.innerHTML = `<pre>預算預覽失敗：${escapeHtml(error.message)}</pre>`;
+    }).getBudgetLookup({
+      budget_item: budgetItem,
+      budget_month: formatMonth(date),
+      preview_amount: amount,
+    });
+  }
+
+  function renderBudgetLookupTable(row) {
+    return [
+      "<table><thead><tr><th>預算項目</th><th>年度預算</th><th>年度已用</th><th>年度剩餘</th><th>年度動支比例</th><th>年度狀態</th><th>月預算</th><th>月已用</th><th>月剩餘</th><th>月度動支比例</th><th>月度狀態</th><th>花下去後年度剩餘</th><th>花下去後月剩餘</th><th>花下去後月度狀態</th></tr></thead><tbody>",
+      `<tr class="${row.after_monthly_status || row.after_annual_status || ""}"><td>${escapeHtml(row.budget_item)}</td><td>${formatMoney(row.annual_budget)}</td><td>${formatMoney(row.annual_used)}</td><td>${formatMoney(row.annual_remaining)}</td><td>${formatPercent(row.annual_usage_ratio)}</td><td>${translateStatus(row.annual_status)}</td><td>${formatMoney(row.monthly_budget)}</td><td>${formatMoney(row.monthly_used)}</td><td>${formatMoney(row.monthly_remaining)}</td><td>${formatPercent(row.monthly_usage_ratio)}</td><td>${translateStatus(row.monthly_status)}</td><td>${formatMoney(row.after_annual_remaining)}</td><td>${formatMoney(row.after_monthly_remaining)}</td><td>${translateStatus(row.after_monthly_status)}</td></tr>`,
+      "</tbody></table>",
+    ].join("");
   }
 
   function formatMonth(value) {
@@ -307,6 +404,10 @@
 
   function formatMoney(value) {
     return Number(value || 0).toLocaleString("zh-TW", { maximumFractionDigits: 0 });
+  }
+
+  function formatPercent(value) {
+    return `${Math.round(Number(value || 0) * 1000) / 10}%`;
   }
 
   function translateStatus(status) {

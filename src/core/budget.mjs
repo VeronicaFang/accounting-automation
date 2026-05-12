@@ -54,6 +54,54 @@ export function getBudgetImpact(budgetRows, expenseRows, consumptionDate, budget
   };
 }
 
+export function getBudgetLookup(budgetRows, expenseRows, budgetItem, monthKey, previewAmount = 0) {
+  const item = getBudgetItems(budgetRows).find((row) => row.budget_item === budgetItem);
+  if (!item) {
+    throw new Error(`Budget item not found: ${budgetItem}`);
+  }
+  const sourceRow = budgetRows.find((row) => row.budget_item === budgetItem) || {};
+  const activeExpenses = expenseRows.filter((expense) => expense.expense_status !== "cancelled");
+  const annualUsed = activeExpenses
+    .filter((expense) => expense.budget_item === budgetItem)
+    .reduce((sum, expense) => sum + Number(expense.amount || 0), 0);
+  const monthlyUsed = activeExpenses
+    .filter((expense) => expense.budget_item === budgetItem)
+    .filter((expense) => expense.budget_month === monthKey)
+    .reduce((sum, expense) => sum + Number(expense.amount || 0), 0);
+  const monthlyBudget = Number(sourceRow[getMonthBudgetField(monthKey)] || 0);
+  const amount = Number(previewAmount || 0);
+  const annualUsageRatio = item.annual_budget > 0 ? annualUsed / item.annual_budget : 0;
+  const afterAnnualUsageRatio = item.annual_budget > 0 ? (annualUsed + amount) / item.annual_budget : 0;
+  const monthlyUsageRatio = monthlyBudget > 0 ? monthlyUsed / monthlyBudget : 0;
+  const afterMonthlyUsageRatio = monthlyBudget > 0 ? (monthlyUsed + amount) / monthlyBudget : 0;
+
+  return {
+    budget_item: item.budget_item,
+    category: item.category,
+    annual_budget: item.annual_budget,
+    annual_used: annualUsed,
+    annual_remaining: item.annual_budget - annualUsed,
+    annual_usage_ratio: annualUsageRatio,
+    annual_status: getBudgetStatus(annualUsageRatio),
+    monthly_budget: monthlyBudget,
+    monthly_used: monthlyUsed,
+    monthly_remaining: monthlyBudget - monthlyUsed,
+    monthly_usage_ratio: monthlyUsageRatio,
+    monthly_status: getBudgetStatus(monthlyUsageRatio),
+    after_annual_remaining: item.annual_budget - annualUsed - amount,
+    after_monthly_remaining: monthlyBudget - monthlyUsed - amount,
+    after_annual_usage_ratio: afterAnnualUsageRatio,
+    after_annual_status: getBudgetStatus(afterAnnualUsageRatio),
+    after_monthly_usage_ratio: afterMonthlyUsageRatio,
+    after_monthly_status: getBudgetStatus(afterMonthlyUsageRatio),
+  };
+}
+
 function isValidExpenseItem(value) {
   return value === true || String(value).trim().toLowerCase() === "true";
+}
+
+function getMonthBudgetField(monthKey) {
+  const month = String(monthKey || "").slice(5, 7);
+  return `month_${month}`;
 }

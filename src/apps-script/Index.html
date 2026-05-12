@@ -19,27 +19,40 @@
       <section class="grid">
         <section>
           <h2>預算狀態</h2>
-          <p class="hint">依使用比例與警示程度排序，已使用或接近超支的項目會優先顯示。</p>
+          <p class="hint">排序邏輯：先看狀態嚴重度（超支、警示、提醒、正常），同狀態再依使用比例由高到低排列。</p>
           <div id="budgetSummary" class="table"></div>
         </section>
         <section>
           <h2>現金流</h2>
-          <p class="hint">收入依收入月份計入，支出依付款月份計入；信用卡分期會依付款排程分月顯示。</p>
+          <p class="hint">收入依收入月份計入；現金支出與信用卡付款依付款月份計入；月淨流量 = 收入 - 現金支出 - 信用卡付款。</p>
           <div id="cashFlowOverview" class="table"></div>
         </section>
       </section>
 
       <section class="grid">
         <section>
-          <h2>未來信用卡付款</h2>
-          <p class="hint">只顯示尚未付款、未沖銷的信用卡付款排程。</p>
+          <h2>付款排程</h2>
+          <p class="hint">付款日為依信用卡結帳規則推估；分期金額先平均拆分，實際帳單金額可在對帳後修正並更新狀態。</p>
           <div id="upcomingPayments" class="table"></div>
+          <pre id="paymentStatusResult"></pre>
         </section>
         <section>
           <h2>最近新增消費</h2>
           <p class="hint">用來確認剛新增的消費是否正確；已取消的紀錄不會顯示在這裡。</p>
           <div id="recentExpenses" class="table"></div>
         </section>
+      </section>
+
+      <section>
+        <h2>預算查詢總覽</h2>
+        <p class="hint">花錢前可先查某個 Budget Item 的年度與月度剩餘金額，也可輸入預計消費金額試算花下去後的剩餘預算。</p>
+        <form id="budgetLookupForm" onsubmit="queryBudget(event)">
+          <label>預算項目 <select name="budget_item" id="budgetLookupItemSelect" required></select></label>
+          <label>查詢月份 <input name="budget_month" type="month" required></label>
+          <label>預計消費金額 <input name="preview_amount" type="number" min="0" value="0"></label>
+          <button type="submit">查詢預算</button>
+        </form>
+        <div id="budgetLookupResult" class="table"></div>
       </section>
 
       <section>
@@ -66,13 +79,45 @@
         <div id="pendingInvoiceDrafts" class="table"></div>
       </section>
       <section>
+        <h2>新增收入</h2>
+        <p class="hint">可先輸入預估收入，實際入帳後再以收入狀態標記為已入帳或修正。</p>
+        <form id="incomeForm" onsubmit="submitIncome(event)">
+          <label>收入日 <input name="income_date" type="date" required></label>
+          <label>收入項目 <input name="income_item" required></label>
+          <label>收入金額 <input name="income_amount" type="number" min="1" required></label>
+          <label>收入狀態
+            <select name="income_status">
+              <option value="estimated">預估</option>
+              <option value="received">已入帳</option>
+              <option value="corrected">已修正</option>
+            </select>
+          </label>
+          <label>來源 <input name="source" value="manual"></label>
+          <label>備註 <input name="notes"></label>
+          <button type="submit">儲存收入</button>
+        </form>
+        <pre id="incomeResult"></pre>
+        <h3>建立薪資排程</h3>
+        <p class="hint">用來一次建立多個月份的固定薪資收入，預設每月 5 日入帳。</p>
+        <form id="salaryScheduleForm" onsubmit="submitSalarySchedule(event)">
+          <label>開始月份 <input name="start_month" type="month" required></label>
+          <label>結束月份 <input name="end_month" type="month" required></label>
+          <label>每月薪資 <input name="income_amount" type="number" min="1" required></label>
+          <label>入帳日 <input name="income_day" type="number" min="1" max="28" value="5" required></label>
+          <label>收入項目 <input name="income_item" value="薪資"></label>
+          <label>備註 <input name="notes"></label>
+          <button type="submit">建立薪資排程</button>
+        </form>
+        <pre id="salaryScheduleResult"></pre>
+      </section>
+      <section>
         <h2>新增手動消費</h2>
         <form id="expenseForm" onsubmit="submitExpense(event)">
-          <label>消費日 <input name="consumption_date" type="date" required></label>
+          <label>消費日 <input name="consumption_date" id="expenseConsumptionDate" type="date" onchange="previewExpenseBudget()" required></label>
           <label>購買品項 <input name="purchase_item" required></label>
-          <label>消費金額 <input name="amount" type="number" min="1" required></label>
+          <label>消費金額 <input name="amount" id="expenseAmount" type="number" min="1" oninput="previewExpenseBudget()" required></label>
           <label>消費通路 <input name="channel" required></label>
-          <label>預算項目 <select name="budget_item" id="budgetItemSelect" required></select></label>
+          <label>預算項目 <select name="budget_item" id="budgetItemSelect" onchange="previewExpenseBudget()" required></select></label>
           <label>支付工具類型
             <select name="payment_tool_type" id="paymentToolType" onchange="toggleCard()">
               <option value="cash">現金</option>
@@ -99,6 +144,7 @@
           <button type="submit">儲存消費</button>
           <button type="submit" name="save_to_merchant_payment_rules" value="yes">把本次紀錄匯入店家支付規則中</button>
         </form>
+        <div id="expenseBudgetPreview" class="table"></div>
         <div class="manual-import-panel">
           <h3>批次匯入手動消費</h3>
           <p class="hint">適合沒有發票、海外網購或購物車多品項。第一列請放欄位名稱，支援 CSV 或從試算表複製貼上。</p>

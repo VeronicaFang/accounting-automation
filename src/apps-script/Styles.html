@@ -11,6 +11,8 @@
   section { background: #fff; border: 1px solid #ddd; border-radius: 8px; padding: 16px; }
   button { border: 0; border-radius: 6px; background: #1a73e8; color: #fff; padding: 9px 12px; cursor: pointer; }
   button:hover { background: #1765cc; }
+  button.secondary { background: #5f6368; margin-left: 6px; }
+  button.secondary:hover { background: #4d5156; }
   form { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px; }
   label { display: grid; gap: 4px; font-size: 13px; }
   input, select, textarea { min-height: 34px; border: 1px solid #c7c7c7; border-radius: 6px; padding: 6px 8px; }
@@ -21,6 +23,7 @@
   table { width: 100%; border-collapse: collapse; font-size: 13px; }
   th, td { border-bottom: 1px solid #e6e6e6; padding: 8px; text-align: left; vertical-align: top; }
   th { color: #3c4043; font-weight: 700; }
+  td input, td select { min-width: 110px; }
   .over_budget { background: #ffe5e5; font-weight: 700; }
   .warning { background: #fff2cc; }
   .reminder { background: #e8f0fe; }
