@@ -124,6 +124,41 @@ function getPaymentSchedule(monthLimit) {
     });
 }
 
+function getMonthlyCreditCardBillEstimates(monthLimit) {
+  const allowedMonths = getUpcomingMonthKeys_(monthLimit || 6);
+  const payments = readObjects_("PaymentSchedule")
+    .filter((payment) => payment.payment_tool_type === "credit_card")
+    .filter((payment) => payment.payment_status !== "offset")
+    .map((payment) => Object.assign({}, payment, { cash_flow_month: normalizeMonthKey_(payment.cash_flow_month || payment.payment_date) }))
+    .filter((payment) => allowedMonths.includes(payment.cash_flow_month));
+
+  const grouped = {};
+  payments.forEach((payment) => {
+    const key = `${payment.cash_flow_month}|${payment.credit_card_name}`;
+    if (!grouped[key]) {
+      const billingPeriod = getBillingPeriod_(payment.cash_flow_month, payment.credit_card_name);
+      grouped[key] = {
+        bill_month: payment.cash_flow_month,
+        credit_card_name: payment.credit_card_name,
+        credit_card_label: getCreditCardLabel_(payment.credit_card_name),
+        billing_period_start: billingPeriod.start,
+        billing_period_end: billingPeriod.end,
+        estimated_payment_date: getEstimatedPaymentDate_(payment.cash_flow_month, payment.credit_card_name, payment.payment_date),
+        estimated_bill_amount: 0,
+        detail_count: 0,
+        status_counts: { estimated: 0, reconciled: 0, paid: 0, corrected: 0, offset: 0 },
+      };
+    }
+    grouped[key].estimated_bill_amount += Number(payment.payment_amount || 0);
+    grouped[key].detail_count += 1;
+    if (Object.prototype.hasOwnProperty.call(grouped[key].status_counts, payment.payment_status)) {
+      grouped[key].status_counts[payment.payment_status] += 1;
+    }
+  });
+
+  return Object.values(grouped).sort((a, b) => a.bill_month.localeCompare(b.bill_month) || String(a.credit_card_name || "").localeCompare(String(b.credit_card_name || "")));
+}
+
 function updatePaymentStatus(input) {
   if (!input || !input.payment_id) throw new Error("找不到付款排程 ID。");
   const allowedStatuses = ENUMS.paymentStatuses;
@@ -191,4 +226,30 @@ function formatPaymentSourceExpense_(expense) {
     expense.merchant_name,
     expense.item_description,
   ].filter(Boolean).join(" ");
+}
+
+function getBillingPeriod_(monthKey, creditCardName) {
+  const parts = String(monthKey || "").split("-");
+  const year = Number(parts[0]);
+  const month = Number(parts[1]);
+  const isYuShan = creditCardName === "YuShan" || creditCardName === "玉山";
+  const cutoffDay = isYuShan ? 12 : 5;
+  const startDay = cutoffDay + 1;
+  return {
+    start: formatLocalDate_(new Date(year, month - 2, startDay)),
+    end: formatLocalDate_(new Date(year, month - 1, cutoffDay)),
+  };
+}
+
+function getEstimatedPaymentDate_(monthKey, creditCardName, fallbackDate) {
+  const parts = String(monthKey || "").split("-");
+  const year = Number(parts[0]);
+  const month = Number(parts[1]);
+  const isYuShan = creditCardName === "YuShan" || creditCardName === "玉山";
+  const paymentDay = isYuShan ? 23 : 17;
+  return fallbackDate || formatLocalDate_(new Date(year, month - 1, paymentDay));
+}
+
+function formatLocalDate_(date) {
+  return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}-${String(date.getDate()).padStart(2, "0")}`;
 }

@@ -31,11 +31,12 @@
         const cashFlowOverview = data.cashFlowOverview || [];
         const budgetItems = data.budgetItems || [];
         const paymentSchedule = data.paymentSchedule || data.upcomingCreditCardPayments || [];
+        const monthlyBillEstimates = data.monthlyCreditCardBillEstimates || [];
         const recentExpenses = data.recentExpenses || [];
         const pendingInvoiceDrafts = data.pendingInvoiceDrafts || [];
         renderBudget(budgetSummary);
         renderCashFlow(cashFlowOverview);
-        renderPaymentSchedule(paymentSchedule);
+        renderMonthlyBillEstimates(monthlyBillEstimates, paymentSchedule);
         renderRecentExpenses(recentExpenses);
         renderPendingInvoiceDrafts(pendingInvoiceDrafts, budgetItems);
         renderBudgetOptions(budgetItems);
@@ -68,14 +69,37 @@
     document.getElementById("cashFlowOverview").innerHTML = html;
   }
 
-  function renderPaymentSchedule(rows) {
+  function renderMonthlyBillEstimates(rows, paymentRows) {
     const html = [
-      "<table><thead><tr><th>付款月</th><th>付款日</th><th>金額</th><th>信用卡</th><th>狀態</th><th>來源消費</th><th>操作</th></tr></thead><tbody>",
-      ...rows.map((row, index) => `<tr><td>${formatMonth(row.payment_month || row.month)}</td><td>${formatDate(row.payment_date)}</td><td>${formatMoney(row.payment_amount || row.amount)}</td><td>${escapeHtml(row.credit_card_label || translateCreditCard(row.credit_card_name) || "現金")}</td><td>${translateStatus(row.payment_status)}</td><td>${escapeHtml(row.source_expense || "")}</td><td><button type="button" class="secondary" onclick="togglePaymentReconcile(${index})">對帳/修正</button></td></tr><tr id="paymentReconcile${index}" class="reconcile-row" style="display:none;"><td colspan="7"><div class="inline-editor"><label>對帳金額 <input id="paymentAmount${index}" type="number" min="0" value="${Number(row.payment_amount || row.amount || 0)}"></label><label>付款狀態 <select id="paymentStatus${index}">${paymentStatusOptions(row.payment_status)}</select></label><label>對帳備註 <input id="paymentNotes${index}" placeholder="對帳備註" value="${escapeHtml(row.notes || "")}"></label><button type="button" onclick="updatePaymentStatusFromRow(${index})">更新付款排程</button></div></td></tr>`),
-      rows.length === 0 ? '<tr><td colspan="7">未來 6 個月尚未有付款排程。</td></tr>' : "",
+      "<table><thead><tr><th>帳單月份</th><th>信用卡</th><th>帳單區間</th><th>預估付款日</th><th>預估帳單金額</th><th>狀態摘要</th><th>明細</th></tr></thead><tbody>",
+      ...rows.map((row, index) => `${renderBillEstimateRow(row, index)}${renderBillDetailRow(row, index, paymentRows)}`),
+      rows.length === 0 ? '<tr><td colspan="7">未來 6 個月尚未有信用卡帳單預估。</td></tr>' : "",
       "</tbody></table>",
     ].join("");
-    document.getElementById("upcomingPayments").innerHTML = html;
+    document.getElementById("monthlyBillEstimates").innerHTML = html;
+  }
+
+  function renderBillEstimateRow(row, index) {
+    return `<tr><td>${formatMonth(row.bill_month)}</td><td>${escapeHtml(row.credit_card_label || translateCreditCard(row.credit_card_name))}</td><td>${formatDate(row.billing_period_start)} - ${formatDate(row.billing_period_end)}</td><td>${formatDate(row.estimated_payment_date)}</td><td>${formatMoney(row.estimated_bill_amount)}</td><td>${formatStatusCounts(row.status_counts)}</td><td><button type="button" class="secondary" onclick="toggleBillDetails(${index})">查看明細 / 對帳</button></td></tr>`;
+  }
+
+  function renderBillDetailRow(row, index, paymentRows) {
+    const details = (paymentRows || []).map((payment, paymentIndex) => ({ ...payment, paymentIndex }))
+      .filter((payment) => formatMonth(payment.payment_month || payment.month) === formatMonth(row.bill_month))
+      .filter((payment) => payment.credit_card_name === row.credit_card_name);
+    const detailHtml = [
+      "<table><thead><tr><th>付款日</th><th>金額</th><th>狀態</th><th>來源消費</th><th>操作</th></tr></thead><tbody>",
+      ...details.map((payment) => `<tr><td>${formatDate(payment.payment_date)}</td><td>${formatMoney(payment.payment_amount || payment.amount)}</td><td>${translateStatus(payment.payment_status)}</td><td>${escapeHtml(payment.source_expense || "")}</td><td><button type="button" class="secondary" onclick="togglePaymentReconcile(${payment.paymentIndex})">對帳/修正</button></td></tr><tr id="paymentReconcile${payment.paymentIndex}" class="reconcile-row" style="display:none;"><td colspan="5"><div class="inline-editor"><label>對帳金額 <input id="paymentAmount${payment.paymentIndex}" type="number" min="0" value="${Number(payment.payment_amount || payment.amount || 0)}"></label><label>付款狀態 <select id="paymentStatus${payment.paymentIndex}">${paymentStatusOptions(payment.payment_status)}</select></label><label>對帳備註 <input id="paymentNotes${payment.paymentIndex}" placeholder="對帳備註" value="${escapeHtml(payment.notes || "")}"></label><button type="button" onclick="updatePaymentStatusFromRow(${payment.paymentIndex})">更新付款排程</button></div></td></tr>`),
+      details.length === 0 ? '<tr><td colspan="5">此帳單目前沒有付款明細。</td></tr>' : "",
+      "</tbody></table>",
+    ].join("");
+    return `<tr id="billDetails${index}" class="reconcile-row" style="display:none;"><td colspan="7">${detailHtml}</td></tr>`;
+  }
+
+  function toggleBillDetails(index) {
+    const row = document.getElementById(`billDetails${index}`);
+    if (!row) return;
+    row.style.display = row.style.display === "none" ? "table-row" : "none";
   }
 
   function togglePaymentReconcile(index) {
@@ -414,6 +438,14 @@
 
   function formatPercent(value) {
     return `${Math.round(Number(value || 0) * 1000) / 10}%`;
+  }
+
+  function formatStatusCounts(counts) {
+    const statusCounts = counts || {};
+    return ["estimated", "reconciled", "paid", "corrected", "offset"]
+      .filter((status) => Number(statusCounts[status] || 0) > 0)
+      .map((status) => `${translateStatus(status)} ${Number(statusCounts[status] || 0)}`)
+      .join("、") || "無";
   }
 
   function translateStatus(status) {

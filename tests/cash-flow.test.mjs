@@ -3,6 +3,7 @@ import assert from "node:assert/strict";
 import {
   applyPaymentStatusUpdate,
   getCashFlowOverview,
+  getMonthlyCreditCardBillEstimates,
   getPaymentSchedule,
   getUpcomingCreditCardPayments,
 } from "../src/core/cash-flow.mjs";
@@ -29,6 +30,41 @@ test("cash flow overview separates income cash expenses credit card payments and
 test("upcoming credit card payments exclude paid offset and cash rows", () => {
   assert.deepEqual(getUpcomingCreditCardPayments(payments, ["2026-05", "2026-06"]), [
     { month: "2026-05", credit_card_name: "YuShan", credit_card_label: "玉山", amount: 10000 },
+  ]);
+});
+
+test("monthly credit card bill estimates group payment schedules by payment month and card", () => {
+  const result = getMonthlyCreditCardBillEstimates([
+    { cash_flow_month: "2026-05", payment_date: "2026-05-17", payment_amount: 1000, payment_status: "estimated", payment_tool_type: "credit_card", credit_card_name: "Union" },
+    { cash_flow_month: "2026-05", payment_date: "2026-05-17", payment_amount: 2000, payment_status: "reconciled", payment_tool_type: "credit_card", credit_card_name: "Union" },
+    { cash_flow_month: "2026-05", payment_date: "2026-05-17", payment_amount: 500, payment_status: "offset", payment_tool_type: "credit_card", credit_card_name: "Union" },
+    { cash_flow_month: "2026-06", payment_date: "2026-06-23", payment_amount: 3000, payment_status: "estimated", payment_tool_type: "credit_card", credit_card_name: "YuShan" },
+    { cash_flow_month: "2026-06", payment_date: "2026-06-01", payment_amount: 400, payment_status: "estimated", payment_tool_type: "cash", credit_card_name: "" },
+  ], ["2026-05", "2026-06"]);
+
+  assert.deepEqual(result, [
+    {
+      bill_month: "2026-05",
+      credit_card_name: "Union",
+      credit_card_label: "聯邦",
+      billing_period_start: "2026-04-06",
+      billing_period_end: "2026-05-05",
+      estimated_payment_date: "2026-05-17",
+      estimated_bill_amount: 3000,
+      detail_count: 2,
+      status_counts: { estimated: 1, reconciled: 1, paid: 0, corrected: 0, offset: 0 },
+    },
+    {
+      bill_month: "2026-06",
+      credit_card_name: "YuShan",
+      credit_card_label: "玉山",
+      billing_period_start: "2026-05-13",
+      billing_period_end: "2026-06-12",
+      estimated_payment_date: "2026-06-23",
+      estimated_bill_amount: 3000,
+      detail_count: 1,
+      status_counts: { estimated: 1, reconciled: 0, paid: 0, corrected: 0, offset: 0 },
+    },
   ]);
 });
 test("cash flow overview normalizes date-like month values before grouping", () => {
