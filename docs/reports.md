@@ -1,51 +1,156 @@
-# Reports
+# 報表與畫面文件
 
-## Budget Query Before Spending
+本文件描述目前 Web App 已呈現或資料模型已支援的報表。
 
-The user can query annual budget status by budget item before spending.
 
-The first version shows item-level annual budget status:
+## 報表與資料表對照
 
-- budget item;
-- annual budget;
-- used amount;
-- remaining amount;
-- usage ratio;
-- status.
+| 報表或畫面 | 主要資料表 |
+|---|---|
+| 預算總覽 | `BudgetItems`, `ExpenseRecords` |
+| 單筆消費後預算提示 | `BudgetItems`, `ExpenseRecords` |
+| 現金流總覽 | `IncomeSchedule`, `PaymentSchedule` |
+| 未來信用卡付款摘要 | `PaymentSchedule`, `CreditCardRules` |
+| 近期消費 | `ExpenseRecords` |
+| 待確認發票清單 | `ImportedInvoiceDrafts`, `MerchantPaymentRules`, `MerchantItemRules` |
+| 後續規則學習報表 | `ClassificationHistory`, `PaymentChoiceHistory` |
 
-## Expense Entry Feedback
+## Dashboard 資料來源
 
-When entering an expense, the system shows:
+前端透過 `getDashboardDataJson()` 載入下列資料：
 
-- budget item;
-- budget month;
-- remaining annual budget before and after the expense;
-- remaining monthly budget before and after the expense;
-- reminder, warning, or over-budget status.
+| Payload | 來源函式 | 用途 |
+|---|---|---|
+| `budgetSummary` | `getBudgetSummary()` | 預算使用總覽。 |
+| `cashFlowOverview` | `getCashFlowOverview()` | 每月現金流。 |
+| `upcomingCreditCardPayments` | `getUpcomingCreditCardPayments(6)` | 未來信用卡付款摘要。 |
+| `recentExpenses` | `getRecentExpenses(10)` | 近期消費。 |
+| `pendingInvoiceDrafts` | `getPendingInvoiceDrafts(50)` | 待確認發票。 |
+| `budgetItems` | `getBudgetItems()` | 預算項目下拉選單。 |
+| `enums` | `ENUMS` | 前端列舉選項。 |
 
-## Budget Report
+## 預算總覽
 
-Budget reports use standardized expense records, not payment schedules.
+目的：讓使用者知道各預算項目的年度使用狀態。
 
-Required views:
+欄位：
 
-- annual used and remaining amount by budget item;
-- monthly used and remaining amount by budget item;
-- over-budget item list;
-- needs-review classification list.
+- 預算項目。
+- 年度預算。
+- 已使用金額。
+- 剩餘金額。
+- 使用狀態。
 
-## Cash Flow Overview
+計算邏輯：
 
-Cash-flow reports use income schedules and payment schedules.
+- 資料來源為 `BudgetItems` 與 `ExpenseRecords`。
+- 排除 `expense_status = cancelled` 的消費。
+- 使用率達 70%、90%、100% 時切換提醒狀態。
+- 超支項目需最醒目。
 
-The first-version cash-flow overview shows:
+## 單筆消費後預算提示
 
-- monthly income;
-- monthly payment expense;
-- monthly net cash flow;
-- next three months of credit-card payments by card;
-- remaining installment amount and remaining installment count;
-- payment rows by status.
+手動單筆消費建立成功後，系統回傳 `budget_impact`：
 
-The first version excludes beginning cash balance and actual bank account balance.
+- 預算項目。
+- 消費前剩餘。
+- 消費後剩餘。
+- 消費前狀態。
+- 消費後狀態。
 
+目前 UI 主要顯示消費後剩餘與狀態；後續可再強化成更完整的消費前/後比較。
+
+## 現金流總覽
+
+目的：讓使用者知道每月收入扣付款後的淨現金流。
+
+欄位：
+
+- 月份。
+- 收入總額。
+- 付款支出總額。
+- 淨現金流。
+
+計算邏輯：
+
+```text
+net_cash_flow = income_total - payment_total
+```
+
+資料來源：
+
+- 收入：`IncomeSchedule`。
+- 付款：`PaymentSchedule`。
+- `payment_status = offset` 不納入付款支出。
+
+目前不含：
+
+- 期初現金餘額。
+- 銀行帳戶餘額。
+- 帳戶間轉帳。
+
+## 未來信用卡付款摘要
+
+目的：讓使用者快速看未來 6 個月信用卡付款壓力。
+
+資料來源：`PaymentSchedule`。
+
+篩選條件：
+
+- `payment_tool_type = credit_card`。
+- `payment_status` 不是 `paid` 或 `offset`。
+
+顯示欄位：
+
+- 現金流月份。
+- 信用卡名稱。
+- 付款金額。
+
+## 近期消費
+
+目的：讓使用者確認最近入帳的消費紀錄。
+
+資料來源：`ExpenseRecords`。
+
+規則：
+
+- 排除 `expense_status = cancelled`。
+- 依 `consumption_date` 與 `expense_id` 由新到舊排序。
+- 預設顯示 10 筆。
+
+顯示欄位：
+
+- 消費日。
+- 店家。
+- 品項。
+- 預算項目。
+- 金額。
+- 支付方式。
+
+## 待確認發票清單
+
+目的：集中處理發票匯入後尚未確認的明細。
+
+資料來源：`ImportedInvoiceDrafts`。
+
+篩選條件：
+
+- `import_status = pending`。
+
+顯示與操作：
+
+- 可勾選多筆。
+- 可調整預算項目、支付方式、信用卡。
+- 單筆操作只保留刪除。
+- 主要操作使用批次確認、批次確認並匯入規則、批次刪除。
+
+## 後續報表方向
+
+尚未完整實作但資料模型已支援或可延伸：
+
+- 月度預算使用表：以 `BudgetItems.month_01` 到 `month_12` 對照 `ExpenseRecords`。
+- 待分類/需確認清單：整合發票草稿與未來手動分類規則。
+- 信用卡對帳表：依 `PaymentSchedule` 與信用卡帳單比對。
+- 分期付款追蹤：剩餘期數、剩餘金額、各卡未來付款壓力。
+- 收入預估與實際差異：比較 `estimated` 與 `received`。
+- 現金流含期初餘額版本：加入帳戶餘額與轉帳後再計算。
