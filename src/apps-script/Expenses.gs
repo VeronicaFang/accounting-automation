@@ -53,9 +53,16 @@ function validateManualExpense_(input) {
   if (input.payment_tool_type === "credit_card" && !input.credit_card_name) {
     throw new Error("信用卡付款請選擇信用卡名稱。");
   }
-  if (Number(input.amount) <= 0) throw new Error("消費金額必須大於 0。");
+  if (!isExpenseAmountAllowed_(input)) throw new Error("消費金額必須大於 0。");
 }
 
+
+function isExpenseAmountAllowed_(input) {
+  const amount = Number(input.amount);
+  if (!isFinite(amount)) return false;
+  if (input.source_type === "finance_ministry_invoice") return true;
+  return amount > 0;
+}
 function createPaymentSchedulesForExpense_(expense) {
   const firstPaymentDate = getPaymentDate_(expense.consumption_date, expense.payment_tool_type, expense.credit_card_name);
   const payments = splitInstallments_(expense.amount, Number(expense.installment_count || 1));

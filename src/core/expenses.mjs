@@ -1,3 +1,9 @@
+export function isExpenseAmountAllowed(input = {}) {
+  const amount = Number(input.amount);
+  if (!Number.isFinite(amount)) return false;
+  if (input.source_type === "finance_ministry_invoice") return true;
+  return amount > 0;
+}
 export function resolveExpenseSourceFields(input = {}) {
   return {
     source_type: input.source_type || "manual_no_invoice",

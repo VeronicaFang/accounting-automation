@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { getRecentExpenses, resolveExpenseSourceFields } from "../src/core/expenses.mjs";
+import { getRecentExpenses, isExpenseAmountAllowed, resolveExpenseSourceFields } from "../src/core/expenses.mjs";
 
 const expenses = [
   { expense_id: "E1", consumption_date: "2026-05-01", merchant_name: "超商", item_description: "早餐", budget_item: "23. 餐費", amount: 100, payment_tool_type: "cash", credit_card_name: "", expense_status: "normal" },
@@ -36,4 +36,14 @@ test("manual expense defaults to no-invoice source fields", () => {
     source_record_id: "",
     merchant_tax_id: "",
   });
+});
+test("invoice import allows zero and negative amount lines", () => {
+  assert.equal(isExpenseAmountAllowed({ source_type: "finance_ministry_invoice", amount: 0 }), true);
+  assert.equal(isExpenseAmountAllowed({ source_type: "finance_ministry_invoice", amount: -3 }), true);
+});
+
+test("manual no-invoice expenses must be positive", () => {
+  assert.equal(isExpenseAmountAllowed({ source_type: "manual_no_invoice", amount: 0 }), false);
+  assert.equal(isExpenseAmountAllowed({ source_type: "manual_no_invoice", amount: -3 }), false);
+  assert.equal(isExpenseAmountAllowed({ source_type: "manual_no_invoice", amount: 1 }), true);
 });
