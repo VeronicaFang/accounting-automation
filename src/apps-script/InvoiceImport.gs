@@ -137,7 +137,7 @@ function buildInvoiceDrafts_(rows) {
       source_line_key: buildSourceLineKey_(row, keyCounts),
       suggested_payment_tool_type: row.annotated_payment_tool_type || (paymentRule ? paymentRule.payment_tool_type : "cash"),
       suggested_credit_card_name: row.annotated_credit_card_name || (paymentRule ? paymentRule.credit_card_name : ""),
-      suggested_budget_item: row.annotated_budget_item || (paymentRule ? paymentRule.default_budget_item : "") || (itemRule ? itemRule.budget_item : ""),
+      suggested_budget_item: row.annotated_budget_item || (paymentRule ? paymentRule.default_budget_item : "") || (itemRule ? itemRule.budget_item : "") || "24. 餐費",
       classification_status: "needs_review",
       import_status: "pending",
       expense_id: "",

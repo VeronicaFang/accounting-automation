@@ -37,6 +37,42 @@ test("invoice drafts apply payment and budget item rules but still need review",
     { merchant_name: "全聯福利中心", suggested_payment_tool_type: "cash", suggested_credit_card_name: "", suggested_budget_item: "10. 日常用品", classification_status: "needs_review", import_status: "pending" },
   ]);
 });
+
+test("invoice drafts default to meal budget and cash when no merchant or item rule matches", () => {
+  const [draft] = buildInvoiceDrafts([{
+    source_record_id: "EF12345678",
+    consumption_date: "2026-05-12",
+    merchant_name: "未知店家",
+    merchant_tax_id: "99999999",
+    item_description: "未知品項",
+    amount: 120,
+    annotated_budget_item: "",
+    annotated_payment_tool_type: "",
+    annotated_credit_card_name: "",
+  }], [], []);
+
+  assert.equal(draft.suggested_budget_item, "24. 餐費");
+  assert.equal(draft.suggested_payment_tool_type, "cash");
+  assert.equal(draft.suggested_credit_card_name, "");
+});
+
+test("invoice drafts keep source annotations before merchant and item rules", () => {
+  const [draft] = buildInvoiceDrafts([{
+    source_record_id: "GH12345678",
+    consumption_date: "2026-05-12",
+    merchant_name: "統一超商",
+    merchant_tax_id: "12345678",
+    item_description: "飯糰",
+    amount: 59,
+    annotated_budget_item: "10. 日常用品",
+    annotated_payment_tool_type: "credit_card",
+    annotated_credit_card_name: "聯邦",
+  }], paymentRules, itemRules);
+
+  assert.equal(draft.suggested_budget_item, "10. 日常用品");
+  assert.equal(draft.suggested_payment_tool_type, "credit_card");
+  assert.equal(draft.suggested_credit_card_name, "聯邦");
+});
 test("parse actual finance ministry export columns and reuse manual annotations", () => {
   const text = `載具自訂名稱\t發票日期\t發票月份\t發票號碼\t發票金額\t發票狀態\t折讓\t賣方統一編號\t賣方名稱\t賣方地址\t買方統編\t消費明細_數量\t消費明細_單價\t消費明細_金額\t消費明細_品名\t項目\t支付方式\t分期備註
 手機條碼\t20260105\t202601\tWA75815730\t38\t開立已確認\t否\t28992277\t三商家購股份有限公司永和智光分公司\t新北市永和區智光街113號1樓\t\t1\t38\t38\t真好家黑豆鼓45g\t23. 餐費\t聯邦信用卡\t`;
