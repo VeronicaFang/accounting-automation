@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { getRecentExpenses } from "../src/core/expenses.mjs";
+import { getRecentExpenses, resolveExpenseSourceFields } from "../src/core/expenses.mjs";
 
 const expenses = [
   { expense_id: "E1", consumption_date: "2026-05-01", merchant_name: "超商", item_description: "早餐", budget_item: "23. 餐費", amount: 100, payment_tool_type: "cash", credit_card_name: "", expense_status: "normal" },
@@ -17,4 +17,23 @@ test("recent expenses exclude cancelled rows and show newest rows first", () => 
 
 test("recent expenses show credit card names in Traditional Chinese", () => {
   assert.equal(getRecentExpenses(expenses, 1)[0].payment_label, "信用卡 玉山");
+});
+test("invoice import source fields are preserved for expense records", () => {
+  assert.deepEqual(resolveExpenseSourceFields({
+    source_type: "finance_ministry_invoice",
+    source_record_id: "AB12345678",
+    merchant_tax_id: "12345678",
+  }), {
+    source_type: "finance_ministry_invoice",
+    source_record_id: "AB12345678",
+    merchant_tax_id: "12345678",
+  });
+});
+
+test("manual expense defaults to no-invoice source fields", () => {
+  assert.deepEqual(resolveExpenseSourceFields({}), {
+    source_type: "manual_no_invoice",
+    source_record_id: "",
+    merchant_tax_id: "",
+  });
 });

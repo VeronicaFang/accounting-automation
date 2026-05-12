@@ -1,3 +1,10 @@
+export function resolveExpenseSourceFields(input = {}) {
+  return {
+    source_type: input.source_type || "manual_no_invoice",
+    source_record_id: input.source_record_id || "",
+    merchant_tax_id: input.merchant_tax_id || "",
+  };
+}
 export function getRecentExpenses(expenseRows, limit = 10) {
   return expenseRows
     .filter((expense) => expense.expense_status !== "cancelled")

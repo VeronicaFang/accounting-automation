@@ -22,6 +22,10 @@ function confirmInvoiceDraft(input) {
   const paymentToolType = input.payment_tool_type || draft.suggested_payment_tool_type || "cash";
   const creditCardName = paymentToolType === "credit_card" ? (input.credit_card_name || draft.suggested_credit_card_name) : "";
   const result = createManualExpense({
+    source_type: draft.source_type || "finance_ministry_invoice",
+    source_record_id: draft.source_record_id,
+    merchant_tax_id: draft.merchant_tax_id,
+    classification_basis: "invoice_import",
     consumption_date: draft.consumption_date,
     purchase_item: draft.item_description,
     amount: draft.amount,
