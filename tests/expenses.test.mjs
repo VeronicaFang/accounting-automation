@@ -67,6 +67,16 @@ test("parse manual expense text normalizes month-only dates to first day", () =>
   ]);
 });
 
+test("parse manual expense text supports rows without headers using default order", () => {
+  const text = `2026/01\t麗克特料理機\t1951\t淘寶\t26. 奢侈娛樂\t信用卡\t中信
+2026/01\t冬天薄褲\t250\t淘寶\t13. 動動用品與衣物\t信用卡\t中信`;
+
+  assert.deepEqual(parseManualExpenseText(text), [
+    { consumption_date: "2026-01-01", purchase_item: "麗克特料理機", amount: 1951, channel: "淘寶", budget_item: "26. 奢侈娛樂", payment_tool_type: "credit_card", credit_card_name: "中信", notes: "" },
+    { consumption_date: "2026-01-01", purchase_item: "冬天薄褲", amount: 250, channel: "淘寶", budget_item: "13. 動動用品與衣物", payment_tool_type: "credit_card", credit_card_name: "中信", notes: "" },
+  ]);
+});
+
 test("manual batch import allows zero and negative amount lines", () => {
   assert.equal(isExpenseAmountAllowed({ source_type: "manual_batch_import", amount: 0 }), true);
   assert.equal(isExpenseAmountAllowed({ source_type: "manual_batch_import", amount: -30 }), true);

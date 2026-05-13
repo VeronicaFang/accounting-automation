@@ -149,15 +149,28 @@ function importManualExpensesFromText(text, options) {
 
 function parseManualExpenseText_(text) {
   const lines = String(text || "").split(/\r?\n/).filter((line) => line.trim() !== "");
-  if (lines.length < 2) return [];
+  if (lines.length === 0) return [];
   const delimiter = lines[0].includes("\t") ? "\t" : ",";
-  const headers = splitManualDelimitedLine_(lines[0], delimiter).map((header) => header.trim());
-  return lines.slice(1).map((line) => {
+  const firstCells = splitManualDelimitedLine_(lines[0], delimiter).map((cell) => cell.trim());
+  const hasHeaders = isManualExpenseHeaderRow_(firstCells);
+  const headers = hasHeaders ? firstCells : getDefaultManualExpenseHeaders_(firstCells.length);
+  const dataLines = hasHeaders ? lines.slice(1) : lines;
+  return dataLines.map((line) => {
     const cells = splitManualDelimitedLine_(line, delimiter);
     const raw = {};
     headers.forEach((header, index) => raw[header] = index === headers.length - 1 ? cells.slice(index).join(delimiter) : (cells[index] || ""));
     return normalizeManualExpenseRow_(raw);
   }).filter((row) => row.consumption_date || row.purchase_item || Number(row.amount) !== 0);
+}
+
+function isManualExpenseHeaderRow_(cells) {
+  const knownHeaders = ["消費日", "消費日期", "日期", "consumption_date", "購買品項", "消費金額", "amount"];
+  return cells.some((cell) => knownHeaders.indexOf(cell) >= 0);
+}
+
+function getDefaultManualExpenseHeaders_(length) {
+  const headers = ["消費日", "購買品項", "消費金額", "消費通路", "預算項目", "支付方式", "信用卡", "備註"];
+  return headers.slice(0, Math.max(length, 1));
 }
 
 function normalizeManualExpenseRow_(row) {
