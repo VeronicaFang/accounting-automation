@@ -17,7 +17,7 @@ function getDashboardData() {
     monthlyCreditCardBillEstimates: getMonthlyCreditCardBillEstimates(6),
     upcomingCreditCardPayments: getUpcomingCreditCardPayments(6),
     recentExpenses: getRecentExpenses(10),
-    pendingInvoiceDrafts: getPendingInvoiceDrafts(50),
+    pendingInvoiceDraftPage: getPendingInvoiceDraftPage(0, 50),
     budgetItems: getBudgetItems(),
     enums: ENUMS,
   };

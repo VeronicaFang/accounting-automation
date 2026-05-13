@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { parseInvoiceText, buildInvoiceDrafts, buildSelectedInvoiceConfirmations, buildSelectedInvoiceDeletions, filterNewInvoiceDrafts, normalizePendingInvoiceDraftForReview } from "../src/core/invoice-import.mjs";
+import { parseInvoiceText, buildInvoiceDrafts, buildSelectedInvoiceConfirmations, buildSelectedInvoiceDeletions, filterNewInvoiceDrafts, normalizePendingInvoiceDraftForReview, getPendingInvoiceDraftPage } from "../src/core/invoice-import.mjs";
 
 const pastedText = `消費日\t賣方名稱\t賣方統一編號\t品名\t金額\t發票號碼
 2026/05/02\t統一超商\t12345678\t飯糰\t59\tAB12345678
@@ -205,4 +205,22 @@ test("pending invoice drafts use legacy budget fields and local dates for review
   assert.equal(draft.suggested_budget_item, "23. 餐費");
   assert.equal(draft.suggested_payment_tool_type, "credit_card");
   assert.equal(draft.suggested_credit_card_name, "聯邦");
+});
+
+test("pending invoice draft page returns count and load-more metadata", () => {
+  const rows = Array.from({ length: 120 }, (_, index) => ({
+    import_id: `IMP${String(index + 1).padStart(3, "0")}`,
+    consumption_date: `2026-04-${String((index % 28) + 1).padStart(2, "0")}`,
+    suggested_budget_item: "24. 餐費",
+    import_status: index === 119 ? "confirmed" : "pending",
+  }));
+
+  const page = getPendingInvoiceDraftPage(rows, 50, 50);
+
+  assert.equal(page.total_count, 119);
+  assert.equal(page.offset, 50);
+  assert.equal(page.limit, 50);
+  assert.equal(page.rows.length, 50);
+  assert.equal(page.next_offset, 100);
+  assert.equal(page.has_more, true);
 });

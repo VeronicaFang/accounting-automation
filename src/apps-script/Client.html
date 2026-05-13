@@ -1,5 +1,6 @@
 <script>
   let dashboardData = null;
+  const PENDING_INVOICE_PAGE_SIZE = 50;
 
   function setup() {
     setDebug("正在建立 Google Sheet 表格...");
@@ -33,12 +34,21 @@
         const paymentSchedule = data.paymentSchedule || data.upcomingCreditCardPayments || [];
         const monthlyBillEstimates = data.monthlyCreditCardBillEstimates || [];
         const recentExpenses = data.recentExpenses || [];
-        const pendingInvoiceDrafts = data.pendingInvoiceDrafts || [];
+        const pendingInvoiceDraftPage = data.pendingInvoiceDraftPage || {
+          rows: data.pendingInvoiceDrafts || [],
+          total_count: (data.pendingInvoiceDrafts || []).length,
+          offset: 0,
+          limit: PENDING_INVOICE_PAGE_SIZE,
+          next_offset: null,
+          has_more: false,
+        };
+        data.pendingInvoiceDrafts = pendingInvoiceDraftPage.rows || [];
+        data.pendingInvoiceDraftPage = pendingInvoiceDraftPage;
         renderBudget(budgetSummary);
         renderCashFlow(cashFlowOverview);
         renderMonthlyBillEstimates(monthlyBillEstimates, paymentSchedule);
         renderRecentExpenses(recentExpenses);
-        renderPendingInvoiceDrafts(pendingInvoiceDrafts, budgetItems);
+        renderPendingInvoiceDrafts(data.pendingInvoiceDrafts, budgetItems, pendingInvoiceDraftPage);
         renderBudgetOptions(budgetItems);
         toggleCard();
         setDebug(`已載入 ${budgetItems.length} 個預算項目、${budgetSummary.length} 筆預算狀態、${cashFlowOverview.length} 個現金流月份。`);
@@ -142,7 +152,7 @@
   }
 
 
-  function renderPendingInvoiceDrafts(rows, budgetItems) {
+  function renderPendingInvoiceDrafts(rows, budgetItems, page) {
     const budgetOptions = (selected) => {
       const selectedValue = selected || "";
       const hasSelected = budgetItems.some((item) => item.budget_item === selectedValue);
@@ -155,12 +165,36 @@
       { value: "credit_card", label: "信用卡" },
     ].map((option) => `<option value="${option.value}" ${option.value === selected ? "selected" : ""}>${option.label}</option>`).join("");
     const html = [
+      `<div class="list-meta">目前顯示 ${rows.length} / 待確認共 ${Number((page && page.total_count) || rows.length)} 筆。</div>`,
       "<table><thead><tr><th>選取</th><th>消費日</th><th>店家</th><th>品項</th><th>金額</th><th>預算項目</th><th>支付方式</th><th>信用卡</th><th>操作</th></tr></thead><tbody>",
       ...rows.map((row, index) => `<tr><td><input type="checkbox" id="invoiceSelect${index}" checked></td><td>${formatDate(row.consumption_date)}</td><td>${escapeHtml(row.merchant_name)}</td><td>${escapeHtml(row.item_description)}</td><td>${formatMoney(row.amount)}</td><td><select id="invoiceBudget${index}">${budgetOptions(row.suggested_budget_item || row.budget_item)}</select></td><td><select id="invoicePayment${index}">${paymentOptions(row.suggested_payment_tool_type || row.payment_tool_type || "cash")}</select></td><td><select id="invoiceCard${index}">${cardOptions(row.suggested_credit_card_name || row.credit_card_name || "")}</select></td><td><button type="button" class="secondary" onclick="deleteInvoiceDraft(${index})">刪除</button></td></tr>`),
       rows.length === 0 ? '<tr><td colspan="9">目前沒有待確認發票。</td></tr>' : "",
       "</tbody></table>",
+      page && page.has_more ? '<div class="actions import-actions"><button type="button" class="secondary" onclick="loadMoreInvoiceDrafts()">載入更多 50 筆</button></div>' : "",
     ].join("");
     document.getElementById("pendingInvoiceDrafts").innerHTML = html;
+  }
+
+  function loadMoreInvoiceDrafts() {
+    if (!dashboardData || !dashboardData.pendingInvoiceDraftPage || !dashboardData.pendingInvoiceDraftPage.has_more) return;
+    const page = dashboardData.pendingInvoiceDraftPage;
+    document.getElementById("invoiceImportResult").textContent = "正在載入更多待確認發票...";
+    google.script.run.withSuccessHandler((nextPage) => {
+      const rows = nextPage.rows || [];
+      dashboardData.pendingInvoiceDrafts = (dashboardData.pendingInvoiceDrafts || []).concat(rows);
+      dashboardData.pendingInvoiceDraftPage = {
+        rows: dashboardData.pendingInvoiceDrafts,
+        total_count: nextPage.total_count || dashboardData.pendingInvoiceDrafts.length,
+        offset: 0,
+        limit: dashboardData.pendingInvoiceDrafts.length,
+        next_offset: nextPage.next_offset,
+        has_more: nextPage.has_more === true,
+      };
+      renderPendingInvoiceDrafts(dashboardData.pendingInvoiceDrafts, dashboardData.budgetItems || [], dashboardData.pendingInvoiceDraftPage);
+      document.getElementById("invoiceImportResult").textContent = `已載入 ${dashboardData.pendingInvoiceDrafts.length} / ${dashboardData.pendingInvoiceDraftPage.total_count} 筆待確認發票。`;
+    }).withFailureHandler((error) => {
+      document.getElementById("invoiceImportResult").textContent = `載入更多失敗：${error.message}`;
+    }).getPendingInvoiceDraftPage(page.next_offset, PENDING_INVOICE_PAGE_SIZE);
   }
 
 

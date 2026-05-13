@@ -8,11 +8,26 @@ function importInvoiceDraftsFromText(text) {
 }
 
 function getPendingInvoiceDrafts(limit) {
-  return readObjects_("ImportedInvoiceDrafts")
+  return getPendingInvoiceDraftPage(0, limit).rows;
+}
+
+function getPendingInvoiceDraftPage(offset, limit) {
+  const safeOffset = Math.max(0, Number(offset || 0));
+  const safeLimit = Math.max(1, Number(limit || 50));
+  const pending = readObjects_("ImportedInvoiceDrafts")
     .filter((draft) => draft.import_status === "pending")
     .map(normalizePendingInvoiceDraftForReview_)
-    .sort((a, b) => String(b.consumption_date || "").localeCompare(String(a.consumption_date || "")))
-    .slice(0, Number(limit || 50));
+    .sort((a, b) => String(b.consumption_date || "").localeCompare(String(a.consumption_date || "")));
+  const rows = pending.slice(safeOffset, safeOffset + safeLimit);
+  const nextOffset = safeOffset + rows.length;
+  return {
+    rows,
+    total_count: pending.length,
+    offset: safeOffset,
+    limit: safeLimit,
+    next_offset: nextOffset < pending.length ? nextOffset : null,
+    has_more: nextOffset < pending.length,
+  };
 }
 
 function confirmInvoiceDraft(input) {

@@ -61,6 +61,25 @@ export function normalizePendingInvoiceDraftForReview(draft) {
   };
 }
 
+export function getPendingInvoiceDraftPage(rows, offset = 0, limit = 50) {
+  const safeOffset = Math.max(0, Number(offset || 0));
+  const safeLimit = Math.max(1, Number(limit || 50));
+  const pending = rows
+    .filter((draft) => draft.import_status === "pending")
+    .map(normalizePendingInvoiceDraftForReview)
+    .sort((a, b) => String(b.consumption_date || "").localeCompare(String(a.consumption_date || "")));
+  const pageRows = pending.slice(safeOffset, safeOffset + safeLimit);
+  const nextOffset = safeOffset + pageRows.length;
+  return {
+    rows: pageRows,
+    total_count: pending.length,
+    offset: safeOffset,
+    limit: safeLimit,
+    next_offset: nextOffset < pending.length ? nextOffset : null,
+    has_more: nextOffset < pending.length,
+  };
+}
+
 function buildExistingInvoiceDuplicateIndex(rows) {
   const fullKeys = new Set();
   const baseKeys = new Set();
