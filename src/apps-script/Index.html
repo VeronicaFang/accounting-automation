@@ -80,6 +80,9 @@
       <section>
         <h2>新增收入</h2>
         <p class="hint">可先輸入預估收入，實際入帳後再以收入狀態標記為已入帳或修正。</p>
+        <h3>每月收入預估</h3>
+        <p class="hint">薪資排程會先列為預估；實際入帳後可在這裡標記已入帳，金額不同時可修正金額與備註。</p>
+        <div id="incomeSchedule" class="table"></div>
         <form id="incomeForm" onsubmit="submitIncome(event)">
           <label>收入日 <input name="income_date" type="date" required></label>
           <label>收入項目 <input name="income_item" required></label>

@@ -30,6 +30,41 @@ function createMonthlySalarySchedule(input) {
   return { created_count: created.length, incomes: created };
 }
 
+function getIncomeSchedule(limit) {
+  return readObjects_("IncomeSchedule")
+    .filter((income) => income.income_date || income.income_month || income.income_item)
+    .map((income) => Object.assign({}, income, {
+      income_date: toDateText_(income.income_date),
+      income_month: income.income_month || toMonthKey_(income.income_date),
+      income_amount: Number(income.income_amount || 0),
+      income_status: income.income_status || "estimated",
+      source: income.source || "",
+      notes: income.notes || "",
+    }))
+    .sort((a, b) => {
+      const dateCompare = String(a.income_date || "").localeCompare(String(b.income_date || ""));
+      if (dateCompare !== 0) return dateCompare;
+      return String(a.income_id || "").localeCompare(String(b.income_id || ""));
+    })
+    .slice(0, Number(limit || 12));
+}
+
+function updateIncomeStatus(input) {
+  if (!input || !input.income_id) throw new Error("找不到要更新的收入資料。");
+  const allowedStatuses = ["estimated", "received", "corrected"];
+  if (allowedStatuses.indexOf(input.income_status) < 0) throw new Error("收入狀態不正確。");
+  const updates = {
+    income_status: input.income_status,
+    notes: input.notes || "",
+  };
+  if (input.income_amount !== undefined && input.income_amount !== "") {
+    if (Number(input.income_amount) <= 0) throw new Error("收入金額必須大於 0。");
+    updates.income_amount = Number(input.income_amount);
+  }
+  updateObjectById_("IncomeSchedule", "income_id", input.income_id, updates);
+  return readObjects_("IncomeSchedule").find((income) => String(income.income_id) === String(input.income_id));
+}
+
 function buildMonthlyIncomeSchedule_(input) {
   const start = parseIncomeMonth_(input.start_month);
   const end = parseIncomeMonth_(input.end_month);

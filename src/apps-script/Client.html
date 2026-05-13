@@ -30,6 +30,7 @@
         dashboardData = data;
         const budgetSummary = data.budgetSummary || [];
         const cashFlowOverview = data.cashFlowOverview || [];
+        const incomeSchedule = data.incomeSchedule || [];
         const budgetItems = data.budgetItems || [];
         const paymentSchedule = data.paymentSchedule || data.upcomingCreditCardPayments || [];
         const monthlyBillEstimates = data.monthlyCreditCardBillEstimates || [];
@@ -46,6 +47,7 @@
         data.pendingInvoiceDraftPage = pendingInvoiceDraftPage;
         renderBudget(budgetSummary);
         renderCashFlow(cashFlowOverview);
+        renderIncomeSchedule(incomeSchedule);
         renderMonthlyBillEstimates(monthlyBillEstimates, paymentSchedule);
         renderRecentExpenses(recentExpenses);
         renderPendingInvoiceDrafts(data.pendingInvoiceDrafts, budgetItems, pendingInvoiceDraftPage);
@@ -77,6 +79,45 @@
       "</tbody></table>",
     ].join("");
     document.getElementById("cashFlowOverview").innerHTML = html;
+  }
+
+  function renderIncomeSchedule(rows) {
+    const html = [
+      "<table><thead><tr><th>收入月</th><th>收入日</th><th>項目</th><th>金額</th><th>狀態</th><th>來源</th><th>備註</th><th>操作</th></tr></thead><tbody>",
+      ...rows.map((row, index) => `<tr><td>${formatMonth(row.income_month || row.income_date)}</td><td>${formatDate(row.income_date)}</td><td>${escapeHtml(row.income_item)}</td><td>${formatMoney(row.income_amount)}</td><td>${translateIncomeStatus(row.income_status)}</td><td>${escapeHtml(row.source || "")}</td><td>${escapeHtml(row.notes || "")}</td><td><button type="button" class="secondary" onclick="toggleIncomeReconcile(${index})">入帳/修正</button></td></tr><tr id="incomeReconcile${index}" class="reconcile-row" style="display:none;"><td colspan="8"><div class="inline-editor"><label>實際金額 <input id="incomeAmount${index}" type="number" min="1" value="${Number(row.income_amount || 0)}"></label><label>收入狀態 <select id="incomeStatus${index}">${incomeStatusOptions(row.income_status)}</select></label><label>備註 <input id="incomeNotes${index}" value="${escapeHtml(row.notes || "")}" placeholder="例如：原預估 65000，實際 64820"></label><button type="button" onclick="updateIncomeStatusFromRow(${index})">更新收入</button></div></td></tr>`),
+      rows.length === 0 ? '<tr><td colspan="8">尚未建立收入排程。</td></tr>' : "",
+      "</tbody></table>",
+    ].join("");
+    document.getElementById("incomeSchedule").innerHTML = html;
+  }
+
+  function toggleIncomeReconcile(index) {
+    const row = document.getElementById(`incomeReconcile${index}`);
+    if (!row) return;
+    row.style.display = row.style.display === "none" ? "" : "none";
+  }
+
+  function updateIncomeStatusFromRow(index) {
+    const row = (dashboardData.incomeSchedule || [])[index];
+    if (!row) return;
+    const input = {
+      income_id: row.income_id,
+      income_amount: document.getElementById(`incomeAmount${index}`).value,
+      income_status: document.getElementById(`incomeStatus${index}`).value,
+      notes: document.getElementById(`incomeNotes${index}`).value,
+    };
+    document.getElementById("incomeResult").textContent = "正在更新收入...";
+    google.script.run.withSuccessHandler(() => {
+      document.getElementById("incomeResult").textContent = "已更新收入狀態。";
+      refresh();
+    }).withFailureHandler((error) => {
+      document.getElementById("incomeResult").textContent = `更新失敗：${error.message}`;
+    }).updateIncomeStatus(input);
+  }
+
+  function incomeStatusOptions(selected) {
+    const statuses = (dashboardData && dashboardData.enums && dashboardData.enums.incomeStatuses) || ["estimated", "received", "corrected"];
+    return statuses.map((status) => `<option value="${status}" ${status === selected ? "selected" : ""}>${translateIncomeStatus(status)}</option>`).join("");
   }
 
   function renderMonthlyBillEstimates(rows, paymentRows) {
@@ -514,6 +555,15 @@
       corrected: "已修正",
       offset: "已沖銷",
       cancelled: "已取消",
+    };
+    return labels[status] || status || "";
+  }
+
+  function translateIncomeStatus(status) {
+    const labels = {
+      estimated: "預估",
+      received: "已入帳",
+      corrected: "已修正",
     };
     return labels[status] || status || "";
   }

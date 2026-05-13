@@ -13,6 +13,7 @@ function getDashboardData() {
   return {
     budgetSummary: getBudgetSummary(),
     cashFlowOverview: getCashFlowOverview(),
+    incomeSchedule: getIncomeSchedule(12),
     paymentSchedule: getPaymentSchedule(6),
     monthlyCreditCardBillEstimates: getMonthlyCreditCardBillEstimates(6),
     upcomingCreditCardPayments: getUpcomingCreditCardPayments(6),
