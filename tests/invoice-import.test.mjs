@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { parseInvoiceText, buildInvoiceDrafts, buildSelectedInvoiceConfirmations, buildSelectedInvoiceDeletions, filterNewInvoiceDrafts } from "../src/core/invoice-import.mjs";
+import { parseInvoiceText, buildInvoiceDrafts, buildSelectedInvoiceConfirmations, buildSelectedInvoiceDeletions, filterNewInvoiceDrafts, normalizePendingInvoiceDraftForReview } from "../src/core/invoice-import.mjs";
 
 const pastedText = `消費日\t賣方名稱\t賣方統一編號\t品名\t金額\t發票號碼
 2026/05/02\t統一超商\t12345678\t飯糰\t59\tAB12345678
@@ -186,4 +186,23 @@ test("date object existing invoice rows are normalized for duplicate checks", ()
   }];
 
   assert.deepEqual(filterNewInvoiceDrafts([draft], existing), []);
+});
+
+test("pending invoice drafts use legacy budget fields and local dates for review UI", () => {
+  const draft = normalizePendingInvoiceDraftForReview({
+    import_id: "IMP1",
+    consumption_date: new Date("2026-04-14T00:00:00+08:00"),
+    budget_item: "23. 餐費",
+    payment_tool_type: "credit_card",
+    credit_card_name: "聯邦",
+    suggested_budget_item: "",
+    suggested_payment_tool_type: "",
+    suggested_credit_card_name: "",
+    import_status: "pending",
+  });
+
+  assert.equal(draft.consumption_date, "2026-04-14");
+  assert.equal(draft.suggested_budget_item, "23. 餐費");
+  assert.equal(draft.suggested_payment_tool_type, "credit_card");
+  assert.equal(draft.suggested_credit_card_name, "聯邦");
 });

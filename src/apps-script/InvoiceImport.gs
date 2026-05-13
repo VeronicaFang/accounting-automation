@@ -10,6 +10,7 @@ function importInvoiceDraftsFromText(text) {
 function getPendingInvoiceDrafts(limit) {
   return readObjects_("ImportedInvoiceDrafts")
     .filter((draft) => draft.import_status === "pending")
+    .map(normalizePendingInvoiceDraftForReview_)
     .sort((a, b) => String(b.consumption_date || "").localeCompare(String(a.consumption_date || "")))
     .slice(0, Number(limit || 50));
 }
@@ -19,46 +20,56 @@ function confirmInvoiceDraft(input) {
   if (!draft) throw new Error("找不到待確認發票資料。");
   if (draft.import_status !== "pending") throw new Error("這筆發票資料已處理過。");
 
-  const paymentToolType = input.payment_tool_type || draft.suggested_payment_tool_type || "cash";
-  const creditCardName = paymentToolType === "credit_card" ? (input.credit_card_name || draft.suggested_credit_card_name) : "";
+  const normalizedDraft = normalizePendingInvoiceDraftForReview_(draft);
+  const paymentToolType = input.payment_tool_type || normalizedDraft.suggested_payment_tool_type || "cash";
+  const creditCardName = paymentToolType === "credit_card" ? (input.credit_card_name || normalizedDraft.suggested_credit_card_name) : "";
   const result = createManualExpense({
-    source_type: draft.source_type || "finance_ministry_invoice",
-    source_record_id: draft.source_record_id,
-    merchant_tax_id: draft.merchant_tax_id,
+    source_type: normalizedDraft.source_type || "finance_ministry_invoice",
+    source_record_id: normalizedDraft.source_record_id,
+    merchant_tax_id: normalizedDraft.merchant_tax_id,
     classification_basis: "invoice_import",
-    consumption_date: draft.consumption_date,
-    purchase_item: draft.item_description,
-    amount: draft.amount,
-    channel: draft.merchant_name,
-    budget_item: input.budget_item || draft.suggested_budget_item,
+    consumption_date: normalizedDraft.consumption_date,
+    purchase_item: normalizedDraft.item_description,
+    amount: normalizedDraft.amount,
+    channel: normalizedDraft.merchant_name,
+    budget_item: input.budget_item || normalizedDraft.suggested_budget_item,
     payment_tool_type: paymentToolType,
     credit_card_name: creditCardName,
     is_installment: "no",
     installment_count: 1,
-    suggested_budget_item: draft.suggested_budget_item,
-    notes: input.notes || `由發票匯入：${draft.source_record_id || ""}`,
+    suggested_budget_item: normalizedDraft.suggested_budget_item,
+    notes: input.notes || `由發票匯入：${normalizedDraft.source_record_id || ""}`,
   });
 
-  updateObjectById_("ImportedInvoiceDrafts", "import_id", draft.import_id, {
+  updateObjectById_("ImportedInvoiceDrafts", "import_id", normalizedDraft.import_id, {
     import_status: "confirmed",
     expense_id: result.expense.expense_id,
-    suggested_budget_item: input.budget_item || draft.suggested_budget_item,
+    suggested_budget_item: input.budget_item || normalizedDraft.suggested_budget_item,
     suggested_payment_tool_type: paymentToolType,
     suggested_credit_card_name: creditCardName,
   });
-  appendClassificationHistory_(draft, input.budget_item || draft.suggested_budget_item);
-  appendPaymentChoiceHistory_(draft, paymentToolType, creditCardName);
+  appendClassificationHistory_(normalizedDraft, input.budget_item || normalizedDraft.suggested_budget_item);
+  appendPaymentChoiceHistory_(normalizedDraft, paymentToolType, creditCardName);
   if (input.save_to_merchant_payment_rules === true || input.save_to_merchant_payment_rules === "yes") {
     result.merchant_payment_rule = saveMerchantPaymentRuleFromRecord_({
       source_type: "invoice_import",
-      merchant_tax_id: draft.merchant_tax_id,
-      merchant_name: draft.merchant_name,
+      merchant_tax_id: normalizedDraft.merchant_tax_id,
+      merchant_name: normalizedDraft.merchant_name,
       payment_tool_type: paymentToolType,
       credit_card_name: creditCardName,
-      budget_item: input.budget_item || draft.suggested_budget_item,
+      budget_item: input.budget_item || normalizedDraft.suggested_budget_item,
     });
   }
   return result;
+}
+
+function normalizePendingInvoiceDraftForReview_(draft) {
+  return Object.assign({}, draft, {
+    consumption_date: normalizeReviewDate_(draft.consumption_date),
+    suggested_budget_item: draft.suggested_budget_item || draft.budget_item || "",
+    suggested_payment_tool_type: draft.suggested_payment_tool_type || draft.payment_tool_type || "cash",
+    suggested_credit_card_name: draft.suggested_credit_card_name || draft.credit_card_name || "",
+  });
 }
 
 
@@ -214,6 +225,18 @@ function normalizeInvoiceKeyDate_(value) {
     return Utilities.formatDate(value, "Asia/Taipei", "yyyy-MM-dd");
   }
   return normalizeInvoiceDate_(value);
+}
+
+function normalizeReviewDate_(value) {
+  if (Object.prototype.toString.call(value) === "[object Date]" && !isNaN(value.getTime())) {
+    return Utilities.formatDate(value, "Asia/Taipei", "yyyy-MM-dd");
+  }
+  const text = String(value || "").trim();
+  if (/^\d{4}-\d{2}-\d{2}T/.test(text)) {
+    const date = new Date(text);
+    if (!isNaN(date.getTime())) return Utilities.formatDate(date, "Asia/Taipei", "yyyy-MM-dd");
+  }
+  return normalizeInvoiceDate_(text);
 }
 
 function normalizeInvoiceDate_(value) {

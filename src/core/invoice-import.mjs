@@ -51,6 +51,16 @@ export function filterNewInvoiceDrafts(drafts, existingRows = []) {
   });
 }
 
+export function normalizePendingInvoiceDraftForReview(draft) {
+  return {
+    ...draft,
+    consumption_date: normalizeReviewDate(draft.consumption_date),
+    suggested_budget_item: draft.suggested_budget_item || draft.budget_item || "",
+    suggested_payment_tool_type: draft.suggested_payment_tool_type || draft.payment_tool_type || "cash",
+    suggested_credit_card_name: draft.suggested_credit_card_name || draft.credit_card_name || "",
+  };
+}
+
 function buildExistingInvoiceDuplicateIndex(rows) {
   const fullKeys = new Set();
   const baseKeys = new Set();
@@ -128,9 +138,33 @@ function pickField(row, names) {
 
 function normalizeKeyDate(value) {
   if (Object.prototype.toString.call(value) === "[object Date]" && !Number.isNaN(value.getTime())) {
-    return `${value.getFullYear()}-${String(value.getMonth() + 1).padStart(2, "0")}-${String(value.getDate()).padStart(2, "0")}`;
+    return formatTaipeiDate(value);
   }
   return normalizeDate(value);
+}
+
+function normalizeReviewDate(value) {
+  if (Object.prototype.toString.call(value) === "[object Date]" && !Number.isNaN(value.getTime())) {
+    return formatTaipeiDate(value);
+  }
+  const text = String(value || "").trim();
+  const isoUtc = text.match(/^(\d{4})-(\d{2})-(\d{2})T/);
+  if (isoUtc) {
+    const date = new Date(text);
+    if (!Number.isNaN(date.getTime())) return formatTaipeiDate(date);
+  }
+  return normalizeDate(text);
+}
+
+function formatTaipeiDate(date) {
+  const parts = new Intl.DateTimeFormat("en-CA", {
+    timeZone: "Asia/Taipei",
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+  }).formatToParts(date);
+  const values = Object.fromEntries(parts.map((part) => [part.type, part.value]));
+  return `${values.year}-${values.month}-${values.day}`;
 }
 
 function normalizeDate(value) {

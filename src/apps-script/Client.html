@@ -143,7 +143,12 @@
 
 
   function renderPendingInvoiceDrafts(rows, budgetItems) {
-    const budgetOptions = (selected) => budgetItems.map((item) => `<option value="${escapeHtml(item.budget_item)}" ${item.budget_item === selected ? "selected" : ""}>${escapeHtml(item.budget_item)}</option>`).join("");
+    const budgetOptions = (selected) => {
+      const selectedValue = selected || "";
+      const hasSelected = budgetItems.some((item) => item.budget_item === selectedValue);
+      const fallbackOption = selectedValue && !hasSelected ? `<option value="${escapeHtml(selectedValue)}" selected>${escapeHtml(selectedValue)}（草稿值）</option>` : "";
+      return fallbackOption + budgetItems.map((item) => `<option value="${escapeHtml(item.budget_item)}" ${item.budget_item === selectedValue ? "selected" : ""}>${escapeHtml(item.budget_item)}</option>`).join("");
+    };
     const cardOptions = (selected) => ["", "玉山", "聯邦", "國泰", "富邦", "中信"].map((name) => `<option value="${name}" ${name === selected ? "selected" : ""}>${name || "不適用"}</option>`).join("");
     const paymentOptions = (selected) => [
       { value: "cash", label: "現金" },
@@ -151,7 +156,7 @@
     ].map((option) => `<option value="${option.value}" ${option.value === selected ? "selected" : ""}>${option.label}</option>`).join("");
     const html = [
       "<table><thead><tr><th>選取</th><th>消費日</th><th>店家</th><th>品項</th><th>金額</th><th>預算項目</th><th>支付方式</th><th>信用卡</th><th>操作</th></tr></thead><tbody>",
-      ...rows.map((row, index) => `<tr><td><input type="checkbox" id="invoiceSelect${index}" checked></td><td>${formatDate(row.consumption_date)}</td><td>${escapeHtml(row.merchant_name)}</td><td>${escapeHtml(row.item_description)}</td><td>${formatMoney(row.amount)}</td><td><select id="invoiceBudget${index}">${budgetOptions(row.suggested_budget_item)}</select></td><td><select id="invoicePayment${index}">${paymentOptions(row.suggested_payment_tool_type || "cash")}</select></td><td><select id="invoiceCard${index}">${cardOptions(row.suggested_credit_card_name || "")}</select></td><td><button type="button" class="secondary" onclick="deleteInvoiceDraft(${index})">刪除</button></td></tr>`),
+      ...rows.map((row, index) => `<tr><td><input type="checkbox" id="invoiceSelect${index}" checked></td><td>${formatDate(row.consumption_date)}</td><td>${escapeHtml(row.merchant_name)}</td><td>${escapeHtml(row.item_description)}</td><td>${formatMoney(row.amount)}</td><td><select id="invoiceBudget${index}">${budgetOptions(row.suggested_budget_item || row.budget_item)}</select></td><td><select id="invoicePayment${index}">${paymentOptions(row.suggested_payment_tool_type || row.payment_tool_type || "cash")}</select></td><td><select id="invoiceCard${index}">${cardOptions(row.suggested_credit_card_name || row.credit_card_name || "")}</select></td><td><button type="button" class="secondary" onclick="deleteInvoiceDraft(${index})">刪除</button></td></tr>`),
       rows.length === 0 ? '<tr><td colspan="9">目前沒有待確認發票。</td></tr>' : "",
       "</tbody></table>",
     ].join("");
@@ -428,8 +433,23 @@
   }
 
   function formatDate(value) {
+    if (typeof value === "string" && /^\d{4}-\d{2}-\d{2}T/.test(value)) return formatTaipeiDate(value);
     if (typeof value === "string" && /^\d{4}-\d{2}-\d{2}/.test(value)) return value.slice(0, 10);
+    if (value instanceof Date) return formatTaipeiDate(value);
     return value || "";
+  }
+
+  function formatTaipeiDate(value) {
+    const date = value instanceof Date ? value : new Date(value);
+    if (Number.isNaN(date.getTime())) return "";
+    const parts = new Intl.DateTimeFormat("en-CA", {
+      timeZone: "Asia/Taipei",
+      year: "numeric",
+      month: "2-digit",
+      day: "2-digit",
+    }).formatToParts(date);
+    const values = Object.fromEntries(parts.map((part) => [part.type, part.value]));
+    return `${values.year}-${values.month}-${values.day}`;
   }
 
   function formatMoney(value) {
