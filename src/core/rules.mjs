@@ -44,6 +44,24 @@ export function getBudgetStatus(usageRatio) {
   return "normal";
 }
 
+export function buildMerchantPaymentRuleFromRecord(record) {
+  const merchantTaxId = String(record.merchant_tax_id || "").trim();
+  const merchantName = String(record.merchant_name || record.channel || "").trim();
+  const paymentToolType = record.payment_tool_type || "cash";
+  const creditCardName = paymentToolType === "credit_card" ? (record.credit_card_name || "") : "";
+  const budgetItem = record.budget_item || record.suggested_budget_item || "";
+  return {
+    merchant_tax_id: merchantTaxId,
+    merchant_name_contains: merchantTaxId ? "" : merchantName,
+    merchant_display_name: merchantName,
+    payment_tool_type: paymentToolType,
+    credit_card_name: creditCardName,
+    default_budget_item: budgetItem,
+    is_active: true,
+    notes: `manual save from ${record.source_type || "expense"}`,
+  };
+}
+
 function parseLocalDate(dateText) {
   return new Date(`${String(dateText).slice(0, 10)}T00:00:00`);
 }

@@ -68,6 +68,7 @@ function seedMerchantPaymentRules_() {
       rule_id: `MPR_INIT_${String(index + 1).padStart(3, "0")}`,
       merchant_tax_id: rule.merchant_tax_id,
       merchant_name_contains: rule.merchant_name_contains,
+      merchant_display_name: rule.merchant_display_name || rule.merchant_name_contains || "",
       payment_tool_type: rule.payment_tool_type,
       credit_card_name: rule.credit_card_name,
       default_budget_item: rule.default_budget_item || "",

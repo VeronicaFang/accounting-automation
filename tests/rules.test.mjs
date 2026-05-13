@@ -4,6 +4,7 @@ import {
   addMonths,
   getBudgetStatus,
   getPaymentDate,
+  buildMerchantPaymentRuleFromRecord,
   splitInstallments,
   toMonthKey,
 } from "../src/core/rules.mjs";
@@ -48,4 +49,24 @@ test("budget status thresholds match requirements", () => {
 });
 test("Chinese YuShan card name uses YuShan payment rule", () => {
   assert.equal(getPaymentDate("2026-05-12", "credit_card", "玉山"), "2026-05-23");
+});
+
+test("merchant payment rule stores display name without changing tax id matching", () => {
+  assert.deepEqual(buildMerchantPaymentRuleFromRecord({
+    source_type: "invoice_import",
+    merchant_tax_id: "42159369",
+    merchant_name: "測試商店股份有限公司台北分公司",
+    payment_tool_type: "credit_card",
+    credit_card_name: "玉山",
+    budget_item: "24. 餐費",
+  }), {
+    merchant_tax_id: "42159369",
+    merchant_name_contains: "",
+    merchant_display_name: "測試商店股份有限公司台北分公司",
+    payment_tool_type: "credit_card",
+    credit_card_name: "玉山",
+    default_budget_item: "24. 餐費",
+    is_active: true,
+    notes: "manual save from invoice_import",
+  });
 });

@@ -99,6 +99,7 @@ const HEADERS = {
     "rule_id",
     "merchant_tax_id",
     "merchant_name_contains",
+    "merchant_display_name",
     "payment_tool_type",
     "credit_card_name",
     "default_budget_item",

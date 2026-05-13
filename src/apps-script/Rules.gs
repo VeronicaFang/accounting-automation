@@ -75,6 +75,7 @@ function saveMerchantPaymentRuleFromRecord_(record) {
   const updates = {
     merchant_tax_id: merchantTaxId,
     merchant_name_contains: merchantTaxId ? "" : merchantName,
+    merchant_display_name: merchantName,
     payment_tool_type: paymentToolType,
     credit_card_name: creditCardName,
     default_budget_item: budgetItem,
