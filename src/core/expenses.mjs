@@ -61,6 +61,8 @@ function normalizeManualDate(value) {
   const text = String(value || "").trim();
   const compact = text.match(/^(\d{4})(\d{2})(\d{2})$/);
   if (compact) return `${compact[1]}-${compact[2]}-${compact[3]}`;
+  const monthOnly = text.match(/^(\d{4})[\/\-.年](\d{1,2})月?$/);
+  if (monthOnly) return `${monthOnly[1]}-${monthOnly[2].padStart(2, "0")}-01`;
   const match = text.match(/^(\d{4})[\/\-.年](\d{1,2})[\/\-.月](\d{1,2})/);
   if (!match) return text.slice(0, 10);
   return `${match[1]}-${match[2].padStart(2, "0")}-${match[3].padStart(2, "0")}`;

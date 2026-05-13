@@ -2,11 +2,19 @@ function toDateText_(value) {
   if (Object.prototype.toString.call(value) === "[object Date]") {
     return Utilities.formatDate(value, "Asia/Taipei", "yyyy-MM-dd");
   }
-  return String(value).slice(0, 10);
+  const text = String(value || "").trim();
+  const compact = text.match(/^(\d{4})(\d{2})(\d{2})$/);
+  if (compact) return `${compact[1]}-${compact[2]}-${compact[3]}`;
+  const monthOnly = text.match(/^(\d{4})[\/\-.年](\d{1,2})月?$/);
+  if (monthOnly) return `${monthOnly[1]}-${monthOnly[2].padStart(2, "0")}-01`;
+  const dateMatch = text.match(/^(\d{4})[\/\-.年](\d{1,2})[\/\-.月](\d{1,2})/);
+  if (dateMatch) return `${dateMatch[1]}-${dateMatch[2].padStart(2, "0")}-${dateMatch[3].padStart(2, "0")}`;
+  return text.slice(0, 10);
 }
 
 function toMonthKey_(dateValue) {
   const date = new Date(`${toDateText_(dateValue)}T00:00:00`);
+  if (isNaN(date.getTime())) throw new Error(`日期格式不正確：${dateValue}`);
   return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}`;
 }
 
