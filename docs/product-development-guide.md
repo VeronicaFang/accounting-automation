@@ -16,19 +16,21 @@
 ### 目前已支援
 
 - Google Sheet 資料庫初始化。
-- 預算總覽、現金流總覽、近期消費、未來信用卡付款摘要。
+- 預算總覽、現金流總覽、每月收入預估、每月帳單預估、近期消費。
 - 手動單筆消費新增。
-- 手動消費 CSV / 貼上批次匯入。
+- 手動消費 CSV / 貼上批次匯入，支援有標題列與無標題列。
 - 財政部發票 CSV / Excel 複製貼上匯入，並先進入待確認清單。
-- 待確認發票批次確認入帳、批次刪除、批次確認並寫入店家支付規則。
+- 待確認發票分頁載入、批次確認入帳、批次刪除、批次確認並寫入店家支付規則。
 - 店家支付方式規則與店家 + 品項預算分類規則。
 - 發票重複匯入檢查。
 - 發票折扣、點數、零元明細可保留入帳。
+- 付款排程明細對帳/修正。
+- 收入排程入帳/修正。
 
 ### 目前不含
 
 - 期初現金餘額、銀行帳戶餘額、帳戶間轉帳規劃。
-- 完整信用卡對帳 UI。
+- 更完整的信用卡帳單對帳報表與取消消費沖銷流程。
 - 自動從 Google Sheet 反向同步產生 GitHub CSV 模板。
 - 完整自動學習規則更新 UI；目前已有歷史表與手動寫入店家支付規則的基礎。
 
@@ -53,8 +55,7 @@ flowchart TD
 | `src/apps-script/` | 實際部署到 Google Apps Script 的程式與 HTML/CSS。 |
 | `src/core/` | 可在本地用 Node.js 測試的純商業邏輯。 |
 | `tests/` | 本地測試，覆蓋付款日、預算、現金流、消費、發票匯入。 |
-| `templates/` | 匯入或資料表模板，目前仍需後續一致化。 |
-| `rules/` | 規則範例 CSV，目前部分仍是早期格式。 |
+| `rules/` | 匿名規則範例 CSV，部分已更新為現行 schema，仍需補齊所有正式表範例。 |
 | `docs/` | 需求、資料模型、流程、報表與本交接文件。 |
 | `temp-apps-script/` | 本地 clasp 部署資料夾，通常不提交 Git。 |
 
@@ -75,7 +76,7 @@ flowchart TD
 | `Rules.gs` | 日期、月份、信用卡付款日、分期拆帳、預算狀態、店家支付規則儲存。 |
 | `Budget.gs` | 讀取有效預算項目、年度預算使用狀態、單筆消費後預算影響。 |
 | `Expenses.gs` | 手動消費新增、付款排程產生、近期消費、手動批次匯入。 |
-| `Income.gs` | 收入新增、現金流總覽、未來信用卡付款摘要。 |
+| `Income.gs` | 收入新增、收入排程清單與修正、現金流總覽、每月帳單預估。 |
 | `InvoiceImport.gs` | 發票匯入、待確認清單、批次確認、刪除、重複檢查、歷史寫入、舊資料補值。 |
 | `Code.gs` | Web App 入口 `doGet`、前端 include、dashboard payload。 |
 | `Index.html` | Web App 畫面骨架。 |
@@ -92,10 +93,10 @@ flowchart TD
 |---|---|---|---|
 | `BudgetItems` | 年度與月份預算項目，預算分類唯一合法來源。 | 使用者或預算匯入。 | `Budget.gs`、前端下拉選單、發票/手動確認。 |
 | `ExpenseRecords` | 已正式入帳的標準化消費紀錄。 | `createManualExpense()`、`confirmInvoiceDraft()`、手動批次匯入。 | 預算報表、近期消費、重複發票檢查。 |
-| `PaymentSchedule` | 現金流付款排程，含信用卡與分期。 | `createPaymentSchedulesForExpense_()`。 | 現金流總覽、未來信用卡付款摘要。 |
-| `IncomeSchedule` | 收入排程或實際收入。 | `createIncome()`。 | 現金流總覽。 |
+| `PaymentSchedule` | 現金流付款排程，含信用卡與分期。 | `createPaymentSchedulesForExpense_()`。 | 現金流總覽、每月帳單預估、付款明細對帳。 |
+| `IncomeSchedule` | 收入排程或實際收入。 | `createIncome()`、`createMonthlySalarySchedule()`、`updateIncomeStatus()`。 | 現金流總覽、每月收入預估。 |
 | `ImportedInvoiceDrafts` | 財政部發票匯入後的待確認草稿。 | `importInvoiceDraftsFromText()`。 | 待確認清單、確認入帳、刪除、重複檢查。 |
-| `MerchantPaymentRules` | 店家預設支付方式、信用卡、預設預算項目。 | `setupDatabase()` seed、確認時寫入規則、手動消費寫入規則。 | 發票匯入預設支付方式與預算項目。 |
+| `MerchantPaymentRules` | 店家預設支付方式、信用卡、預設預算項目與人工辨識名稱。 | `setupDatabase()` seed、確認時寫入規則、手動消費寫入規則。 | 發票匯入預設支付方式與預算項目。 |
 | `MerchantItemRules` | 店家 + 品項關鍵字對應預算項目。 | 目前主要手動維護。 | 發票匯入預設預算項目。 |
 | `ClassificationHistory` | 使用者確認後的分類歷史。 | `confirmInvoiceDraft()`。 | 後續規則學習依據。 |
 | `PaymentChoiceHistory` | 使用者確認後的支付方式歷史。 | `confirmInvoiceDraft()`。 | 後續規則學習依據。 |
@@ -110,7 +111,7 @@ flowchart TD
 | `PaymentSchedule` | `payment_id`, `expense_id`, `payment_sequence`, `payment_date`, `cash_flow_month`, `payment_amount`, `payment_tool_type`, `credit_card_name`, `payment_status`, `notes` |
 | `IncomeSchedule` | `income_id`, `income_date`, `income_month`, `income_item`, `income_amount`, `income_status`, `source`, `notes` |
 | `ImportedInvoiceDrafts` | `import_id`, `source_type`, `source_record_id`, `source_line_key`, `consumption_date`, `merchant_tax_id`, `merchant_name`, `item_description`, `amount`, `suggested_payment_tool_type`, `suggested_credit_card_name`, `suggested_budget_item`, `classification_status`, `import_status`, `expense_id`, `notes` |
-| `MerchantPaymentRules` | `rule_id`, `merchant_tax_id`, `merchant_name_contains`, `payment_tool_type`, `credit_card_name`, `default_budget_item`, `is_active`, `notes` |
+| `MerchantPaymentRules` | `rule_id`, `merchant_tax_id`, `merchant_name_contains`, `merchant_display_name`, `payment_tool_type`, `credit_card_name`, `default_budget_item`, `is_active`, `notes` |
 | `MerchantItemRules` | `rule_id`, `merchant_tax_id`, `merchant_name_contains`, `item_keyword_contains`, `budget_item`, `is_active`, `notes` |
 | `ClassificationHistory` | `history_id`, `merchant_tax_id`, `merchant_name`, `item_description`, `budget_item`, `confirmed_at`, `notes` |
 | `PaymentChoiceHistory` | `history_id`, `merchant_tax_id`, `merchant_name`, `payment_tool_type`, `credit_card_name`, `confirmed_at`, `notes` |
@@ -134,7 +135,7 @@ flowchart TD
 3. `importInvoiceDraftsFromText()` 解析原始欄位。
 4. 系統產生 `source_line_key`，並檢查 `ImportedInvoiceDrafts` 與 `ExpenseRecords` 是否已存在同一筆發票明細。
 5. 非重複資料寫入 `ImportedInvoiceDrafts`，狀態為 `pending`。
-6. Web App 顯示待確認清單，使用者可批次確認、批次確認並寫入店家支付規則、或刪除不是本人支付的明細。
+6. Web App 顯示待確認清單，預設 50 筆並可載入更多；使用者可批次確認、批次確認並寫入店家支付規則、或刪除不是本人支付的明細。
 
 ### 5.3 待確認發票確認入帳
 
@@ -144,7 +145,7 @@ flowchart TD
 4. `createManualExpense()` 會同時產生一或多筆 `PaymentSchedule`。
 5. `ImportedInvoiceDrafts.import_status` 更新為 `confirmed`，並回寫 `expense_id`。
 6. 同步寫入 `ClassificationHistory` 與 `PaymentChoiceHistory`。
-7. 若使用「批次確認並匯入規則」，會新增或更新 `MerchantPaymentRules`。
+7. 若使用「批次確認並匯入規則」，會新增或更新 `MerchantPaymentRules`，並把店名寫入 `merchant_display_name`。
 
 ### 5.4 手動單筆消費
 
@@ -159,20 +160,25 @@ flowchart TD
 
 1. 使用者可上傳 CSV 或貼上整理後的購物車清單。
 2. 支援欄位：`消費日`, `購買品項`, `消費金額`, `消費通路`, `預算項目`, `支付方式`, `信用卡`, `備註`。
-3. `importManualExpensesFromText()` 解析後逐筆呼叫 `createManualExpense()`。
-4. `source_type` 使用 `manual_batch_import`。
-5. 批次匯入允許 0 或負數金額，用於折扣、點數折抵或購物車調整項。
-6. 可選擇同時寫入店家支付規則。
+3. 可貼有標題列資料，也可貼無標題列資料；無標題列時依上述欄位順序解析。
+4. 年月格式如 `2026/01` 會正規化成 `2026-01-01`，預算月份為 `2026-01`。
+5. `importManualExpensesFromText()` 解析後逐筆呼叫 `createManualExpense()`。
+6. `source_type` 使用 `manual_batch_import`。
+7. 批次匯入允許 0 或負數金額，用於折扣、點數折抵或購物車調整項。
+8. 可選擇同時寫入店家支付規則。
 
 ### 5.6 Dashboard
 
 `getDashboardData()` 回傳前端需要的資料：
 
 - `budgetSummary`：各預算項目年度使用狀態。
-- `cashFlowOverview`：每月收入、付款、淨現金流。
-- `upcomingCreditCardPayments`：未來信用卡付款摘要。
+- `cashFlowOverview`：每月收入、現金支出、信用卡付款、淨現金流。
+- `incomeSchedule`：每月收入預估與入帳/修正。
+- `paymentSchedule`：付款排程明細。
+- `monthlyCreditCardBillEstimates`：每月帳單預估。
+- `upcomingCreditCardPayments`：舊版信用卡付款摘要 payload，保留供相容與後續使用。
 - `recentExpenses`：近期消費。
-- `pendingInvoiceDrafts`：待確認發票。
+- `pendingInvoiceDraftPage`：待確認發票分頁資料。
 - `budgetItems`：預算項目下拉選單。
 - `enums`：前端列舉值。
 
@@ -184,6 +190,7 @@ flowchart TD
 - 預算使用額 = 消費金額，確認消費時立即計入。
 - 現金流月份 = `payment_date` 的月份。
 - 報表上預算看 `ExpenseRecords`，現金流看 `PaymentSchedule` + `IncomeSchedule`。
+- 現金流 UI 拆成收入、現金支出、信用卡付款、月淨流量。
 
 ### 6.2 信用卡付款日
 
@@ -203,6 +210,7 @@ flowchart TD
 - 最後一期 = 總金額 - 前面期數總和。
 - 每期付款日從首期付款日開始，每月同日遞延。
 - 對帳時可手動修正 `PaymentSchedule.payment_amount` 與 `payment_status`。
+- 使用者主要先看「每月帳單預估」彙總；只有金額異常時才展開付款排程明細對帳。
 
 ### 6.4 預算狀態
 
@@ -248,9 +256,11 @@ flowchart TD
 |---|---|
 | `tests/rules.test.mjs` | 月份、信用卡付款日、分期拆帳、預算狀態。 |
 | `tests/budget.test.mjs` | 有效預算項目、預算摘要、單筆消費預算影響。 |
-| `tests/cash-flow.test.mjs` | 現金流總覽、未來信用卡付款摘要、月份正規化。 |
-| `tests/expenses.test.mjs` | 近期消費、來源欄位、金額允許規則、手動批次解析。 |
-| `tests/invoice-import.test.mjs` | 發票解析、草稿預設值、批次確認 payload、重複檢查。 |
+| `tests/cash-flow.test.mjs` | 現金流總覽、每月帳單預估、付款排程、付款狀態更新、月份正規化。 |
+| `tests/expenses.test.mjs` | 近期消費、來源欄位、金額允許規則、手動批次解析、無標題列與年月格式。 |
+| `tests/income.test.mjs` | 薪資排程、收入清單、收入狀態與金額修正。 |
+| `tests/invoice-import.test.mjs` | 發票解析、草稿預設值、批次確認 payload、重複檢查、待確認分頁。 |
+| `tests/apps-script-config.test.mjs` | Apps Script 表頭與本地文件化測試。 |
 
 執行完整測試：
 
@@ -260,7 +270,9 @@ C:\Users\AA018507\.cache\codex-runtimes\codex-primary-runtime\dependencies\node\
 C:\Users\AA018507\.cache\codex-runtimes\codex-primary-runtime\dependencies\node\bin\node.exe tests\budget.test.mjs
 C:\Users\AA018507\.cache\codex-runtimes\codex-primary-runtime\dependencies\node\bin\node.exe tests\cash-flow.test.mjs
 C:\Users\AA018507\.cache\codex-runtimes\codex-primary-runtime\dependencies\node\bin\node.exe tests\expenses.test.mjs
+C:\Users\AA018507\.cache\codex-runtimes\codex-primary-runtime\dependencies\node\bin\node.exe tests\income.test.mjs
 C:\Users\AA018507\.cache\codex-runtimes\codex-primary-runtime\dependencies\node\bin\node.exe tests\invoice-import.test.mjs
+C:\Users\AA018507\.cache\codex-runtimes\codex-primary-runtime\dependencies\node\bin\node.exe tests\apps-script-config.test.mjs
 ```
 
 ## 8. 開發與維護流程
@@ -330,12 +342,12 @@ git push
 
 ## 10. 已知技術債與後續方向
 
-- `templates/` 與 `rules/` 仍有早期 CSV 欄位，需後續整理成和 10 張正式資料表一致。
+- `rules/` 已部分更新為現行格式，但仍需補齊所有正式表的匯入/範例模板。
 - 部分文件仍是需求訪談早期版本，主文件已標示以現行實作為準。
 - Apps Script 與 `src/core` 有重複邏輯，修改時必須同步維護。
 - Google Sheet 是資料庫，缺少正式 migration 機制；目前靠 `setupDatabase()` 補欄位。
 - 規則學習目前有歷史表與手動寫入規則，尚未完整自動化「最近 5 次有 4 次一致才更新預設」。
-- 對帳 UI 尚未完整實作，`PaymentSchedule.payment_status` 已預留狀態。
+- 已有付款明細與收入排程的基本對帳/修正 UI；仍缺更完整的信用卡帳單核對報表與取消消費沖銷流程。
 - 現金流報表尚未納入期初餘額、帳戶餘額與轉帳規劃。
 
 ## 11. 接手檢查清單
@@ -346,7 +358,7 @@ git push
 2. `src/apps-script/Config.gs` 的 `SPREADSHEET_ID` 是否指向正確 Google Sheet。
 3. Google Sheet 是否有 10 張正式表。
 4. `BudgetItems` 是否有有效預算項目，且 `is_valid_expense_item` 為 true。
-5. 本地 5 組測試是否通過。
+5. 本地測試是否通過。
 6. `temp-apps-script` 是否已和 `src/apps-script` 同步。
 7. Apps Script 是否已重新部署 Web App。
 8. 測試 Web App：Refresh、發票匯入、待確認批次確認、手動單筆、手動批次匯入。

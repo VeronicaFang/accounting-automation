@@ -12,14 +12,16 @@ The Apps Script web app currently supports:
 
 - Google Sheet database setup via `setupDatabase()`;
 - budget status dashboard;
-- cash-flow overview;
-- upcoming credit-card payment summary;
+- cash-flow overview split into income, cash expenses, credit-card payments, and net flow;
+- monthly income estimate list with received/corrected reconciliation;
+- monthly credit-card bill estimates with expandable payment details and reconciliation;
 - recent expense list;
 - single manual no-invoice expense entry;
-- manual expense CSV / pasted batch import;
+- manual expense CSV / pasted batch import with or without headers;
 - Ministry of Finance invoice CSV / pasted import into a pending review list;
+- paginated pending invoice list with load-more behavior;
 - pending invoice batch confirm, batch delete, and batch confirm plus merchant payment rule save;
-- merchant payment rules with default budget item support;
+- merchant payment rules with default budget item and merchant display name support;
 - merchant + item budget classification rules;
 - duplicate invoice import detection;
 - invoice discount / zero amount / negative amount lines.
@@ -33,7 +35,7 @@ The Apps Script web app currently supports:
 | `Rules.gs` | Date, month, card payment date, installment, budget status, merchant rule helpers. |
 | `Budget.gs` | Budget item reads, budget summary, per-expense budget impact. |
 | `Expenses.gs` | Manual expense creation, payment schedules, recent expenses, manual batch import. |
-| `Income.gs` | Income creation, cash-flow overview, upcoming credit-card payment summary. |
+| `Income.gs` | Income creation, income schedule reads/updates, cash-flow overview, monthly credit-card bill estimates. |
 | `InvoiceImport.gs` | Invoice import, pending drafts, duplicate detection, confirmation, deletion, history backfill. |
 | `Code.gs` | Web app entrypoint and dashboard payload. |
 | `Index.html` | Page structure. |
@@ -91,6 +93,6 @@ Useful Apps Script debug functions:
 ## Known Limits
 
 - Beginning cash balance and bank account balances are not included yet.
-- Payment reconciliation UI is not complete yet.
+- Payment and income reconciliation have basic row-level UI; richer credit-card statement matching is not complete yet.
 - Rule learning is partially supported through history tables and manual rule saving, but automatic 4-of-5 rule promotion still needs more implementation.
 - Templates and older docs still need a later cleanup pass to fully match the current 10-sheet schema.

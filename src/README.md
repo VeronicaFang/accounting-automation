@@ -1,13 +1,18 @@
-# Source Code Placeholder
+# Source Code Overview
 
-This folder is reserved for the future automation implementation.
+This folder contains the current Accounting Automation implementation.
 
-First-version implementation candidates:
+## Folders
 
-- import invoice workbooks and normalize expense records;
-- import manual expense records;
-- generate payment schedules;
-- generate income schedules;
-- apply merchant payment and item classification rules;
-- export budget and cash-flow summaries.
+- `apps-script/`: Google Apps Script Web App source. This is the deployed application layer.
+- `core/`: Node-testable business logic mirrored from key Apps Script behavior.
 
+## Current Scope
+
+- invoice import into a pending review list;
+- manual single-expense entry and manual batch import;
+- payment schedule generation for cash, credit cards, and installments;
+- monthly credit-card bill estimates from `PaymentSchedule`;
+- income schedule creation and income status reconciliation;
+- budget summary, budget lookup, cash-flow overview, recent expenses;
+- merchant payment rules, merchant item rules, and duplicate invoice checks.

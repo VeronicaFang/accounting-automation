@@ -1,4 +1,3 @@
-merchant_tax_id,merchant_name,default_payment_tool_type,default_credit_card_name,candidate_payment_options,confidence_status,recent_5_choices,last_updated,notes
-00000000,Sample Convenience Store,credit_card,Union,"cash;credit_card:Union;credit_card:YuShan;credit_card:Cathay",high,"Union;Union;Union;Union;Union",2026-05-08,Anonymized example
-11111111,Sample Online Store,credit_card,Cathay,"credit_card:Cathay;credit_card:Union;credit_card:YuShan",needs_review,"Cathay;Cathay;Cathay;Union;Cathay",2026-05-08,Anonymized example
-
+rule_id,merchant_tax_id,merchant_name_contains,merchant_display_name,payment_tool_type,credit_card_name,default_budget_item,is_active,notes
+MPR_SAMPLE_001,00000000,,Sample Convenience Store,credit_card,Union,24. 餐費,true,Anonymized example using tax id match
+MPR_SAMPLE_002,,Sample Online Store,Sample Online Store,credit_card,Cathay,26. 奢侈娛樂,true,Anonymized example using name contains match

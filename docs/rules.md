@@ -30,11 +30,11 @@ remaining = annual_budget - used
 ## 現金流規則
 
 ```text
-monthly net cash flow = monthly income_total - monthly payment_total
+net_cash_flow = income_total - cash_expense_total - credit_card_payment_total
 ```
 
 - 收入來自 `IncomeSchedule`。
-- 支出來自 `PaymentSchedule`。
+- 支出來自 `PaymentSchedule`，並在 UI 拆成現金支出與信用卡付款。
 - `payment_status = offset` 的付款不計入現金流付款支出。
 - 現金支付的付款日等於消費日。
 - 信用卡支付的付款日依信用卡規則計算。
@@ -83,7 +83,16 @@ monthly net cash flow = monthly income_total - monthly payment_total
 - `credit_card_name`
 - `default_budget_item`
 
-當使用者按下「把本次紀錄匯入店家支付規則中」時，會新增或更新該店家的支付規則。
+`merchant_display_name` 只供人工辨識，不參與命中邏輯。有統編時，`merchant_name_contains` 可維持空白，系統仍以統編精準比對。
+
+當使用者按下「把本次紀錄匯入店家支付規則中」或「批次確認並匯入規則」時，會新增或更新該店家的支付規則，並寫入 `merchant_display_name`。
+
+## 手動批次匯入解析規則
+
+- 支援有標題列與無標題列兩種貼上格式。
+- 有標題列時依欄位名稱解析。
+- 無標題列時依預設順序解析：`消費日`、`購買品項`、`消費金額`、`消費通路`、`預算項目`、`支付方式`、`信用卡`、`備註`。
+- 年月格式會正規化為該月 1 日，例如 `2026/01` 會寫入 `2026-01-01`，預算月份為 `2026-01`。
 
 ## 店家 + 品項規則
 

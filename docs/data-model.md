@@ -8,8 +8,8 @@
 |---|---|
 | `BudgetItems` | 年度與月份預算項目，是預算分類的唯一合法來源。 |
 | `ExpenseRecords` | 已確認入帳的標準化消費紀錄。 |
-| `PaymentSchedule` | 每筆消費產生的付款排程，供現金流使用。 |
-| `IncomeSchedule` | 收入排程或實際收入紀錄。 |
+| `PaymentSchedule` | 每筆消費產生的付款排程，供現金流與每月帳單預估使用。 |
+| `IncomeSchedule` | 收入排程或實際收入紀錄，可用於薪資入帳/修正。 |
 | `ImportedInvoiceDrafts` | 發票匯入後、尚未確認入帳的草稿清單。 |
 | `MerchantPaymentRules` | 店家預設支付方式、信用卡與預設預算項目。 |
 | `MerchantItemRules` | 店家 + 品項關鍵字對應預算項目。 |
@@ -121,6 +121,7 @@
 | `rule_id` | 規則 ID。 |
 | `merchant_tax_id` | 店家統編，可空白。 |
 | `merchant_name_contains` | 店名包含文字，可空白。 |
+| `merchant_display_name` | 店家顯示名稱，只供人工辨識，不參與規則比對。 |
 | `payment_tool_type` | 預設支付方式。 |
 | `credit_card_name` | 預設信用卡。 |
 | `default_budget_item` | 該店家預設預算項目。 |
