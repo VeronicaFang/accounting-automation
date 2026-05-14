@@ -64,7 +64,7 @@
   function renderBudget(rows) {
     const html = [
       "<table><thead><tr><th>預算項目</th><th>年度預算</th><th>已使用</th><th>剩餘</th><th>狀態</th></tr></thead><tbody>",
-      ...rows.map((row) => `<tr class="${row.status}"><td>${escapeHtml(row.budget_item)}</td><td>${formatMoney(row.annual_budget)}</td><td>${formatMoney(row.used)}</td><td>${formatMoney(row.remaining)}</td><td>${translateStatus(row.status)}</td></tr>`),
+      ...rows.map((row) => `<tr class="${row.status}"><td>${escapeHtml(row.budget_item)}</td><td>${formatMoney(row.annual_budget)}</td><td>${formatMoney(row.used)}</td><td>${formatMoney(row.remaining)}</td><td>${statusBadge(row.status)}</td></tr>`),
       rows.length === 0 ? '<tr><td colspan="5">尚未載入預算項目。</td></tr>' : "",
       "</tbody></table>",
     ].join("");
@@ -84,7 +84,7 @@
   function renderIncomeSchedule(rows) {
     const html = [
       "<table><thead><tr><th>收入月</th><th>收入日</th><th>項目</th><th>金額</th><th>狀態</th><th>來源</th><th>備註</th><th>操作</th></tr></thead><tbody>",
-      ...rows.map((row, index) => `<tr><td>${formatMonth(row.income_month || row.income_date)}</td><td>${formatDate(row.income_date)}</td><td>${escapeHtml(row.income_item)}</td><td>${formatMoney(row.income_amount)}</td><td>${translateIncomeStatus(row.income_status)}</td><td>${escapeHtml(row.source || "")}</td><td>${escapeHtml(row.notes || "")}</td><td><button type="button" class="secondary" onclick="toggleIncomeReconcile(${index})">入帳/修正</button></td></tr><tr id="incomeReconcile${index}" class="reconcile-row" style="display:none;"><td colspan="8"><div class="inline-editor"><label>實際金額 <input id="incomeAmount${index}" type="number" min="1" value="${Number(row.income_amount || 0)}"></label><label>收入狀態 <select id="incomeStatus${index}">${incomeStatusOptions(row.income_status)}</select></label><label>備註 <input id="incomeNotes${index}" value="${escapeHtml(row.notes || "")}" placeholder="例如：原預估 65000，實際 64820"></label><button type="button" onclick="updateIncomeStatusFromRow(${index})">更新收入</button></div></td></tr>`),
+      ...rows.map((row, index) => `<tr><td>${formatMonth(row.income_month || row.income_date)}</td><td>${formatDate(row.income_date)}</td><td>${escapeHtml(row.income_item)}</td><td>${formatMoney(row.income_amount)}</td><td>${incomeStatusBadge(row.income_status)}</td><td>${escapeHtml(row.source || "")}</td><td>${escapeHtml(row.notes || "")}</td><td><button type="button" class="secondary" onclick="toggleIncomeReconcile(${index})">入帳/修正</button></td></tr><tr id="incomeReconcile${index}" class="reconcile-row" style="display:none;"><td colspan="8"><div class="inline-editor"><label>實際金額 <input id="incomeAmount${index}" type="number" min="1" value="${Number(row.income_amount || 0)}"></label><label>收入狀態 <select id="incomeStatus${index}">${incomeStatusOptions(row.income_status)}</select></label><label>備註 <input id="incomeNotes${index}" value="${escapeHtml(row.notes || "")}" placeholder="例如：原預估 65000，實際 64820"></label><button type="button" onclick="updateIncomeStatusFromRow(${index})">更新收入</button></div></td></tr>`),
       rows.length === 0 ? '<tr><td colspan="8">尚未建立收入排程。</td></tr>' : "",
       "</tbody></table>",
     ].join("");
@@ -140,7 +140,7 @@
       .filter((payment) => payment.credit_card_name === row.credit_card_name);
     const detailHtml = [
       "<table><thead><tr><th>付款日</th><th>金額</th><th>狀態</th><th>來源消費</th><th>操作</th></tr></thead><tbody>",
-      ...details.map((payment) => `<tr><td>${formatDate(payment.payment_date)}</td><td>${formatMoney(payment.payment_amount || payment.amount)}</td><td>${translateStatus(payment.payment_status)}</td><td>${escapeHtml(payment.source_expense || "")}</td><td><button type="button" class="secondary" onclick="togglePaymentReconcile(${payment.paymentIndex})">對帳/修正</button></td></tr><tr id="paymentReconcile${payment.paymentIndex}" class="reconcile-row" style="display:none;"><td colspan="5"><div class="inline-editor"><label>對帳金額 <input id="paymentAmount${payment.paymentIndex}" type="number" min="0" value="${Number(payment.payment_amount || payment.amount || 0)}"></label><label>付款狀態 <select id="paymentStatus${payment.paymentIndex}">${paymentStatusOptions(payment.payment_status)}</select></label><label>對帳備註 <input id="paymentNotes${payment.paymentIndex}" placeholder="對帳備註" value="${escapeHtml(payment.notes || "")}"></label><button type="button" onclick="updatePaymentStatusFromRow(${payment.paymentIndex})">更新付款排程</button></div></td></tr>`),
+      ...details.map((payment) => `<tr><td>${formatDate(payment.payment_date)}</td><td>${formatMoney(payment.payment_amount || payment.amount)}</td><td>${statusBadge(payment.payment_status)}</td><td>${escapeHtml(payment.source_expense || "")}</td><td><button type="button" class="secondary" onclick="togglePaymentReconcile(${payment.paymentIndex})">對帳/修正</button></td></tr><tr id="paymentReconcile${payment.paymentIndex}" class="reconcile-row" style="display:none;"><td colspan="5"><div class="inline-editor"><label>對帳金額 <input id="paymentAmount${payment.paymentIndex}" type="number" min="0" value="${Number(payment.payment_amount || payment.amount || 0)}"></label><label>付款狀態 <select id="paymentStatus${payment.paymentIndex}">${paymentStatusOptions(payment.payment_status)}</select></label><label>對帳備註 <input id="paymentNotes${payment.paymentIndex}" placeholder="對帳備註" value="${escapeHtml(payment.notes || "")}"></label><button type="button" onclick="updatePaymentStatusFromRow(${payment.paymentIndex})">更新付款排程</button></div></td></tr>`),
       details.length === 0 ? '<tr><td colspan="5">此帳單目前沒有付款明細。</td></tr>' : "",
       "</tbody></table>",
     ].join("");
@@ -206,14 +206,15 @@
       { value: "credit_card", label: "信用卡" },
     ].map((option) => `<option value="${option.value}" ${option.value === selected ? "selected" : ""}>${option.label}</option>`).join("");
     const html = [
-      `<div class="list-meta">目前顯示 ${rows.length} / 待確認共 ${Number((page && page.total_count) || rows.length)} 筆。</div>`,
+      `<div class="list-meta"><span>目前顯示 ${rows.length} / 待確認共 ${Number((page && page.total_count) || rows.length)} 筆。</span><span id="invoiceSelectionMeta">已選取 ${rows.length} 筆</span></div>`,
       "<table><thead><tr><th>選取</th><th>消費日</th><th>店家</th><th>品項</th><th>金額</th><th>預算項目</th><th>支付方式</th><th>信用卡</th><th>操作</th></tr></thead><tbody>",
-      ...rows.map((row, index) => `<tr><td><input type="checkbox" id="invoiceSelect${index}" checked></td><td>${formatDate(row.consumption_date)}</td><td>${escapeHtml(row.merchant_name)}</td><td>${escapeHtml(row.item_description)}</td><td>${formatMoney(row.amount)}</td><td><select id="invoiceBudget${index}">${budgetOptions(row.suggested_budget_item || row.budget_item)}</select></td><td><select id="invoicePayment${index}">${paymentOptions(row.suggested_payment_tool_type || row.payment_tool_type || "cash")}</select></td><td><select id="invoiceCard${index}">${cardOptions(row.suggested_credit_card_name || row.credit_card_name || "")}</select></td><td><button type="button" class="secondary" onclick="deleteInvoiceDraft(${index})">刪除</button></td></tr>`),
+      ...rows.map((row, index) => `<tr><td><input type="checkbox" id="invoiceSelect${index}" checked onchange="updateInvoiceSelectionSummary()"></td><td>${formatDate(row.consumption_date)}</td><td>${escapeHtml(row.merchant_name)}</td><td>${escapeHtml(row.item_description)}</td><td>${formatMoney(row.amount)}</td><td><select id="invoiceBudget${index}">${budgetOptions(row.suggested_budget_item || row.budget_item)}</select></td><td><select id="invoicePayment${index}">${paymentOptions(row.suggested_payment_tool_type || row.payment_tool_type || "cash")}</select></td><td><select id="invoiceCard${index}">${cardOptions(row.suggested_credit_card_name || row.credit_card_name || "")}</select></td><td><button type="button" class="secondary" onclick="deleteInvoiceDraft(${index})">刪除</button></td></tr>`),
       rows.length === 0 ? '<tr><td colspan="9">目前沒有待確認發票。</td></tr>' : "",
       "</tbody></table>",
       page && page.has_more ? '<div class="actions import-actions"><button type="button" class="secondary" onclick="loadMoreInvoiceDrafts()">載入更多 50 筆</button></div>' : "",
     ].join("");
     document.getElementById("pendingInvoiceDrafts").innerHTML = html;
+    updateInvoiceSelectionSummary();
   }
 
   function loadMoreInvoiceDrafts() {
@@ -308,6 +309,18 @@
       const checkbox = document.getElementById(`invoiceSelect${index}`);
       if (checkbox) checkbox.checked = checked;
     });
+    updateInvoiceSelectionSummary();
+  }
+
+  function updateInvoiceSelectionSummary() {
+    const target = document.getElementById("invoiceSelectionMeta");
+    if (!target) return;
+    const rows = (dashboardData && dashboardData.pendingInvoiceDrafts) || [];
+    const selected = rows.reduce((count, _, index) => {
+      const checkbox = document.getElementById(`invoiceSelect${index}`);
+      return count + (checkbox && checkbox.checked ? 1 : 0);
+    }, 0);
+    target.textContent = `已選取 ${selected} 筆`;
   }
 
   function buildInvoiceConfirmationInput(index, saveToRules) {
@@ -541,6 +554,16 @@
       .filter((status) => Number(statusCounts[status] || 0) > 0)
       .map((status) => `${translateStatus(status)} ${Number(statusCounts[status] || 0)}`)
       .join("、") || "無";
+  }
+
+  function statusBadge(status) {
+    const safeClass = String(status || "").replace(/[^a-zA-Z0-9_-]/g, "");
+    return `<span class="status-pill ${safeClass}">${escapeHtml(translateStatus(status))}</span>`;
+  }
+
+  function incomeStatusBadge(status) {
+    const safeClass = String(status || "").replace(/[^a-zA-Z0-9_-]/g, "");
+    return `<span class="status-pill ${safeClass}">${escapeHtml(translateIncomeStatus(status))}</span>`;
   }
 
   function translateStatus(status) {

@@ -6,9 +6,12 @@
   </head>
   <body>
     <main class="app">
-      <section class="toolbar">
-        <h1>個人記帳管理</h1>
-        <div class="actions">
+      <section class="app-header">
+        <div>
+          <h1>個人記帳管理</h1>
+          <p class="page-subtitle">先看現金流、每月帳單與預算狀態；有異常再進入明細確認。</p>
+        </div>
+        <div class="actions header-actions">
           <button type="button" onclick="setup()">建立表格</button>
           <button type="button" onclick="refresh()">重新整理</button>
         </div>
@@ -16,62 +19,79 @@
 
       <pre id="dashboardDebug">正在載入儀表板資料...</pre>
 
-      <section class="grid">
-        <section>
-          <h2>預算狀態</h2>
-          <p class="hint">排序邏輯：先看狀態嚴重度（超支、警示、提醒、正常），同狀態再依使用比例由高到低排列。</p>
-          <div id="budgetSummary" class="table"></div>
-        </section>
-        <section>
-          <h2>現金流</h2>
+      <div class="priority-grid">
+        <section class="dashboard-panel panel-wide">
+          <div class="section-header">
+            <h2>現金流</h2>
+            <span class="section-tag">每月餘額</span>
+          </div>
           <p class="hint">收入依收入月份計入；現金支出與信用卡付款依付款月份計入；月淨流量 = 收入 - 現金支出 - 信用卡付款。</p>
           <div id="cashFlowOverview" class="table"></div>
         </section>
-      </section>
-
-      <section class="grid">
-        <section>
-          <h2>每月帳單預估</h2>
+        <section class="dashboard-panel panel-wide">
+          <div class="section-header">
+            <h2>每月帳單預估</h2>
+            <span class="section-tag">信用卡</span>
+          </div>
           <p class="hint">依付款月份與信用卡彙總，讓你直接看到每月各張卡預估要繳多少；覺得金額怪怪的再展開明細檢查付款排程。</p>
           <div id="monthlyBillEstimates" class="table"></div>
           <pre id="paymentStatusResult"></pre>
         </section>
+        <section class="dashboard-panel">
+          <div class="section-header">
+            <h2>預算狀態</h2>
+            <span class="section-tag">年度</span>
+          </div>
+          <p class="hint">排序邏輯：先看狀態嚴重度（超支、警示、提醒、正常），同狀態再依使用比例由高到低排列。</p>
+          <div id="budgetSummary" class="table"></div>
+        </section>
+      </div>
+
+      <div class="workflow-grid">
         <section>
           <h2>最近新增消費</h2>
           <p class="hint">用來確認剛新增的消費是否正確；已取消的紀錄不會顯示在這裡。</p>
           <div id="recentExpenses" class="table"></div>
         </section>
-      </section>
 
-      <section>
-        <h2>預算查詢總覽</h2>
-        <p class="hint">預設查詢本月預算；花錢前可先查某個 Budget Item 的年度與月度剩餘金額，也可輸入預計消費金額試算花下去後的剩餘預算。</p>
-        <form id="budgetLookupForm" onsubmit="queryBudget(event)">
-          <label>預算項目 <select name="budget_item" id="budgetLookupItemSelect" required></select></label>
-          <label>預計消費金額 <input name="preview_amount" type="number" min="0" value="0"></label>
-          <button type="submit">查詢預算</button>
-        </form>
-        <div id="budgetLookupResult" class="table"></div>
-      </section>
+        <section>
+          <h2>預算查詢總覽</h2>
+          <p class="hint">預設查詢本月預算；花錢前可先查某個 Budget Item 的年度與月度剩餘金額，也可輸入預計消費金額試算花下去後的剩餘預算。</p>
+          <form id="budgetLookupForm" onsubmit="queryBudget(event)" class="compact-form">
+            <label>預算項目 <select name="budget_item" id="budgetLookupItemSelect" required></select></label>
+            <label>預計消費金額 <input name="preview_amount" type="number" min="0" value="0"></label>
+            <button type="submit">查詢預算</button>
+          </form>
+          <div id="budgetLookupResult" class="table"></div>
+        </section>
+      </div>
 
-      <section>
-        <h2>財政部發票匯入</h2>
-        <p class="hint">從 Excel 或 CSV 複製含標題列的發票明細貼到下方。系統會先放入待確認清單，不會直接寫入正式消費紀錄。</p>
+      <section id="invoiceWorkbench" class="workbench">
+        <div class="section-header">
+          <div>
+            <h2>財政部發票匯入</h2>
+            <p class="hint">從 Excel 或 CSV 複製含標題列的發票明細貼到下方。系統會先放入待確認清單，不會直接寫入正式消費紀錄。</p>
+          </div>
+          <span class="section-tag">待確認</span>
+        </div>
         <div class="file-import-row">
           <label>選擇財政部 CSV 檔
             <input id="invoiceImportFile" type="file" accept=".csv,text/csv" onchange="loadInvoiceCsvFile(event)">
           </label>
         </div>
         <textarea id="invoiceImportText" rows="8" placeholder="請貼上財政部發票明細，第一列需包含欄位名稱"></textarea>
-        <div class="actions import-actions">
+        <div class="action-bar import-actions">
           <button type="button" onclick="importInvoices()">匯入待確認清單</button>
         </div>
         <pre id="invoiceImportResult"></pre>
-        <h3>待確認發票</h3>
-        <div class="actions import-actions">
+        <div class="section-header subheader">
+          <h3>待確認發票</h3>
+          <span class="hint">先確認預算項目、支付方式與信用卡，再批次入帳。</span>
+        </div>
+        <div class="action-bar batch-toolbar">
           <button type="button" onclick="selectAllInvoiceDrafts(true)">全選</button>
           <button type="button" onclick="selectAllInvoiceDrafts(false)">取消全選</button>
-          <button type="button" onclick="deleteSelectedInvoiceDrafts()">批次刪除</button>
+          <button type="button" class="danger" onclick="deleteSelectedInvoiceDrafts()">批次刪除</button>
           <button type="button" onclick="confirmSelectedInvoiceDrafts()">批次確認入帳</button>
           <button type="button" onclick="confirmSelectedInvoiceDrafts(true)">批次確認並匯入規則</button>
         </div>
@@ -149,7 +169,7 @@
         <div id="expenseBudgetPreview" class="table"></div>
         <div class="manual-import-panel">
           <h3>批次匯入手動消費</h3>
-          <p class="hint">適合沒有發票、海外網購或購物車多品項。第一列請放欄位名稱，支援 CSV 或從試算表複製貼上。</p>
+          <p class="hint">適合沒有發票、海外網購或購物車多品項。可含標題列；若沒有標題列，系統會依消費日、購買品項、消費金額、消費通路、預算項目、支付方式、信用卡、備註解析。</p>
           <div class="file-import-row">
             <label>選擇手動消費 CSV 檔
               <input id="manualExpenseImportFile" type="file" accept=".csv,text/csv" onchange="loadManualExpenseCsvFile(event)">
