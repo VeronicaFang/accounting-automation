@@ -1,6 +1,6 @@
 import { getCreditCardLabel } from "./expenses.mjs";
 
-export function getCashFlowOverview(incomeRows, paymentRows) {
+export function getCashFlowOverview(incomeRows, paymentRows, options = {}) {
   const normalizedIncomes = incomeRows
     .map((income) => ({ ...income, income_month: normalizeMonthKey(income.income_month) }))
     .filter((income) => income.income_month);
@@ -14,6 +14,7 @@ export function getCashFlowOverview(incomeRows, paymentRows) {
     ...activePayments.map((payment) => payment.cash_flow_month),
   ])).sort();
 
+  let runningBalance = Number(options.opening_balance || 0);
   return monthKeys.map((month) => {
     const incomeTotal = normalizedIncomes
       .filter((income) => income.income_month === month)
@@ -26,13 +27,21 @@ export function getCashFlowOverview(incomeRows, paymentRows) {
       .filter((payment) => payment.cash_flow_month === month)
       .filter((payment) => payment.payment_tool_type === "credit_card")
       .reduce((sum, payment) => sum + Number(payment.payment_amount || 0), 0);
-    return {
+    const netCashFlow = incomeTotal - cashExpenseTotal - creditCardPaymentTotal;
+    const openingBalance = runningBalance;
+    runningBalance += netCashFlow;
+    const row = {
       month,
       income_total: incomeTotal,
       cash_expense_total: cashExpenseTotal,
       credit_card_payment_total: creditCardPaymentTotal,
-      net_cash_flow: incomeTotal - cashExpenseTotal - creditCardPaymentTotal,
+      net_cash_flow: netCashFlow,
     };
+    if (Number.isFinite(Number(options.opening_balance))) {
+      row.opening_balance = openingBalance;
+      row.ending_balance = runningBalance;
+    }
+    return row;
   });
 }
 
@@ -152,12 +161,17 @@ export function normalizeMonthKey(value) {
   }
 
   const text = String(value).trim();
-  if (/^\d{4}-\d{2}$/.test(text)) return text;
+  if (/^\d{4}-\d{2}$/.test(text)) return isValidMonthKey(text) ? text : "";
   if (/^\d{4}-\d{2}-\d{2}/.test(text)) {
     const date = new Date(text);
     if (!Number.isNaN(date.getTime())) return formatTaipeiMonth(date);
   }
-  return text;
+  return "";
+}
+
+function isValidMonthKey(text) {
+  const [year, month] = text.split("-").map(Number);
+  return Number.isInteger(year) && year >= 1900 && Number.isInteger(month) && month >= 1 && month <= 12;
 }
 
 function formatTaipeiMonth(date) {

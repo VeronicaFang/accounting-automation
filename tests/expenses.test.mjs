@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { buildMonthlyExpenseScheduleRows, getRecentExpenses, isExpenseAmountAllowed, parseManualExpenseText, resolveExpenseSourceFields } from "../src/core/expenses.mjs";
+import { buildMonthlyExpenseScheduleRows, findPaymentSchedulesMissingExpenses, getRecentExpenses, isExpenseAmountAllowed, parseManualExpenseText, resolveExpenseSourceFields } from "../src/core/expenses.mjs";
 
 const expenses = [
   { expense_id: "E1", consumption_date: "2026-05-01", merchant_name: "超商", item_description: "早餐", budget_item: "23. 餐費", amount: 100, payment_tool_type: "cash", credit_card_name: "", expense_status: "normal" },
@@ -115,5 +115,17 @@ test("monthly expense schedule clamps large days to the last day of each month",
     "2026-01-31",
     "2026-02-28",
     "2026-03-31",
+  ]);
+});
+
+test("find payment schedules missing matching expense records", () => {
+  assert.deepEqual(findPaymentSchedulesMissingExpenses([
+    { payment_id: "P1", expense_id: "E1", payment_amount: 100 },
+    { payment_id: "P2", expense_id: "E2", payment_amount: 200 },
+    { payment_id: "P3", expense_id: "", payment_amount: 300 },
+  ], [
+    { expense_id: "E1" },
+  ]), [
+    { payment_id: "P2", expense_id: "E2", payment_amount: 200 },
   ]);
 });

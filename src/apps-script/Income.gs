@@ -93,6 +93,7 @@ function parseIncomeMonth_(value) {
 }
 
 function getCashFlowOverview() {
+  const settings = getCashFlowSettings();
   const incomes = readObjects_("IncomeSchedule")
     .map((income) => Object.assign({}, income, { income_month: normalizeMonthKey_(income.income_month) }))
     .filter((income) => income.income_month);
@@ -105,6 +106,7 @@ function getCashFlowOverview() {
     ...payments.map((payment) => payment.cash_flow_month),
   ])).sort();
 
+  let runningBalance = Number(settings.opening_balance || 0);
   return monthKeys.map((month) => {
     const incomeTotal = incomes
       .filter((income) => income.income_month === month)
@@ -117,14 +119,38 @@ function getCashFlowOverview() {
       .filter((payment) => payment.cash_flow_month === month)
       .filter((payment) => payment.payment_tool_type === "credit_card")
       .reduce((sum, payment) => sum + Number(payment.payment_amount || 0), 0);
+    const netCashFlow = incomeTotal - cashExpenseTotal - creditCardPaymentTotal;
+    const openingBalance = runningBalance;
+    runningBalance += netCashFlow;
     return {
       month,
+      opening_balance: openingBalance,
       income_total: incomeTotal,
       cash_expense_total: cashExpenseTotal,
       credit_card_payment_total: creditCardPaymentTotal,
-      net_cash_flow: incomeTotal - cashExpenseTotal - creditCardPaymentTotal,
+      net_cash_flow: netCashFlow,
+      ending_balance: runningBalance,
     };
   });
+}
+
+function getCashFlowSettings() {
+  const rows = readObjects_("AppSettings");
+  const openingBalanceRow = rows.find((row) => row.setting_key === "cash_flow_opening_balance");
+  return {
+    opening_balance: Number(openingBalanceRow && openingBalanceRow.setting_value || 0),
+  };
+}
+
+function updateCashFlowOpeningBalance(input) {
+  const amount = Number(input && input.opening_balance);
+  if (!isFinite(amount)) throw new Error("期初金額必須是數字。");
+  upsertObjectById_("AppSettings", "setting_key", "cash_flow_opening_balance", {
+    setting_key: "cash_flow_opening_balance",
+    setting_value: amount,
+    notes: "Cash Flow opening balance",
+  });
+  return getCashFlowSettings();
 }
 
 function getPaymentSchedule(monthLimit) {
@@ -247,12 +273,19 @@ function normalizeMonthKey_(value) {
     return Utilities.formatDate(value, "Asia/Taipei", "yyyy-MM");
   }
   const text = String(value).trim();
-  if (/^\d{4}-\d{2}$/.test(text)) return text;
+  if (/^\d{4}-\d{2}$/.test(text)) return isValidMonthKey_(text) ? text : "";
   if (/^\d{4}-\d{2}-\d{2}/.test(text)) {
     const date = new Date(text);
     if (!isNaN(date.getTime())) return Utilities.formatDate(date, "Asia/Taipei", "yyyy-MM");
   }
-  return text;
+  return "";
+}
+
+function isValidMonthKey_(text) {
+  const parts = text.split("-");
+  const year = Number(parts[0]);
+  const month = Number(parts[1]);
+  return isFinite(year) && year >= 1900 && isFinite(month) && month >= 1 && month <= 12;
 }
 
 function formatPaymentSourceExpense_(expense) {

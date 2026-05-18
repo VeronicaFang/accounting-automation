@@ -39,6 +39,14 @@ export function buildMonthlyExpenseScheduleRows(input = {}) {
   });
 }
 
+export function findPaymentSchedulesMissingExpenses(paymentRows = [], expenseRows = []) {
+  const expenseIds = new Set(expenseRows.map((expense) => String(expense.expense_id || "")).filter(Boolean));
+  return paymentRows
+    .filter((payment) => payment.expense_id)
+    .filter((payment) => !expenseIds.has(String(payment.expense_id)))
+    .map((payment) => ({ ...payment }));
+}
+
 function buildMonthlyExpenseDate(startYear, startMonthNumber, monthOffset, expenseDay) {
   const target = new Date(startYear, startMonthNumber - 1 + monthOffset, 1);
   const lastDay = new Date(target.getFullYear(), target.getMonth() + 1, 0).getDate();

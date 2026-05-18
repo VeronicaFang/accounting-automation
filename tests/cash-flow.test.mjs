@@ -27,6 +27,28 @@ test("cash flow overview separates income cash expenses credit card payments and
   ]);
 });
 
+test("cash flow overview excludes invalid month keys", () => {
+  assert.deepEqual(getCashFlowOverview(
+    [{ income_month: "NaN-NaN", income_amount: 1000 }],
+    [
+      { cash_flow_month: "NaN-NaN", payment_amount: 3000, payment_status: "estimated", payment_tool_type: "cash" },
+      { cash_flow_month: "2026-05", payment_amount: 500, payment_status: "estimated", payment_tool_type: "cash" },
+    ],
+  ), [
+    { month: "2026-05", income_total: 0, cash_expense_total: 500, credit_card_payment_total: 0, net_cash_flow: -500 },
+  ]);
+});
+
+test("cash flow overview can include opening and ending balances without counting opening balance as income", () => {
+  assert.deepEqual(getCashFlowOverview(
+    [{ income_month: "2026-05", income_amount: 65000 }],
+    [{ cash_flow_month: "2026-05", payment_amount: 10000, payment_status: "estimated", payment_tool_type: "cash" }],
+    { opening_balance: 200000 },
+  ), [
+    { month: "2026-05", income_total: 65000, cash_expense_total: 10000, credit_card_payment_total: 0, net_cash_flow: 55000, opening_balance: 200000, ending_balance: 255000 },
+  ]);
+});
+
 test("upcoming credit card payments exclude paid offset and cash rows", () => {
   assert.deepEqual(getUpcomingCreditCardPayments(payments, ["2026-05", "2026-06"]), [
     { month: "2026-05", credit_card_name: "YuShan", credit_card_label: "玉山", amount: 10000 },

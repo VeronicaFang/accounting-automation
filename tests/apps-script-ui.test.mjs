@@ -46,6 +46,18 @@ test("manual expense UI shares budget options with monthly schedules", () => {
   assert.match(client, /function toggleMonthlyExpenseCard/);
 });
 
+test("cash flow UI exposes opening balance setting and balance columns", () => {
+  const index = read("src/apps-script/Index.html");
+  const client = read("src/apps-script/Client.html");
+
+  assert.match(index, /id="cashFlowSettingsForm"/);
+  assert.match(index, /id="cashFlowOpeningBalance"/);
+  assert.match(client, /function submitCashFlowOpeningBalance/);
+  assert.match(client, /updateCashFlowOpeningBalance\(input\)/);
+  assert.match(client, /期初餘額/);
+  assert.match(client, /期末餘額/);
+});
+
 test("Styles define the dashboard UI primitives used by the page", () => {
   const styles = read("src/apps-script/Styles.html");
 

@@ -45,6 +45,7 @@
         };
         data.pendingInvoiceDrafts = pendingInvoiceDraftPage.rows || [];
         data.pendingInvoiceDraftPage = pendingInvoiceDraftPage;
+        renderCashFlowSettings(data.cashFlowSettings || {});
         renderBudget(budgetSummary);
         renderCashFlow(cashFlowOverview);
         renderIncomeSchedule(incomeSchedule);
@@ -74,12 +75,17 @@
 
   function renderCashFlow(rows) {
     const html = [
-      "<table><thead><tr><th>月份</th><th>收入</th><th>現金支出</th><th>信用卡付款</th><th>月淨流量</th></tr></thead><tbody>",
-      ...rows.map((row) => `<tr><td>${formatMonth(row.month)}</td><td>${formatMoney(row.income_total)}</td><td>${formatMoney(row.cash_expense_total)}</td><td>${formatMoney(row.credit_card_payment_total)}</td><td>${formatMoney(row.net_cash_flow)}</td></tr>`),
-      rows.length === 0 ? '<tr><td colspan="5">尚未載入現金流資料。</td></tr>' : "",
+      "<table><thead><tr><th>月份</th><th>期初餘額</th><th>收入</th><th>現金支出</th><th>信用卡付款</th><th>月淨流量</th><th>期末餘額</th></tr></thead><tbody>",
+      ...rows.map((row) => `<tr><td>${formatMonth(row.month)}</td><td>${formatMoney(row.opening_balance)}</td><td>${formatMoney(row.income_total)}</td><td>${formatMoney(row.cash_expense_total)}</td><td>${formatMoney(row.credit_card_payment_total)}</td><td>${formatMoney(row.net_cash_flow)}</td><td>${formatMoney(row.ending_balance)}</td></tr>`),
+      rows.length === 0 ? '<tr><td colspan="7">尚未載入現金流資料。</td></tr>' : "",
       "</tbody></table>",
     ].join("");
     document.getElementById("cashFlowOverview").innerHTML = html;
+  }
+
+  function renderCashFlowSettings(settings) {
+    const input = document.getElementById("cashFlowOpeningBalance");
+    if (input) input.value = Number(settings.opening_balance || 0);
   }
 
   function renderIncomeSchedule(rows) {
@@ -482,6 +488,19 @@
     }).withFailureHandler((error) => {
       document.getElementById("monthlyExpenseScheduleResult").textContent = `建立固定消費失敗：${error.message}`;
     }).createMonthlyExpenseSchedule(input);
+  }
+
+  function submitCashFlowOpeningBalance(event) {
+    event.preventDefault();
+    const formData = new FormData(event.target);
+    const input = Object.fromEntries(formData.entries());
+    document.getElementById("cashFlowSettingsResult").textContent = "正在更新期初金額...";
+    google.script.run.withSuccessHandler((result) => {
+      document.getElementById("cashFlowSettingsResult").textContent = `已更新期初金額：${formatMoney(result.opening_balance)}。`;
+      refresh();
+    }).withFailureHandler((error) => {
+      document.getElementById("cashFlowSettingsResult").textContent = `更新期初金額失敗：${error.message}`;
+    }).updateCashFlowOpeningBalance(input);
   }
 
   function submitSalarySchedule(event) {

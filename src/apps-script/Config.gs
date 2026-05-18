@@ -11,6 +11,7 @@ const SHEET_NAMES = {
   classificationHistory: "ClassificationHistory",
   paymentChoiceHistory: "PaymentChoiceHistory",
   importedInvoiceDrafts: "ImportedInvoiceDrafts",
+  appSettings: "AppSettings",
 };
 
 const HEADERS = {
@@ -139,6 +140,11 @@ const HEADERS = {
     "cutoff_day",
     "payment_day",
     "is_default_for_other_cards",
+    "notes",
+  ],
+  AppSettings: [
+    "setting_key",
+    "setting_value",
     "notes",
   ],
 };

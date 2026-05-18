@@ -124,3 +124,23 @@ function updateObjectById_(sheetName, idColumn, idValue, updates) {
     if (columnIndex >= 0) sheet.getRange(rowNumber, columnIndex + 1).setValue(updates[key]);
   });
 }
+
+function upsertObjectById_(sheetName, idColumn, idValue, record) {
+  const sheet = getDatabase_().getSheetByName(sheetName);
+  if (!sheet) throw new Error(`找不到工作表：${sheetName}`);
+  const headers = sheet.getRange(1, 1, 1, sheet.getLastColumn()).getValues()[0];
+  const idIndex = headers.indexOf(idColumn);
+  if (idIndex < 0) throw new Error(`找不到欄位：${idColumn}`);
+  if (sheet.getLastRow() >= 2) {
+    const values = sheet.getRange(2, 1, sheet.getLastRow() - 1, sheet.getLastColumn()).getValues();
+    const rowIndex = values.findIndex((row) => String(row[idIndex]) === String(idValue));
+    if (rowIndex >= 0) {
+      const rowNumber = rowIndex + 2;
+      headers.forEach((header, index) => {
+        if (Object.prototype.hasOwnProperty.call(record, header)) sheet.getRange(rowNumber, index + 1).setValue(record[header]);
+      });
+      return;
+    }
+  }
+  appendObject_(sheetName, record);
+}

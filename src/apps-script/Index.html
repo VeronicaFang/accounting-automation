@@ -25,7 +25,12 @@
             <h2>現金流</h2>
             <span class="section-tag">每月餘額</span>
           </div>
-          <p class="hint">收入依收入月份計入；現金支出與信用卡付款依付款月份計入；月淨流量 = 收入 - 現金支出 - 信用卡付款。</p>
+          <p class="hint">收入依收入月份計入；現金支出與信用卡付款依付款月份計入；月淨流量 = 收入 - 現金支出 - 信用卡付款。期初金額只影響餘額，不會算進收入。</p>
+          <form id="cashFlowSettingsForm" class="compact-form" onsubmit="submitCashFlowOpeningBalance(event)">
+            <label>期初金額 <input id="cashFlowOpeningBalance" name="opening_balance" type="number" step="1" value="0"></label>
+            <button type="submit">更新期初金額</button>
+          </form>
+          <pre id="cashFlowSettingsResult"></pre>
           <div id="cashFlowOverview" class="table"></div>
         </section>
         <section class="dashboard-panel panel-wide">

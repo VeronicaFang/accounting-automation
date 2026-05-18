@@ -168,6 +168,26 @@ function createMonthlyExpenseSchedule(input) {
   };
 }
 
+function debugFindPaymentSchedulesMissingExpenses() {
+  const expenseIds = {};
+  readObjects_("ExpenseRecords").forEach((expense) => {
+    if (expense.expense_id) expenseIds[String(expense.expense_id)] = true;
+  });
+  return readObjects_("PaymentSchedule")
+    .filter((payment) => payment.expense_id)
+    .filter((payment) => !expenseIds[String(payment.expense_id)])
+    .map((payment) => ({
+      payment_id: payment.payment_id,
+      expense_id: payment.expense_id,
+      payment_date: payment.payment_date,
+      cash_flow_month: payment.cash_flow_month,
+      payment_amount: Number(payment.payment_amount || 0),
+      payment_tool_type: payment.payment_tool_type,
+      credit_card_name: payment.credit_card_name,
+      payment_status: payment.payment_status,
+    }));
+}
+
 function validateMonthlyExpenseSchedule_(input) {
   if (!input || !String(input.start_month || "").match(/^\d{4}-\d{2}$/)) throw new Error("請選擇開始月份。");
   const repeatCount = Number(input.repeat_count);
