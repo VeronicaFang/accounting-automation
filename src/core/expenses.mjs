@@ -14,6 +14,42 @@ export function parseManualExpenseText(text) {
   }).filter((row) => row.consumption_date || row.purchase_item || row.amount !== 0);
 }
 
+export function buildMonthlyExpenseScheduleRows(input = {}) {
+  const startMonth = String(input.start_month || "").trim();
+  const repeatCount = Number(input.repeat_count || 0);
+  const expenseDay = Number(input.expense_day || 0);
+  if (!/^\d{4}-\d{2}$/.test(startMonth)) throw new Error("start_month must be YYYY-MM");
+  if (!Number.isInteger(repeatCount) || repeatCount < 1) throw new Error("repeat_count must be a positive integer");
+  if (!Number.isInteger(expenseDay) || expenseDay < 1 || expenseDay > 31) throw new Error("expense_day must be between 1 and 31");
+
+  const [startYear, startMonthNumber] = startMonth.split("-").map(Number);
+  return Array.from({ length: repeatCount }, (_, index) => {
+    const date = buildMonthlyExpenseDate(startYear, startMonthNumber, index, expenseDay);
+    const paymentToolType = input.payment_tool_type || "cash";
+    return {
+      consumption_date: date,
+      purchase_item: input.purchase_item || "",
+      amount: Number(input.amount || 0),
+      channel: input.channel || "",
+      budget_item: input.budget_item || "",
+      payment_tool_type: paymentToolType,
+      credit_card_name: paymentToolType === "credit_card" ? (input.credit_card_name || "") : "",
+      notes: input.notes || "",
+    };
+  });
+}
+
+function buildMonthlyExpenseDate(startYear, startMonthNumber, monthOffset, expenseDay) {
+  const target = new Date(startYear, startMonthNumber - 1 + monthOffset, 1);
+  const lastDay = new Date(target.getFullYear(), target.getMonth() + 1, 0).getDate();
+  const day = Math.min(expenseDay, lastDay);
+  return [
+    target.getFullYear(),
+    String(target.getMonth() + 1).padStart(2, "0"),
+    String(day).padStart(2, "0"),
+  ].join("-");
+}
+
 function isManualExpenseHeaderRow(cells) {
   return cells.some((cell) => ["消費日", "消費日期", "日期", "consumption_date", "購買品項", "消費金額", "amount"].includes(cell));
 }

@@ -53,6 +53,7 @@
         renderPendingInvoiceDrafts(data.pendingInvoiceDrafts, budgetItems, pendingInvoiceDraftPage);
         renderBudgetOptions(budgetItems);
         toggleCard();
+        toggleMonthlyExpenseCard();
         setDebug(`已載入 ${budgetItems.length} 個預算項目、${budgetSummary.length} 筆預算狀態、${cashFlowOverview.length} 個現金流月份。`);
       })
       .withFailureHandler((error) => {
@@ -415,6 +416,7 @@
     const selects = [
       document.getElementById("budgetItemSelect"),
       document.getElementById("budgetLookupItemSelect"),
+      document.getElementById("monthlyExpenseBudgetItemSelect"),
     ].filter(Boolean);
     if (items.length === 0) {
       selects.forEach((select) => select.innerHTML = '<option value="">尚未載入預算項目</option>');
@@ -427,6 +429,13 @@
   function toggleCard() {
     const isCard = document.getElementById("paymentToolType").value === "credit_card";
     document.getElementById("cardField").style.display = isCard ? "grid" : "none";
+  }
+
+  function toggleMonthlyExpenseCard() {
+    const type = document.getElementById("monthlyExpensePaymentToolType");
+    const field = document.getElementById("monthlyExpenseCardField");
+    if (!type || !field) return;
+    field.style.display = type.value === "credit_card" ? "grid" : "none";
   }
 
   function submitExpense(event) {
@@ -458,6 +467,21 @@
     }).withFailureHandler((error) => {
       document.getElementById("incomeResult").textContent = `儲存失敗：${error.message}`;
     }).createIncome(input);
+  }
+
+  function submitMonthlyExpenseSchedule(event) {
+    event.preventDefault();
+    const formData = new FormData(event.target);
+    const input = Object.fromEntries(formData.entries());
+    document.getElementById("monthlyExpenseScheduleResult").textContent = "正在建立每月固定消費...";
+    google.script.run.withSuccessHandler((result) => {
+      document.getElementById("monthlyExpenseScheduleResult").textContent = `已建立 ${result.created_count || 0} 筆固定消費，期間 ${result.first_consumption_date || ""} 到 ${result.last_consumption_date || ""}。`;
+      event.target.reset();
+      toggleMonthlyExpenseCard();
+      refresh();
+    }).withFailureHandler((error) => {
+      document.getElementById("monthlyExpenseScheduleResult").textContent = `建立固定消費失敗：${error.message}`;
+    }).createMonthlyExpenseSchedule(input);
   }
 
   function submitSalarySchedule(event) {

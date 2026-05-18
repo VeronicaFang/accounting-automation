@@ -1,6 +1,6 @@
 function createManualExpense(input) {
   validateManualExpense_(input);
-  const expenseId = makeId_("E");
+  const expenseId = input.expense_id || makeId_("E");
   const consumptionDate = toDateText_(input.consumption_date);
   const budgetMonth = toMonthKey_(consumptionDate);
   const installmentCount = input.is_installment === "yes" ? Number(input.installment_count) : 1;
@@ -69,7 +69,7 @@ function createPaymentSchedulesForExpense_(expense) {
   return payments.map((paymentAmount, index) => {
     const paymentDate = index === 0 ? firstPaymentDate : addMonths_(firstPaymentDate, index);
     return {
-      payment_id: makeId_("P") + String(index + 1).padStart(2, "0"),
+      payment_id: `${expense.expense_id}_P${String(index + 1).padStart(2, "0")}`,
       expense_id: expense.expense_id,
       payment_sequence: index + 1,
       payment_date: paymentDate,
@@ -145,6 +145,77 @@ function importManualExpensesFromText(text, options) {
     }
   });
   return { imported_count: results.length, error_count: errors.length, errors };
+}
+
+function createMonthlyExpenseSchedule(input) {
+  validateMonthlyExpenseSchedule_(input);
+  const scheduleId = makeId_("MES");
+  const rows = buildMonthlyExpenseScheduleRows_(input, scheduleId);
+  const results = rows.map((row) => createManualExpense(Object.assign({}, row, {
+    source_type: "monthly_scheduled_expense",
+    source_record_id: scheduleId,
+    classification_basis: "monthly_expense_schedule",
+    is_installment: "no",
+    installment_count: 1,
+    save_to_merchant_payment_rules: input.save_to_merchant_payment_rules === true || input.save_to_merchant_payment_rules === "yes" ? "yes" : "no",
+  })));
+  return {
+    schedule_id: scheduleId,
+    created_count: results.length,
+    first_consumption_date: rows.length ? rows[0].consumption_date : "",
+    last_consumption_date: rows.length ? rows[rows.length - 1].consumption_date : "",
+    expense_ids: results.map((result) => result.expense.expense_id),
+  };
+}
+
+function validateMonthlyExpenseSchedule_(input) {
+  if (!input || !String(input.start_month || "").match(/^\d{4}-\d{2}$/)) throw new Error("請選擇開始月份。");
+  const repeatCount = Number(input.repeat_count);
+  if (!isFinite(repeatCount) || repeatCount < 1 || Math.floor(repeatCount) !== repeatCount) throw new Error("請填寫正確的重複次數。");
+  const expenseDay = Number(input.expense_day);
+  if (!isFinite(expenseDay) || expenseDay < 1 || expenseDay > 31 || Math.floor(expenseDay) !== expenseDay) throw new Error("每月幾號需介於 1 到 31。");
+  if (!input.purchase_item) throw new Error("請填寫固定支出項目。");
+  if (!input.channel) throw new Error("請填寫消費通路。");
+  if (!input.budget_item) throw new Error("請選擇預算項目。");
+  if (!input.payment_tool_type) throw new Error("請選擇支付工具類型。");
+  if (input.payment_tool_type === "credit_card" && !input.credit_card_name) throw new Error("信用卡付款請選擇信用卡名稱。");
+  if (!isExpenseAmountAllowed_(input)) throw new Error("消費金額必須大於 0。");
+}
+
+function buildMonthlyExpenseScheduleRows_(input, scheduleId) {
+  const startMonth = String(input.start_month || "").trim();
+  const repeatCount = Number(input.repeat_count || 0);
+  const expenseDay = Number(input.expense_day || 0);
+  const parts = startMonth.split("-");
+  const startYear = Number(parts[0]);
+  const startMonthNumber = Number(parts[1]);
+  const rows = [];
+  for (let index = 0; index < repeatCount; index += 1) {
+    const consumptionDate = buildMonthlyExpenseDate_(startYear, startMonthNumber, index, expenseDay);
+    rows.push({
+      expense_id: `${scheduleId.replace(/^MES/, "E")}_${String(index + 1).padStart(3, "0")}`,
+      consumption_date: consumptionDate,
+      purchase_item: input.purchase_item,
+      amount: Number(input.amount || 0),
+      channel: input.channel,
+      budget_item: input.budget_item,
+      payment_tool_type: input.payment_tool_type || "cash",
+      credit_card_name: input.payment_tool_type === "credit_card" ? (input.credit_card_name || "") : "",
+      notes: input.notes || "",
+    });
+  }
+  return rows;
+}
+
+function buildMonthlyExpenseDate_(startYear, startMonthNumber, monthOffset, expenseDay) {
+  const target = new Date(startYear, startMonthNumber - 1 + monthOffset, 1);
+  const lastDay = new Date(target.getFullYear(), target.getMonth() + 1, 0).getDate();
+  const day = Math.min(expenseDay, lastDay);
+  return [
+    target.getFullYear(),
+    String(target.getMonth() + 1).padStart(2, "0"),
+    String(day).padStart(2, "0"),
+  ].join("-");
 }
 
 function parseManualExpenseText_(text) {

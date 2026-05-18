@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { getRecentExpenses, isExpenseAmountAllowed, parseManualExpenseText, resolveExpenseSourceFields } from "../src/core/expenses.mjs";
+import { buildMonthlyExpenseScheduleRows, getRecentExpenses, isExpenseAmountAllowed, parseManualExpenseText, resolveExpenseSourceFields } from "../src/core/expenses.mjs";
 
 const expenses = [
   { expense_id: "E1", consumption_date: "2026-05-01", merchant_name: "超商", item_description: "早餐", budget_item: "23. 餐費", amount: 100, payment_tool_type: "cash", credit_card_name: "", expense_status: "normal" },
@@ -80,4 +80,40 @@ test("parse manual expense text supports rows without headers using default orde
 test("manual batch import allows zero and negative amount lines", () => {
   assert.equal(isExpenseAmountAllowed({ source_type: "manual_batch_import", amount: 0 }), true);
   assert.equal(isExpenseAmountAllowed({ source_type: "manual_batch_import", amount: -30 }), true);
+});
+
+test("monthly expense schedule creates repeated monthly expense inputs", () => {
+  assert.deepEqual(buildMonthlyExpenseScheduleRows({
+    start_month: "2026-05",
+    expense_day: 5,
+    repeat_count: 3,
+    purchase_item: "每月家用",
+    amount: 10000,
+    channel: "家庭轉帳",
+    budget_item: "01. 老公家用",
+    payment_tool_type: "cash",
+    notes: "固定支出",
+  }), [
+    { consumption_date: "2026-05-05", purchase_item: "每月家用", amount: 10000, channel: "家庭轉帳", budget_item: "01. 老公家用", payment_tool_type: "cash", credit_card_name: "", notes: "固定支出" },
+    { consumption_date: "2026-06-05", purchase_item: "每月家用", amount: 10000, channel: "家庭轉帳", budget_item: "01. 老公家用", payment_tool_type: "cash", credit_card_name: "", notes: "固定支出" },
+    { consumption_date: "2026-07-05", purchase_item: "每月家用", amount: 10000, channel: "家庭轉帳", budget_item: "01. 老公家用", payment_tool_type: "cash", credit_card_name: "", notes: "固定支出" },
+  ]);
+});
+
+test("monthly expense schedule clamps large days to the last day of each month", () => {
+  assert.deepEqual(buildMonthlyExpenseScheduleRows({
+    start_month: "2026-01",
+    expense_day: 31,
+    repeat_count: 3,
+    purchase_item: "月底訂閱",
+    amount: 299,
+    channel: "App Store",
+    budget_item: "26. 奢侈娛樂",
+    payment_tool_type: "credit_card",
+    credit_card_name: "中信",
+  }).map((row) => row.consumption_date), [
+    "2026-01-31",
+    "2026-02-28",
+    "2026-03-31",
+  ]);
 });

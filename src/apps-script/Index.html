@@ -167,6 +167,37 @@
           <button type="submit" name="save_to_merchant_payment_rules" value="yes">把本次紀錄匯入店家支付規則中</button>
         </form>
         <div id="expenseBudgetPreview" class="table"></div>
+        <div class="schedule-panel">
+          <h3>建立每月固定消費</h3>
+          <p class="hint">適合固定訂閱、每月家用或定期轉帳。系統會依設定一次建立多筆消費，並自動產生對應付款排程。</p>
+          <form id="monthlyExpenseScheduleForm" onsubmit="submitMonthlyExpenseSchedule(event)">
+            <label>開始月份 <input name="start_month" type="month" required></label>
+            <label>每月幾號 <input name="expense_day" type="number" min="1" max="31" value="5" required></label>
+            <label>重複次數 <input name="repeat_count" type="number" min="1" max="120" value="12" required></label>
+            <label>固定支出項目 <input name="purchase_item" placeholder="例如：Netflix / 每月家用" required></label>
+            <label>每月金額 <input name="amount" type="number" min="1" required></label>
+            <label>消費通路 <input name="channel" placeholder="例如：App Store / 家庭轉帳" required></label>
+            <label>預算項目 <select name="budget_item" id="monthlyExpenseBudgetItemSelect" required></select></label>
+            <label>支付工具類型
+              <select name="payment_tool_type" id="monthlyExpensePaymentToolType" onchange="toggleMonthlyExpenseCard()">
+                <option value="cash">現金</option>
+                <option value="credit_card">信用卡</option>
+              </select>
+            </label>
+            <label id="monthlyExpenseCardField">信用卡名稱
+              <select name="credit_card_name">
+                <option value="玉山">玉山</option>
+                <option value="聯邦">聯邦</option>
+                <option value="國泰">國泰</option>
+                <option value="富邦">富邦</option>
+                <option value="中信">中信</option>
+              </select>
+            </label>
+            <label>備註 <input name="notes"></label>
+            <button type="submit">建立固定消費</button>
+          </form>
+          <pre id="monthlyExpenseScheduleResult"></pre>
+        </div>
         <div class="manual-import-panel">
           <h3>批次匯入手動消費</h3>
           <p class="hint">適合沒有發票、海外網購或購物車多品項。可含標題列；若沒有標題列，系統會依消費日、購買品項、消費金額、消費通路、預算項目、支付方式、信用卡、備註解析。</p>
