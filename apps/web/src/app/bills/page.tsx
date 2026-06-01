@@ -2,9 +2,11 @@ import { AppShell } from "@/components/app-shell";
 import { BillEstimateTable } from "@/components/bill-estimate-table";
 import { DetailDrawer } from "@/components/detail-drawer";
 import { PageHeader } from "@/components/page-header";
-import { billEstimates } from "@/lib/mock-data";
+import { getAccountingDashboardData } from "@/lib/data/accounting-dashboard";
 
-export default function BillsPage() {
+export default async function BillsPage() {
+  const { billEstimates } = await getAccountingDashboardData();
+
   return (
     <AppShell>
       <PageHeader

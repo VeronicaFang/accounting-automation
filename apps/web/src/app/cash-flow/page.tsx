@@ -1,9 +1,11 @@
 import { AppShell } from "@/components/app-shell";
 import { CashFlowTable } from "@/components/cash-flow-table";
 import { PageHeader } from "@/components/page-header";
-import { cashFlowMonths } from "@/lib/mock-data";
+import { getAccountingDashboardData } from "@/lib/data/accounting-dashboard";
 
-export default function CashFlowPage() {
+export default async function CashFlowPage() {
+  const { cashFlowMonths } = await getAccountingDashboardData();
+
   return (
     <AppShell>
       <PageHeader

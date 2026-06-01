@@ -1,9 +1,11 @@
 import { AppShell } from "@/components/app-shell";
 import { BudgetStatusList } from "@/components/budget-status-list";
 import { PageHeader } from "@/components/page-header";
-import { budgetStatuses, currentMonth } from "@/lib/mock-data";
+import { getAccountingDashboardData } from "@/lib/data/accounting-dashboard";
 
-export default function BudgetPage() {
+export default async function BudgetPage() {
+  const { budgetStatuses, currentMonth } = await getAccountingDashboardData();
+
   return (
     <AppShell>
       <PageHeader

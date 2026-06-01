@@ -12,5 +12,6 @@ export const navigationItems: NavigationItem[] = [
   { href: "/cash-flow", label: "現金流", description: "收入、支出、付款、淨流量" },
   { href: "/budget", label: "預算", description: "預算查詢與分類" },
   { href: "/rules", label: "規則", description: "商戶與分類規則" },
+  { href: "/login", label: "登入", description: "Email magic link" },
   { href: "/settings", label: "設定", description: "信用卡、期初金額、資料匯入" }
 ];

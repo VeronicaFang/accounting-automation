@@ -5,9 +5,11 @@ import { CashFlowTable } from "@/components/cash-flow-table";
 import { PageHeader } from "@/components/page-header";
 import { StatStrip } from "@/components/stat-strip";
 import { TaskWorkbench } from "@/components/task-workbench";
-import { billEstimates, budgetStatuses, cashFlowMonths, currentMonth, reviewTasks } from "@/lib/mock-data";
+import { getAccountingDashboardData } from "@/lib/data/accounting-dashboard";
 
-export default function HomePage() {
+export default async function HomePage() {
+  const { billEstimates, budgetStatuses, cashFlowMonths, currentMonth, reviewTasks } =
+    await getAccountingDashboardData();
   const currentCashFlow = cashFlowMonths[0];
 
   return (

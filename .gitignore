@@ -1,7 +1,7 @@
 *.xlsx
 *.xls
-data/
-exports/
+/data/
+/exports/
 local/
 *.csv.local
 ~$*
@@ -16,3 +16,4 @@ temp-apps-script/
 node_modules/
 .next/
 *.tsbuildinfo
+apps/web/.env.local

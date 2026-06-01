@@ -1,9 +1,11 @@
 import { AppShell } from "@/components/app-shell";
 import { PageHeader } from "@/components/page-header";
 import { TaskWorkbench } from "@/components/task-workbench";
-import { reviewTasks } from "@/lib/mock-data";
+import { getAccountingDashboardData } from "@/lib/data/accounting-dashboard";
 
-export default function ReviewPage() {
+export default async function ReviewPage() {
+  const { reviewTasks } = await getAccountingDashboardData();
+
   return (
     <AppShell>
       <PageHeader
