@@ -11,3 +11,8 @@ Thumbs.db
 .clasp.json
 dist/
 temp-apps-script/
+
+# Web app dependencies and build output
+node_modules/
+.next/
+*.tsbuildinfo

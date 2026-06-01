@@ -184,6 +184,8 @@ Supabase v1 uses product-oriented tables instead of copying Google Sheet tab nam
 
 All migrated tables that carry Google Sheet data should preserve source fields such as `source_system`, `source_table`, `source_row_id`, `legacy_id`, and `imported_at` where applicable.
 
+The frontend Bill Center reads monthly credit-card totals from `credit_card_bill_estimates` and real statements from `credit_card_statements`. Cash-flow display uses the actual statement amount when available; otherwise it uses the estimate. Payment schedules remain the traceable detail source behind an estimate.
+
 ### credit_card_bill_estimates
 
 Stores the monthly estimated credit card bill by household, card, and bill month. This table is the user-facing monthly bill estimate source for Bill Center, and is derived from `payment_schedules`.
