@@ -7,12 +7,12 @@
 
 | 流程 | 主要資料表 |
 |---|---|
-| 初始化 | `BudgetItems`, `CreditCardRules`, `MerchantPaymentRules`, `MerchantItemRules`, `ClassificationHistory`, `PaymentChoiceHistory`, `ImportedInvoiceDrafts`, `ExpenseRecords`, `PaymentSchedule`, `IncomeSchedule` |
+| 初始化 | `BudgetItems`, `CreditCardRules`, `MerchantPaymentRules`, `MerchantItemRules`, `ClassificationHistory`, `PaymentChoiceHistory`, `ImportedInvoiceDrafts`, `ExpenseRecords`, `PaymentSchedule`, `IncomeSchedule`, `AppSettings` |
 | 發票匯入 | `ImportedInvoiceDrafts`, `MerchantPaymentRules`, `MerchantItemRules`, `ExpenseRecords` |
 | 待確認發票確認 | `ImportedInvoiceDrafts`, `ExpenseRecords`, `PaymentSchedule`, `ClassificationHistory`, `PaymentChoiceHistory`, `MerchantPaymentRules` |
 | 手動單筆消費 | `ExpenseRecords`, `PaymentSchedule`, `MerchantPaymentRules`, `BudgetItems` |
 | 手動批次匯入 | `ExpenseRecords`, `PaymentSchedule`, `MerchantPaymentRules`, `BudgetItems` |
-| Dashboard | `BudgetItems`, `ExpenseRecords`, `PaymentSchedule`, `IncomeSchedule`, `ImportedInvoiceDrafts` |
+| Dashboard | `BudgetItems`, `ExpenseRecords`, `PaymentSchedule`, `IncomeSchedule`, `ImportedInvoiceDrafts`, `AppSettings` |
 | 對帳與修正 | `PaymentSchedule`, `IncomeSchedule` |
 
 ## 初始化流程
@@ -20,7 +20,7 @@
 1. 部署 Apps Script Web App。
 2. 確認 `Config.gs` 的 `SPREADSHEET_ID` 指向正確 Google Sheet。
 3. 執行 `setupDatabase()`。
-4. 系統建立或補齊 10 張正式資料表。
+4. 系統建立或補齊 11 張正式資料表。
 5. 系統 seed `CreditCardRules` 與初始 `MerchantPaymentRules`。
 6. 使用者在 `BudgetItems` 放入有效預算項目。
 7. Web App 點擊 Refresh 後載入 dashboard。

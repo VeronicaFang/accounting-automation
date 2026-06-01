@@ -1,6 +1,6 @@
 # 資料模型
 
-本文件描述 Google Sheet 資料庫的 10 張正式資料表。表結構以 `src/apps-script/Config.gs` 的 `HEADERS` 為準。
+本文件描述 Google Sheet 資料庫的 11 張正式資料表。表結構以 `src/apps-script/Config.gs` 的 `HEADERS` 為準。
 
 ## 資料庫總覽
 
@@ -16,6 +16,7 @@
 | `ClassificationHistory` | 使用者確認過的預算分類歷史。 |
 | `PaymentChoiceHistory` | 使用者確認過的支付方式歷史。 |
 | `CreditCardRules` | 信用卡結帳日與付款日規則。 |
+| `AppSettings` | 系統設定，例如現金流期初餘額。 |
 
 ## BudgetItems
 
@@ -158,3 +159,101 @@
 | `payment_day` | 付款日。 |
 | `is_default_for_other_cards` | 是否為其他信用卡預設規則。 |
 | `notes` | 備註。 |
+
+### AppSettings
+
+系統設定表。此表儲存不適合放進收入或消費紀錄的全域設定，例如現金流期初餘額。
+
+| 欄位 | 說明 |
+|---|---|
+| `setting_key` | 設定鍵，例如 `cash_flow_opening_balance`。 |
+| `setting_value` | 設定值。 |
+| `notes` | 備註。 |
+
+## Supabase Migration Model v1
+
+The current deployed MVP still uses Google Sheets as the operational data store. Supabase is the next-system schema and must preserve source traceability during the dual-track transition.
+
+Supabase v1 uses product-oriented tables instead of copying Google Sheet tab names directly:
+
+- `budget_groups` and `budget_items` replace the flat `BudgetItems` view while keeping `legacy_code` and `legacy_name`.
+- `expenses`, `payment_schedules`, and `income_schedules` preserve the current accounting model: budget usage follows consumption date, cash flow follows payment date.
+- `credit_card_bill_estimates` and `credit_card_statements` support estimated-vs-actual credit card bills. Cash flow uses actual statement amount when present and estimated amount otherwise.
+- `budget_mapping_drafts` keeps old-to-new budget taxonomy migration review-gated.
+- `migration_runs` and `migration_issues` record import and reconciliation results before switching daily use away from Google Sheets.
+
+All migrated tables that carry Google Sheet data should preserve source fields such as `source_system`, `source_table`, `source_row_id`, `legacy_id`, and `imported_at` where applicable.
+
+### credit_card_bill_estimates
+
+Stores the monthly estimated credit card bill by household, card, and bill month. This table is the user-facing monthly bill estimate source for Bill Center, and is derived from `payment_schedules`.
+
+| Field | Description |
+|---|---|
+| `id` | Primary key. |
+| `household_id` | Household owner for the estimate. |
+| `credit_card_id` | Credit card being estimated. Must belong to the same household. |
+| `bill_month` | Bill/payment month in `YYYY-MM`; must be a valid month from `01` to `12`. |
+| `billing_period_start` | Estimated start date of the card billing period. |
+| `billing_period_end` | Estimated end date of the card billing period. |
+| `estimated_payment_date` | Estimated payment due date. |
+| `estimated_bill_amount` | Estimated bill amount aggregated from payment schedules. |
+| `detail_count` | Number of payment schedule details included in the estimate. |
+| `source_system` | Source system for migrated or imported estimate data. |
+| `source_table` | Source table or sheet name for migrated data. |
+| `source_row_id` | Source row identifier for traceability. |
+| `legacy_id` | Legacy identifier when available. |
+| `imported_at` | Time the legacy data was imported. |
+| `generated_at` | Time the estimate was generated. |
+
+Unique key: `household_id + credit_card_id + bill_month`.
+
+### credit_card_statements
+
+Stores real credit card statement amounts entered or imported by the user. Cash flow uses this table before falling back to `credit_card_bill_estimates`.
+
+| Field | Description |
+|---|---|
+| `id` | Primary key. |
+| `household_id` | Household owner for the statement. |
+| `user_id` | User who entered or imported the statement. |
+| `credit_card_id` | Credit card on the statement. Must belong to the same household. |
+| `statement_month` | Statement/payment month in `YYYY-MM`; must be a valid month from `01` to `12`. |
+| `payment_due_date` | Actual payment due date on the statement. |
+| `actual_amount` | Actual bill amount from the statement. |
+| `statement_status` | `missing`, `entered`, `reconciled`, or `ignored`. |
+| `source` | Manual entry or import source label. |
+| `source_system` | Source system for migrated or imported statement data. |
+| `source_table` | Source table or sheet name for migrated data. |
+| `source_row_id` | Source row identifier for traceability. |
+| `legacy_id` | Legacy identifier when available. |
+| `imported_at` | Time the legacy data was imported. |
+| `notes` | Notes. |
+| `created_at` | Creation time. |
+| `updated_at` | Last update time. |
+
+Unique key: `household_id + credit_card_id + statement_month`.
+
+### cash_flow_months
+
+Stores generated monthly cash-flow totals. Credit card payment total should use real statements when available and bill estimates otherwise.
+
+| Field | Description |
+|---|---|
+| `id` | Primary key. |
+| `household_id` | Household owner for the cash-flow month. |
+| `cash_flow_month` | Cash-flow month in `YYYY-MM`; must be a valid month from `01` to `12`. |
+| `opening_balance` | Opening balance for the month, if generated. |
+| `income_total` | Total income for the month. |
+| `cash_expense_total` | Total cash expenses for the month. |
+| `credit_card_payment_total` | Credit card payment amount used in cash flow. |
+| `net_cash_flow` | `income_total - cash_expense_total - credit_card_payment_total`. |
+| `ending_balance` | Ending balance after net cash flow, if generated. |
+| `source_system` | Source system for migrated or imported cash-flow data. |
+| `source_table` | Source table or sheet name for migrated data. |
+| `source_row_id` | Source row identifier for traceability. |
+| `legacy_id` | Legacy identifier when available. |
+| `imported_at` | Time the legacy data was imported. |
+| `generated_at` | Time the cash-flow row was generated. |
+
+Unique key: `household_id + cash_flow_month`.

@@ -71,7 +71,7 @@ flowchart TD
 
 | 檔案 | 責任 |
 |---|---|
-| `Config.gs` | Google Sheet ID、10 張表名稱、表頭、列舉值、初始店家支付規則。 |
+| `Config.gs` | Google Sheet ID、11 張表名稱、表頭、列舉值、初始店家支付規則。 |
 | `Sheets.gs` | 初始化工作表、補表頭、讀寫物件、更新列、產生 ID。 |
 | `Rules.gs` | 日期、月份、信用卡付款日、分期拆帳、預算狀態、店家支付規則儲存。 |
 | `Budget.gs` | 讀取有效預算項目、年度預算使用狀態、單筆消費後預算影響。 |
@@ -87,7 +87,7 @@ flowchart TD
 
 資料庫表結構由 `src/apps-script/Config.gs` 的 `HEADERS` 控制。`setupDatabase()` 會建立缺少的表，並對既有表補上缺少欄位；程式讀寫以表頭名稱為準，因此欄位順序不是最重要，但新模板應以 `HEADERS` 順序為準。
 
-### 10 張正式資料表
+### 11 張正式資料表
 
 | 表名 | 用途 | 主要寫入來源 | 主要讀取來源 |
 |---|---|---|---|
@@ -101,6 +101,7 @@ flowchart TD
 | `ClassificationHistory` | 使用者確認後的分類歷史。 | `confirmInvoiceDraft()`。 | 後續規則學習依據。 |
 | `PaymentChoiceHistory` | 使用者確認後的支付方式歷史。 | `confirmInvoiceDraft()`。 | 後續規則學習依據。 |
 | `CreditCardRules` | 信用卡結帳日與付款日規則。 | `setupDatabase()` seed。 | 付款日計算。 |
+| `AppSettings` | 系統設定，例如現金流期初餘額。 | `setupDatabase()` 建立、`updateCashFlowOpeningBalance()` 更新。 | 現金流期初/期末餘額計算。 |
 
 ### 表頭摘要
 
@@ -116,6 +117,7 @@ flowchart TD
 | `ClassificationHistory` | `history_id`, `merchant_tax_id`, `merchant_name`, `item_description`, `budget_item`, `confirmed_at`, `notes` |
 | `PaymentChoiceHistory` | `history_id`, `merchant_tax_id`, `merchant_name`, `payment_tool_type`, `credit_card_name`, `confirmed_at`, `notes` |
 | `CreditCardRules` | `credit_card_name`, `card_group`, `cutoff_day`, `payment_day`, `is_default_for_other_cards`, `notes` |
+| `AppSettings` | `setting_key`, `setting_value`, `notes` |
 
 ## 5. 使用者流程
 
@@ -123,7 +125,7 @@ flowchart TD
 
 1. Google Sheet 與 Apps Script 專案建立完成。
 2. 部署程式後，在 Web App 或 Apps Script 執行 `setupDatabase()`。
-3. 系統建立/補齊 10 張資料表。
+3. 系統建立/補齊 11 張資料表。
 4. `CreditCardRules` seed 玉山與其他信用卡規則。
 5. `MerchantPaymentRules` seed 初始店家支付規則。
 6. 使用者將年度預算項目放入 `BudgetItems`。
@@ -356,9 +358,51 @@ git push
 
 1. `git status` 是否乾淨。
 2. `src/apps-script/Config.gs` 的 `SPREADSHEET_ID` 是否指向正確 Google Sheet。
-3. Google Sheet 是否有 10 張正式表。
+3. Google Sheet 是否有 11 張正式表。
 4. `BudgetItems` 是否有有效預算項目，且 `is_valid_expense_item` 為 true。
 5. 本地測試是否通過。
 6. `temp-apps-script` 是否已和 `src/apps-script` 同步。
 7. Apps Script 是否已重新部署 Web App。
 8. 測試 Web App：Refresh、發票匯入、待確認批次確認、手動單筆、手動批次匯入。
+
+## Supabase and Vercel Migration Direction
+
+The next product direction is a dual-track transition:
+
+- Keep the Google Apps Script and Google Sheet MVP running.
+- Build Supabase as the next data foundation.
+- Build the Vercel frontend around clearer product areas: Home, Expense Entry, Review Queue, Bill Center, Cash Flow, Budget, Rules, and Settings.
+- Import and reconcile data before switching daily usage away from Google Sheets.
+
+Payment schedules remain a low-level source for monthly bill estimates. The user-facing credit-card area is Bill Center, where estimated bills can later be compared with real credit card statements.
+
+Budget Taxonomy v2 introduces `Budget Group / Budget Item` while keeping legacy budget names traceable. Old-to-new budget mapping must remain review-gated and must not silently rewrite official expense classifications.
+
+### Schema Reconciliation Matrix
+
+The current Google Sheet workbook is the deployed Apps Script runtime schema. It has 11 sheets and should be treated as the current production model.
+
+The Supabase schema is the next-generation migration target. It includes tables and concepts that do not exist in the current Google Sheet workbook yet.
+
+| Product area | Current Google Sheet model | Next Supabase model | Status |
+|---|---|---|---|
+| Runtime source of truth | 11 Google Sheet tabs managed by Apps Script `HEADERS` | Supabase Postgres tables | Google Sheet remains active during dual-track transition. |
+| System settings and opening balance | `AppSettings` stores settings such as `cash_flow_opening_balance` | `cash_flow_months.opening_balance` plus future settings/config tables as needed | Current foundation exists; Supabase will model generated monthly balances separately. |
+| Expense records | `ExpenseRecords` | `expenses` | Same accounting concept; Supabase adds `household_id`, `user_id`, stronger foreign keys, and source traceability. |
+| Payment schedule details | `PaymentSchedule` | `payment_schedules` | Same low-level source for cash-flow timing and bill estimates. |
+| Monthly bill estimate | Derived from `PaymentSchedule`; not stored as its own Google Sheet tab | `credit_card_bill_estimates` | New Supabase table for Bill Center and monthly card summaries. |
+| Real credit card statement | Not available as a formal Google Sheet tab | `credit_card_statements` | New Supabase table; cash flow should prefer actual statement amount when present. |
+| Cash-flow monthly totals | Calculated from `IncomeSchedule`, `PaymentSchedule`, and `AppSettings` | `cash_flow_months` | New Supabase generated/summary table. |
+| Income | `IncomeSchedule` | `income_schedules` | Same concept; Supabase adds household/user ownership and traceability. |
+| Fixed recurring expenses | Generated through current expense/payment write path; no dedicated Google Sheet schedule tab | `expense_schedules` | New Supabase table for schedule definitions. |
+| Budget taxonomy | Flat `BudgetItems` using legacy names such as `24. 餐費` | `budget_groups` + `budget_items` | New two-level taxonomy; legacy code/name retained for audit. |
+| Budget migration mapping | Not available | `budget_mapping_drafts` | New review-gated migration workflow. |
+| Invoice import drafts | `ImportedInvoiceDrafts` | `invoice_import_batches` + `invoice_drafts` | Supabase separates import batch metadata from draft rows. |
+| Manual batch import drafts | Manual batch import currently writes through expense flow; no dedicated draft table | `manual_import_batches` plus future draft handling | New migration/UX foundation. |
+| Merchant payment rules | `MerchantPaymentRules` | `merchant_payment_rules` | Same concept; Supabase uses foreign keys to cards and budget items. |
+| Merchant item rules | `MerchantItemRules` | `merchant_item_rules` | Same concept; Supabase uses foreign keys to budget items. |
+| Classification history | `ClassificationHistory` | Future history/audit tables or event log | Current history exists; exact Supabase audit structure remains a later decision. |
+| Payment choice history | `PaymentChoiceHistory` | Future history/audit tables or event log | Current history exists; exact Supabase audit structure remains a later decision. |
+| Credit card rules | `CreditCardRules` | `credit_cards` | Supabase treats cards as household-owned master data with cutoff/payment rules. |
+| Migration tracking | Not available | `migration_runs` + `migration_issues` | New Supabase migration reconciliation layer. |
+| Household sharing | Not available | `households` + `household_members` | Reserved for future sharing; first release remains private/single-user. |
