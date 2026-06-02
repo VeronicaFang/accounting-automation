@@ -84,3 +84,7 @@ export function parseSupabaseHashSession(hash: string): ParsedHashSession | null
     tokenType: params.get("token_type")
   };
 }
+
+export function hasSupabaseHashSession(hash: string): boolean {
+  return parseSupabaseHashSession(hash) !== null;
+}

@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import "@/styles/globals.css";
+import { AuthHashRedirect } from "./auth-hash-redirect";
 
 export const metadata: Metadata = {
   title: "Accounting Automation",
@@ -13,7 +14,10 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="zh-Hant" suppressHydrationWarning>
-      <body suppressHydrationWarning>{children}</body>
+      <body suppressHydrationWarning>
+        <AuthHashRedirect />
+        {children}
+      </body>
     </html>
   );
 }

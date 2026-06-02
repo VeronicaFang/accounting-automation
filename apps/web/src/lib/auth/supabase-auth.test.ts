@@ -1,5 +1,5 @@
 import assert from "node:assert/strict";
-import { getSupabaseAuthConfig, parseSupabaseHashSession } from "./supabase-auth.ts";
+import { getSupabaseAuthConfig, hasSupabaseHashSession, parseSupabaseHashSession } from "./supabase-auth.ts";
 
 assert.equal(getSupabaseAuthConfig({}), null);
 
@@ -25,4 +25,8 @@ assert.deepEqual(parseSupabaseHashSession("#access_token=a&refresh_token=r&expir
 
 assert.equal(parseSupabaseHashSession("#error=access_denied"), null);
 
-console.log("supabase auth helpers: 4 assertions passed");
+assert.equal(hasSupabaseHashSession("#access_token=a&refresh_token=r&type=signup"), true);
+
+assert.equal(hasSupabaseHashSession("#access_token=a&type=signup"), false);
+
+console.log("supabase auth helpers: 6 assertions passed");
