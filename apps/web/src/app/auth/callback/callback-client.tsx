@@ -2,14 +2,12 @@
 
 import Link from "next/link";
 import { useEffect, useState } from "react";
-import { parseSupabaseHashSession } from "@/lib/auth/supabase-auth";
+import { parseSupabaseHashSession, supabaseSessionStorageKey } from "@/lib/auth/supabase-auth";
 
 type CallbackState =
   | { status: "checking"; message: string }
   | { status: "ready"; message: string }
   | { status: "error"; message: string };
-
-const sessionStorageKey = "accounting.supabase.session";
 
 export function CallbackClient() {
   const [state, setState] = useState<CallbackState>({
@@ -28,7 +26,7 @@ export function CallbackClient() {
       return;
     }
 
-    window.localStorage.setItem(sessionStorageKey, JSON.stringify(session));
+    window.localStorage.setItem(supabaseSessionStorageKey, JSON.stringify(session));
     window.history.replaceState(null, "", "/auth/callback");
 
     setState({

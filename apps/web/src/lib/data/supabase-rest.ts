@@ -35,10 +35,22 @@ export function isSupabaseRestConfigured(env: SupabaseEnv = process.env as Supab
   return getSupabaseRestConfig(env) !== null;
 }
 
+export function createSupabaseRestHeaders(
+  config: Pick<SupabaseRestConfig, "publishableKey">,
+  accessToken?: string
+): Record<string, string> {
+  return {
+    apikey: config.publishableKey,
+    Authorization: `Bearer ${accessToken ?? config.publishableKey}`,
+    Accept: "application/json"
+  };
+}
+
 export async function fetchSupabaseRows<T>(
   tableName: string,
   query: Record<string, string>,
-  env: SupabaseEnv = process.env as SupabaseEnv
+  env: SupabaseEnv = process.env as SupabaseEnv,
+  accessToken?: string
 ): Promise<T[]> {
   const config = getSupabaseRestConfig(env);
 
@@ -53,11 +65,7 @@ export async function fetchSupabaseRows<T>(
 
   const response = await fetch(url, {
     cache: "no-store",
-    headers: {
-      apikey: config.publishableKey,
-      Authorization: `Bearer ${config.publishableKey}`,
-      Accept: "application/json"
-    }
+    headers: createSupabaseRestHeaders(config, accessToken)
   });
 
   if (!response.ok) {

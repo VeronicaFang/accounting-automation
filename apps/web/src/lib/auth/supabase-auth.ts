@@ -68,6 +68,8 @@ export type ParsedHashSession = {
   tokenType: string | null;
 };
 
+export const supabaseSessionStorageKey = "accounting.supabase.session";
+
 export function parseSupabaseHashSession(hash: string): ParsedHashSession | null {
   const params = new URLSearchParams(hash.replace(/^#/, ""));
   const accessToken = params.get("access_token");
@@ -87,4 +89,29 @@ export function parseSupabaseHashSession(hash: string): ParsedHashSession | null
 
 export function hasSupabaseHashSession(hash: string): boolean {
   return parseSupabaseHashSession(hash) !== null;
+}
+
+export function readStoredSupabaseSession(storage: Pick<Storage, "getItem">): ParsedHashSession | null {
+  const rawValue = storage.getItem(supabaseSessionStorageKey);
+
+  if (!rawValue) {
+    return null;
+  }
+
+  try {
+    const parsed = JSON.parse(rawValue) as Partial<ParsedHashSession>;
+
+    if (!parsed.accessToken || !parsed.refreshToken) {
+      return null;
+    }
+
+    return {
+      accessToken: parsed.accessToken,
+      refreshToken: parsed.refreshToken,
+      expiresIn: parsed.expiresIn ?? null,
+      tokenType: parsed.tokenType ?? null
+    };
+  } catch {
+    return null;
+  }
 }

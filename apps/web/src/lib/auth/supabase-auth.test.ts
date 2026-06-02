@@ -1,5 +1,11 @@
 import assert from "node:assert/strict";
-import { getSupabaseAuthConfig, hasSupabaseHashSession, parseSupabaseHashSession } from "./supabase-auth.ts";
+import {
+  getSupabaseAuthConfig,
+  hasSupabaseHashSession,
+  parseSupabaseHashSession,
+  readStoredSupabaseSession,
+  supabaseSessionStorageKey
+} from "./supabase-auth.ts";
 
 assert.equal(getSupabaseAuthConfig({}), null);
 
@@ -29,4 +35,21 @@ assert.equal(hasSupabaseHashSession("#access_token=a&refresh_token=r&type=signup
 
 assert.equal(hasSupabaseHashSession("#access_token=a&type=signup"), false);
 
-console.log("supabase auth helpers: 6 assertions passed");
+assert.deepEqual(
+  readStoredSupabaseSession({
+    getItem: (key) =>
+      key === supabaseSessionStorageKey
+        ? JSON.stringify({ accessToken: "a", refreshToken: "r", expiresIn: "3600", tokenType: "bearer" })
+        : null
+  }),
+  { accessToken: "a", refreshToken: "r", expiresIn: "3600", tokenType: "bearer" }
+);
+
+assert.equal(
+  readStoredSupabaseSession({
+    getItem: () => "not json"
+  }),
+  null
+);
+
+console.log("supabase auth helpers: 8 assertions passed");

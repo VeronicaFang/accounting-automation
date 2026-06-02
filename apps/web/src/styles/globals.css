@@ -425,6 +425,30 @@ textarea {
   font-weight: 700;
 }
 
+.data-source-pill {
+  align-self: flex-start;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  color: var(--muted);
+  display: inline-flex;
+  font-size: 13px;
+  font-weight: 700;
+  margin: -10px 0 18px;
+  padding: 6px 10px;
+}
+
+.data-source-loading {
+  color: var(--accent);
+}
+
+.data-source-connected {
+  color: var(--good);
+}
+
+.data-source-error {
+  color: var(--danger);
+}
+
 @media (max-width: 920px) {
   .app-root {
     grid-template-columns: 1fr;
