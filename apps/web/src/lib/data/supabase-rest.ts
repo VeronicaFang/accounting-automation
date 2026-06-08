@@ -9,11 +9,26 @@ type SupabaseEnv = {
   NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY?: string;
 };
 
+export type SupabaseRestDiagnostics = {
+  useSupabase: string | null;
+  hasSupabaseUrl: boolean;
+  hasPublishableKey: boolean;
+  isConfigured: boolean;
+};
+
 function trimTrailingSlash(value: string): string {
   return value.replace(/\/+$/, "");
 }
 
-export function getSupabaseRestConfig(env: SupabaseEnv = process.env as SupabaseEnv): SupabaseRestConfig | null {
+function getDefaultSupabaseEnv(): SupabaseEnv {
+  return {
+    NEXT_PUBLIC_ACCOUNTING_USE_SUPABASE: process.env.NEXT_PUBLIC_ACCOUNTING_USE_SUPABASE,
+    NEXT_PUBLIC_SUPABASE_URL: process.env.NEXT_PUBLIC_SUPABASE_URL,
+    NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY: process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY
+  };
+}
+
+export function getSupabaseRestConfig(env: SupabaseEnv = getDefaultSupabaseEnv()): SupabaseRestConfig | null {
   if (env.NEXT_PUBLIC_ACCOUNTING_USE_SUPABASE !== "true") {
     return null;
   }
@@ -31,8 +46,17 @@ export function getSupabaseRestConfig(env: SupabaseEnv = process.env as Supabase
   };
 }
 
-export function isSupabaseRestConfigured(env: SupabaseEnv = process.env as SupabaseEnv): boolean {
+export function isSupabaseRestConfigured(env: SupabaseEnv = getDefaultSupabaseEnv()): boolean {
   return getSupabaseRestConfig(env) !== null;
+}
+
+export function getSupabaseRestDiagnostics(env: SupabaseEnv = getDefaultSupabaseEnv()): SupabaseRestDiagnostics {
+  return {
+    useSupabase: env.NEXT_PUBLIC_ACCOUNTING_USE_SUPABASE ?? null,
+    hasSupabaseUrl: Boolean(env.NEXT_PUBLIC_SUPABASE_URL),
+    hasPublishableKey: Boolean(env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY),
+    isConfigured: getSupabaseRestConfig(env) !== null
+  };
 }
 
 export function createSupabaseRestHeaders(
@@ -49,13 +73,14 @@ export function createSupabaseRestHeaders(
 export async function fetchSupabaseRows<T>(
   tableName: string,
   query: Record<string, string>,
-  env: SupabaseEnv = process.env as SupabaseEnv,
+  env: SupabaseEnv = getDefaultSupabaseEnv(),
   accessToken?: string
 ): Promise<T[]> {
   const config = getSupabaseRestConfig(env);
 
   if (!config) {
-    return [];
+    const diagnostics = getSupabaseRestDiagnostics(env);
+    throw new Error(`Supabase REST is not configured: ${JSON.stringify(diagnostics)}`);
   }
 
   const url = new URL(`${config.restUrl}/${tableName}`);
@@ -69,7 +94,8 @@ export async function fetchSupabaseRows<T>(
   });
 
   if (!response.ok) {
-    throw new Error(`Supabase REST read failed for ${tableName}: ${response.status}`);
+    const responseText = await response.text();
+    throw new Error(`Supabase REST read failed for ${tableName}: ${response.status} ${responseText}`);
   }
 
   return (await response.json()) as T[];

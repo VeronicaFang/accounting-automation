@@ -5,8 +5,8 @@ export function BudgetStatusList({ items }: { items: BudgetStatus[] }) {
   return (
     <section className="surface section-block">
       <div className="section-heading">
-        <h2>預算狀態</h2>
-        <span>依風險排序</span>
+        <h2>預算使用狀態</h2>
+        <span>{items.length} 筆</span>
       </div>
       <div className="budget-list">
         {items.map((item) => (
@@ -21,6 +21,7 @@ export function BudgetStatusList({ items }: { items: BudgetStatus[] }) {
             </div>
           </article>
         ))}
+        {items.length === 0 ? <p className="muted">目前沒有可顯示的預算項目。</p> : null}
       </div>
     </section>
   );

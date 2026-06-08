@@ -6,8 +6,8 @@ export function BillEstimateTable({ bills }: { bills: BillEstimate[] }) {
   return (
     <section className="surface section-block">
       <div className="section-heading">
-        <h2>帳單中心</h2>
-        <span>預估與真實帳單</span>
+        <h2>每月帳單預估</h2>
+        <span>{bills.length} 筆</span>
       </div>
       <div className="table-scroll">
         <table className="data-table">
@@ -15,9 +15,9 @@ export function BillEstimateTable({ bills }: { bills: BillEstimate[] }) {
             <tr>
               <th>帳單月</th>
               <th>信用卡</th>
-              <th>預估</th>
+              <th>預估金額</th>
               <th>真實帳單</th>
-              <th>現金流採用</th>
+              <th>現金流採計</th>
               <th>差異</th>
               <th>付款日</th>
             </tr>
@@ -38,15 +38,20 @@ export function BillEstimateTable({ bills }: { bills: BillEstimate[] }) {
                   <td>{bill.month}</td>
                   <td>{bill.creditCardName}</td>
                   <td>{formatCurrency(bill.estimatedAmount)}</td>
-                  <td>{bill.statementAmount ? formatCurrency(bill.statementAmount) : "未輸入"}</td>
+                  <td>{bill.statementAmount ? formatCurrency(bill.statementAmount) : "尚未輸入"}</td>
                   <td>{formatCurrency(displayedAmount)}</td>
                   <td className={variance && variance > 0 ? "text-danger" : ""}>
-                    {variance === null ? "尚無差異" : formatVariance(variance)}
+                    {variance === null ? "尚未比對" : formatVariance(variance)}
                   </td>
                   <td>{bill.paymentDate}</td>
                 </tr>
               );
             })}
+            {bills.length === 0 ? (
+              <tr>
+                <td colSpan={7}>目前沒有可顯示的帳單預估。</td>
+              </tr>
+            ) : null}
           </tbody>
         </table>
       </div>

@@ -49,3 +49,16 @@ export type ReviewTask = {
   amount?: number;
   createdAt: string;
 };
+
+export type ExpenseRecord = {
+  id: string;
+  consumptionDate: string;
+  budgetMonth: string;
+  merchantName: string;
+  itemDescription: string;
+  budgetItemName: string;
+  amount: number;
+  paymentToolType: "cash" | "credit_card";
+  creditCardName?: string;
+  status: string;
+};

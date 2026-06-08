@@ -1,89 +1,150 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
+
 import { BillEstimateTable } from "@/components/bill-estimate-table";
 import { BudgetStatusList } from "@/components/budget-status-list";
 import { CashFlowTable } from "@/components/cash-flow-table";
 import { PageHeader } from "@/components/page-header";
 import { StatStrip } from "@/components/stat-strip";
 import { TaskWorkbench } from "@/components/task-workbench";
+import {
+  isStoredSupabaseSessionValid,
+  readStoredSupabaseSession,
+  readStoredSupabaseUser,
+  type SupabaseSessionUser
+} from "@/lib/auth/supabase-auth";
 import type { AccountingDashboardData } from "@/lib/data/accounting-dashboard";
-import { getSupabaseDashboardData } from "@/lib/data/supabase-repository";
-import { readStoredSupabaseSession } from "@/lib/auth/supabase-auth";
+import {
+  getSupabaseDashboardData,
+  getSupabaseHouseholds,
+  type SupabaseHouseholdRow
+} from "@/lib/data/supabase-repository";
 
-type DashboardStatus = "signed-out" | "loading" | "connected" | "error";
+type DashboardStatus = "signed-out" | "expired" | "loading" | "connected" | "error";
 
-function getStatusText(status: DashboardStatus): string {
+function getEmptyDashboard(initialData: AccountingDashboardData): AccountingDashboardData {
+  return {
+    ...initialData,
+    cashFlowMonths: [],
+    billEstimates: [],
+    budgetStatuses: [],
+    reviewTasks: [],
+    dataSource: "supabase"
+  };
+}
+
+function statusText(
+  status: DashboardStatus,
+  data: AccountingDashboardData,
+  user: SupabaseSessionUser | null,
+  households: SupabaseHouseholdRow[]
+): string {
+  const identity = user?.email ? `帳號 ${user.email}` : "未取得帳號 email";
+
   if (status === "loading") {
-    return "正在讀取 Supabase household 資料";
+    return `正在讀取 Supabase，${identity}`;
   }
 
   if (status === "connected") {
-    return "已使用登入 session 讀取 Supabase 資料";
+    const householdLabel = households.length > 0 ? households.map((household) => household.name).join("、") : "無可讀 household";
+    return `已連線 Supabase，${identity}，household：${householdLabel}，帳單 ${data.billEstimates.length} 筆、預算 ${data.budgetStatuses.length} 筆、現金流 ${data.cashFlowMonths.length} 個月份`;
+  }
+
+  if (status === "expired") {
+    return `Session 已過期，${identity}，請重新登入 Supabase`;
   }
 
   if (status === "error") {
-    return "Supabase 資料讀取失敗，暫時顯示本機示範資料";
+    return `Supabase 讀取失敗，${identity}`;
   }
 
-  return "尚未登入，顯示本機示範資料";
+  return "請先登入 Supabase，登入前不顯示正式資料";
 }
 
 export function HomeDashboardClient({ initialData }: { initialData: AccountingDashboardData }) {
-  const [dashboardData, setDashboardData] = useState<AccountingDashboardData>(initialData);
+  const emptyDashboard = useMemo(() => getEmptyDashboard(initialData), [initialData]);
+  const [dashboardData, setDashboardData] = useState<AccountingDashboardData>(emptyDashboard);
   const [status, setStatus] = useState<DashboardStatus>("signed-out");
+  const [error, setError] = useState<string | null>(null);
+  const [sessionUser, setSessionUser] = useState<SupabaseSessionUser | null>(null);
+  const [households, setHouseholds] = useState<SupabaseHouseholdRow[]>([]);
 
   useEffect(() => {
     const session = readStoredSupabaseSession(window.localStorage);
+    const user = readStoredSupabaseUser(window.localStorage);
+    setSessionUser(user);
 
     if (!session) {
+      setDashboardData(emptyDashboard);
+      setHouseholds([]);
       setStatus("signed-out");
+      return;
+    }
+
+    if (!isStoredSupabaseSessionValid(window.localStorage)) {
+      setDashboardData(emptyDashboard);
+      setHouseholds([]);
+      setStatus("expired");
       return;
     }
 
     let isCurrent = true;
     setStatus("loading");
+    setError(null);
 
-    getSupabaseDashboardData(initialData, session.accessToken)
-      .then((supabaseData) => {
+    Promise.all([
+      getSupabaseDashboardData(initialData, session.accessToken),
+      getSupabaseHouseholds(session.accessToken)
+    ])
+      .then(([supabaseData, householdRows]) => {
         if (!isCurrent) {
           return;
         }
 
         setDashboardData({
-          ...initialData,
+          ...emptyDashboard,
           ...supabaseData,
           dataSource: "supabase"
         });
+        setHouseholds(householdRows);
         setStatus("connected");
       })
-      .catch(() => {
-        if (isCurrent) {
-          setStatus("error");
+      .catch((caughtError) => {
+        if (!isCurrent) {
+          return;
         }
+
+        setDashboardData(emptyDashboard);
+        setHouseholds([]);
+        setError(caughtError instanceof Error ? caughtError.message : "Supabase 讀取失敗");
+        setStatus("error");
       });
 
     return () => {
       isCurrent = false;
     };
-  }, [initialData]);
+  }, [emptyDashboard, initialData]);
 
   const { billEstimates, budgetStatuses, cashFlowMonths, currentMonth, reviewTasks } = dashboardData;
-  const currentCashFlow = cashFlowMonths[0];
+  const currentCashFlow = cashFlowMonths[0] ?? {
+    month: currentMonth,
+    income: 0,
+    cashExpense: 0,
+    estimatedCardPayment: 0,
+    netFlow: 0
+  };
 
   return (
     <>
       <PageHeader
-        eyebrow="家庭記帳"
-        title={`${currentMonth} 現金流總覽`}
-        description="收入、現金支出、信用卡帳單與待確認事項會依登入狀態讀取資料。"
-        action={
-          <select aria-label="檢視月份" defaultValue={currentMonth}>
-            <option>{currentMonth}</option>
-          </select>
-        }
+        eyebrow="首頁"
+        title={`${currentMonth} 本月狀態與待辦`}
+        description="登入 Supabase 後，這裡只顯示目前帳號可讀取的 household 資料。"
       />
-      <div className={`data-source-pill data-source-${status}`}>{getStatusText(status)}</div>
+      <div className={`data-source-pill data-source-${status}`}>{statusText(status, dashboardData, sessionUser, households)}</div>
+      {sessionUser ? <p className="muted">Supabase user id: {sessionUser.userId}</p> : null}
+      {error ? <p className="error-text">{error}</p> : null}
       <StatStrip
         stats={[
           { label: "收入", value: currentCashFlow.income, tone: "good" },

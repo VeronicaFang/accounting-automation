@@ -5,7 +5,7 @@ import {
   currentMonth,
   reviewTasks
 } from "@/lib/mock-data";
-import { getSupabaseDashboardData, isSupabaseDashboardConfigured } from "./supabase-repository";
+import { isSupabaseDashboardConfigured } from "./supabase-repository";
 import type { BillEstimate, BudgetStatus, CashFlowMonth, ReviewTask } from "@/lib/types";
 
 export type AccountingDashboardData = {
@@ -35,14 +35,5 @@ export async function getAccountingDashboardData(): Promise<AccountingDashboardD
     return mockData;
   }
 
-  try {
-    const supabaseData = await getSupabaseDashboardData(mockData);
-    return {
-      ...mockData,
-      ...supabaseData,
-      dataSource: "supabase"
-    };
-  } catch {
-    return mockData;
-  }
+  return mockData;
 }

@@ -2,7 +2,8 @@
 
 import Link from "next/link";
 import { useEffect, useState } from "react";
-import { parseSupabaseHashSession, supabaseSessionStorageKey } from "@/lib/auth/supabase-auth";
+
+import { getSessionExpiryDate, parseSupabaseHashSession, supabaseSessionStorageKey } from "@/lib/auth/supabase-auth";
 
 type CallbackState =
   | { status: "checking"; message: string }
@@ -12,7 +13,7 @@ type CallbackState =
 export function CallbackClient() {
   const [state, setState] = useState<CallbackState>({
     status: "checking",
-    message: "正在確認登入狀態。"
+    message: "正在確認登入狀態..."
   });
 
   useEffect(() => {
@@ -21,7 +22,7 @@ export function CallbackClient() {
     if (!session) {
       setState({
         status: "error",
-        message: "沒有取得登入 session。請重新寄送登入連結。"
+        message: "沒有取得有效的 Supabase session，請重新寄送 magic link。"
       });
       return;
     }
@@ -29,9 +30,12 @@ export function CallbackClient() {
     window.localStorage.setItem(supabaseSessionStorageKey, JSON.stringify(session));
     window.history.replaceState(null, "", "/auth/callback");
 
+    const expiryDate = getSessionExpiryDate(session);
     setState({
       status: "ready",
-      message: "登入完成。你的 Supabase 使用者與 household membership 已建立。"
+      message: expiryDate
+        ? `登入完成，session 有效至 ${expiryDate.toLocaleString("zh-TW")}`
+        : "登入完成，session 已儲存在此瀏覽器。"
     });
   }, []);
 

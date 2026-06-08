@@ -2,6 +2,7 @@
 *.xls
 /data/
 /exports/
+/tmp/
 local/
 *.csv.local
 ~$*

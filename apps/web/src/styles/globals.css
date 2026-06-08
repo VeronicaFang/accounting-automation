@@ -72,6 +72,38 @@ textarea {
   color: var(--muted);
 }
 
+.primary-action {
+  width: fit-content;
+  border: 0;
+  border-radius: 7px;
+  background: var(--accent);
+  color: #fffefa;
+  cursor: pointer;
+  font-weight: 700;
+  padding: 10px 14px;
+}
+
+.primary-action:disabled {
+  cursor: not-allowed;
+  opacity: 0.65;
+}
+
+.secondary-action {
+  width: fit-content;
+  border: 1px solid var(--line);
+  border-radius: 7px;
+  background: var(--panel);
+  color: var(--ink);
+  cursor: pointer;
+  font-weight: 700;
+  padding: 9px 13px;
+}
+
+.error-text {
+  color: var(--danger);
+  font-weight: 700;
+}
+
 .sidebar {
   border-right: 1px solid var(--line);
   background: #29261f;
@@ -127,6 +159,21 @@ textarea {
 
 .nav-item small {
   color: rgba(255, 254, 250, 0.55);
+}
+
+.auth-nav-signed-in span,
+.auth-nav-signed-in small {
+  color: #bbf7d0;
+}
+
+.auth-nav-expired span,
+.auth-nav-expired small {
+  color: #fed7aa;
+}
+
+.auth-status-card {
+  display: grid;
+  gap: 10px;
 }
 
 .page-header {
@@ -442,6 +489,10 @@ textarea {
 }
 
 .data-source-connected {
+  color: var(--good);
+}
+
+.data-source-ready {
   color: var(--good);
 }
 

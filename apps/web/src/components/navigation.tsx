@@ -1,4 +1,6 @@
 import Link from "next/link";
+
+import { AuthSessionIndicator } from "@/components/auth-session-indicator";
 import { navigationItems } from "@/lib/navigation";
 
 export function Navigation() {
@@ -12,13 +14,14 @@ export function Navigation() {
         </div>
       </div>
 
-      <nav className="nav-list" aria-label="主要功能">
+      <nav className="nav-list" aria-label="主選單">
         {navigationItems.map((item) => (
           <Link key={item.href} className="nav-item" href={item.href}>
             <span>{item.label}</span>
             <small>{item.description}</small>
           </Link>
         ))}
+        <AuthSessionIndicator />
       </nav>
     </aside>
   );

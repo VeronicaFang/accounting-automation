@@ -3,10 +3,18 @@ import {
   createSupabaseRestHeaders,
   fetchSupabaseRows,
   getSupabaseRestConfig,
+  getSupabaseRestDiagnostics,
   isSupabaseRestConfigured
 } from "./supabase-rest.ts";
 
 assert.equal(isSupabaseRestConfigured({}), false);
+assert.deepEqual(getSupabaseRestDiagnostics({}), {
+  useSupabase: null,
+  hasSupabaseUrl: false,
+  hasPublishableKey: false,
+  isConfigured: false
+});
+
 assert.equal(
   isSupabaseRestConfigured({
     NEXT_PUBLIC_ACCOUNTING_USE_SUPABASE: "false",
@@ -26,6 +34,11 @@ assert.deepEqual(
     restUrl: "https://example.supabase.co/rest/v1",
     publishableKey: "publishable"
   }
+);
+
+await assert.rejects(
+  () => fetchSupabaseRows("households", { select: "id" }, {}),
+  /Supabase REST is not configured/
 );
 
 assert.deepEqual(createSupabaseRestHeaders({ publishableKey: "publishable" }), {
@@ -67,4 +80,4 @@ assert.equal(sentAuthorization, "Bearer user-jwt");
 
 globalThis.fetch = originalFetch;
 
-console.log("supabase rest config: 6 assertions passed");
+console.log("supabase rest config: 8 assertions passed");
