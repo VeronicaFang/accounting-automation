@@ -29,6 +29,28 @@ export type InvoiceDraftCreditCardLookup = {
   legacy_id?: string | null;
 };
 
+export type InvoiceMerchantPaymentRule = {
+  merchant_tax_id: string | null;
+  merchant_name_contains: string | null;
+  payment_tool_type: InvoiceDraftPaymentToolType;
+  credit_card_id: string | null;
+  default_budget_item_id: string | null;
+  is_active: boolean;
+};
+
+export type InvoiceMerchantItemRule = {
+  merchant_tax_id: string | null;
+  merchant_name_contains: string | null;
+  item_keyword_contains: string;
+  budget_item_id: string;
+  is_active: boolean;
+};
+
+export type InvoiceRuleLookups = {
+  paymentRules?: InvoiceMerchantPaymentRule[];
+  itemRules?: InvoiceMerchantItemRule[];
+};
+
 export type InvoiceDraftReviewItem = {
   id: string;
   sourceLineKey: string;
@@ -68,6 +90,45 @@ export type InvoiceDraftConfirmationInput = {
   sourceLineKey: string;
 };
 
+function valueIncludes(value: string, fragment: string | null | undefined): boolean {
+  const trimmedFragment = String(fragment ?? "").trim();
+
+  if (!trimmedFragment) {
+    return false;
+  }
+
+  return value.includes(trimmedFragment);
+}
+
+function merchantRuleMatches(
+  row: Pick<InvoiceDraftReviewRow, "merchant_tax_id" | "merchant_name">,
+  rule: Pick<InvoiceMerchantPaymentRule, "merchant_tax_id" | "merchant_name_contains">
+): boolean {
+  const rowTaxId = String(row.merchant_tax_id ?? "").trim();
+
+  if (rule.merchant_tax_id && rule.merchant_tax_id === rowTaxId) {
+    return true;
+  }
+
+  return valueIncludes(String(row.merchant_name ?? ""), rule.merchant_name_contains);
+}
+
+export function findInvoiceMerchantPaymentRule(
+  row: Pick<InvoiceDraftReviewRow, "merchant_tax_id" | "merchant_name">,
+  rules: InvoiceMerchantPaymentRule[] = []
+): InvoiceMerchantPaymentRule | undefined {
+  return rules.filter((rule) => rule.is_active).find((rule) => merchantRuleMatches(row, rule));
+}
+
+export function findInvoiceMerchantItemRule(
+  row: Pick<InvoiceDraftReviewRow, "merchant_tax_id" | "merchant_name" | "item_description">,
+  rules: InvoiceMerchantItemRule[] = []
+): InvoiceMerchantItemRule | undefined {
+  return rules
+    .filter((rule) => rule.is_active)
+    .find((rule) => merchantRuleMatches(row, rule) && valueIncludes(row.item_description, rule.item_keyword_contains));
+}
+
 function toNumber(value: string | number | null | undefined): number {
   if (value === null || value === undefined || value === "") {
     return 0;
@@ -87,14 +148,20 @@ function getCreditCardLabel(card: InvoiceDraftCreditCardLookup | undefined): str
 export function mapInvoiceDraftReviewItems(
   rows: InvoiceDraftReviewRow[],
   budgetItems: InvoiceDraftBudgetItemLookup[],
-  creditCards: InvoiceDraftCreditCardLookup[]
+  creditCards: InvoiceDraftCreditCardLookup[],
+  rules: InvoiceRuleLookups = {}
 ): InvoiceDraftReviewItem[] {
   const budgetItemById = new Map(budgetItems.map((item) => [item.id, item]));
   const creditCardById = new Map(creditCards.map((card) => [card.id, card]));
 
   return rows.map((row) => {
-    const suggestedBudgetItemId = row.suggested_budget_item_id ?? "";
-    const suggestedCreditCardId = row.suggested_credit_card_id ?? "";
+    const paymentRule = findInvoiceMerchantPaymentRule(row, rules.paymentRules);
+    const itemRule = findInvoiceMerchantItemRule(row, rules.itemRules);
+    const suggestedBudgetItemId =
+      paymentRule?.default_budget_item_id ?? itemRule?.budget_item_id ?? row.suggested_budget_item_id ?? "";
+    const suggestedPaymentToolType = paymentRule?.payment_tool_type ?? row.suggested_payment_tool_type ?? "cash";
+    const suggestedCreditCardId =
+      suggestedPaymentToolType === "credit_card" ? (paymentRule?.credit_card_id ?? row.suggested_credit_card_id ?? "") : "";
 
     return {
       id: row.id,
@@ -104,7 +171,7 @@ export function mapInvoiceDraftReviewItems(
       merchantName: row.merchant_name ?? "",
       itemDescription: row.item_description,
       amount: toNumber(row.amount),
-      suggestedPaymentToolType: row.suggested_payment_tool_type ?? "cash",
+      suggestedPaymentToolType,
       suggestedCreditCardId,
       suggestedCreditCardName: getCreditCardLabel(creditCardById.get(suggestedCreditCardId)),
       suggestedBudgetItemId,

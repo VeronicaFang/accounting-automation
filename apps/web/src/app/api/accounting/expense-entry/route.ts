@@ -12,9 +12,13 @@ import {
 } from "@/lib/accounting/entry-utils";
 import {
   buildInvoiceDraftConfirmationInputs,
+  findInvoiceMerchantItemRule,
+  findInvoiceMerchantPaymentRule,
   mapInvoiceDraftReviewItems,
   type InvoiceDraftConfirmation,
-  type InvoiceDraftReviewRow
+  type InvoiceDraftReviewRow,
+  type InvoiceMerchantItemRule,
+  type InvoiceMerchantPaymentRule
 } from "@/lib/accounting/invoice-review";
 import { createSupabaseRestHeaders, getSupabaseRestConfig } from "@/lib/data/supabase-rest";
 
@@ -51,22 +55,8 @@ type BillEstimateRow = {
   detail_count: number;
 };
 
-type MerchantPaymentRuleRow = {
-  merchant_tax_id: string | null;
-  merchant_name_contains: string | null;
-  payment_tool_type: PaymentToolType;
-  credit_card_id: string | null;
-  default_budget_item_id: string | null;
-  is_active: boolean;
-};
-
-type MerchantItemRuleRow = {
-  merchant_tax_id: string | null;
-  merchant_name_contains: string | null;
-  item_keyword_contains: string;
-  budget_item_id: string;
-  is_active: boolean;
-};
+type MerchantPaymentRuleRow = InvoiceMerchantPaymentRule;
+type MerchantItemRuleRow = InvoiceMerchantItemRule;
 
 type EntryReferences = {
   householdId: string;
@@ -688,32 +678,24 @@ async function importInvoiceDrafts(
 }
 
 function findMerchantPaymentRule(row: InvoiceDraftInput, rules: MerchantPaymentRuleRow[]) {
-  return rules.find((rule) => merchantRuleMatches(row, rule));
+  return findInvoiceMerchantPaymentRule(
+    {
+      merchant_tax_id: row.merchantTaxId || null,
+      merchant_name: row.merchantName || null
+    },
+    rules
+  );
 }
 
 function findMerchantItemRule(row: InvoiceDraftInput, rules: MerchantItemRuleRow[]) {
-  return rules.find((rule) => {
-    if (!merchantRuleMatches(row, rule)) {
-      return false;
-    }
-
-    return row.itemDescription.includes(rule.item_keyword_contains);
-  });
-}
-
-function merchantRuleMatches(
-  row: InvoiceDraftInput,
-  rule: Pick<MerchantPaymentRuleRow, "merchant_tax_id" | "merchant_name_contains">
-): boolean {
-  if (rule.merchant_tax_id && rule.merchant_tax_id === row.merchantTaxId) {
-    return true;
-  }
-
-  if (rule.merchant_name_contains && row.merchantName.includes(rule.merchant_name_contains)) {
-    return true;
-  }
-
-  return false;
+  return findInvoiceMerchantItemRule(
+    {
+      merchant_tax_id: row.merchantTaxId || null,
+      merchant_name: row.merchantName || null,
+      item_description: row.itemDescription
+    },
+    rules
+  );
 }
 
 async function existingInvoiceSourceLineKeys(

@@ -38,6 +38,11 @@ const creditCards = [
     id: "card-1",
     name: "Main Card",
     legacy_id: "VISA"
+  },
+  {
+    id: "card-2",
+    name: "Rule Card",
+    legacy_id: "RULE"
   }
 ];
 
@@ -59,6 +64,58 @@ assert.deepEqual(mapInvoiceDraftReviewItems(rows, budgetItems, creditCards), [
     notes: null
   }
 ]);
+
+assert.deepEqual(
+  mapInvoiceDraftReviewItems(
+    [
+      {
+        ...rows[0],
+        suggested_payment_tool_type: "cash",
+        suggested_credit_card_id: null,
+        suggested_budget_item_id: "budget-1"
+      }
+    ],
+    [
+      ...budgetItems,
+      {
+        id: "budget-2",
+        name: "Online Shopping",
+        legacy_id: "26",
+        legacy_name: "26. Online Shopping"
+      }
+    ],
+    creditCards,
+    {
+      paymentRules: [
+        {
+          merchant_tax_id: "12345678",
+          merchant_name_contains: null,
+          payment_tool_type: "credit_card",
+          credit_card_id: "card-2",
+          default_budget_item_id: "budget-2",
+          is_active: true
+        }
+      ],
+      itemRules: []
+    }
+  )[0],
+  {
+    id: "draft-1",
+    sourceLineKey: "AA123|2026-06-01|coffee|120|1",
+    consumptionDate: "2026-06-01",
+    merchantTaxId: "12345678",
+    merchantName: "Corner Cafe",
+    itemDescription: "Coffee beans",
+    amount: 120,
+    suggestedPaymentToolType: "credit_card",
+    suggestedCreditCardId: "card-2",
+    suggestedCreditCardName: "RULE",
+    suggestedBudgetItemId: "budget-2",
+    suggestedBudgetItemName: "26. Online Shopping",
+    reviewStatus: "needs_review",
+    notes: null
+  }
+);
 
 const confirmations: InvoiceDraftConfirmation[] = [
   {
@@ -100,4 +157,4 @@ assert.throws(
   /Credit card is required/
 );
 
-console.log("invoice review: 3 assertions passed");
+console.log("invoice review: 4 assertions passed");

@@ -1,5 +1,7 @@
 import {
   mapInvoiceDraftReviewItems,
+  type InvoiceMerchantItemRule,
+  type InvoiceMerchantPaymentRule,
   type InvoiceDraftReviewItem,
   type InvoiceDraftReviewRow
 } from "@/lib/accounting/invoice-review";
@@ -140,7 +142,7 @@ export async function getSupabaseReviewTasks(accessToken?: string): Promise<Revi
 }
 
 export async function getSupabaseInvoiceDrafts(accessToken?: string, limit = 100): Promise<InvoiceDraftReviewItem[]> {
-  const [rows, budgetItems, creditCards] = await Promise.all([
+  const [rows, budgetItems, creditCards, paymentRules, itemRules] = await Promise.all([
     fetchSupabaseRows<InvoiceDraftReviewRow>(
       "invoice_drafts",
       {
@@ -163,10 +165,28 @@ export async function getSupabaseInvoiceDrafts(accessToken?: string, limit = 100
       undefined,
       accessToken
     ),
-    getSupabaseCreditCards(accessToken)
+    getSupabaseCreditCards(accessToken),
+    fetchSupabaseRows<InvoiceMerchantPaymentRule>(
+      "merchant_payment_rules",
+      {
+        select: "merchant_tax_id,merchant_name_contains,payment_tool_type,credit_card_id,default_budget_item_id,is_active",
+        is_active: "eq.true"
+      },
+      undefined,
+      accessToken
+    ),
+    fetchSupabaseRows<InvoiceMerchantItemRule>(
+      "merchant_item_rules",
+      {
+        select: "merchant_tax_id,merchant_name_contains,item_keyword_contains,budget_item_id,is_active",
+        is_active: "eq.true"
+      },
+      undefined,
+      accessToken
+    )
   ]);
 
-  return mapInvoiceDraftReviewItems(rows, budgetItems, creditCards);
+  return mapInvoiceDraftReviewItems(rows, budgetItems, creditCards, { paymentRules, itemRules });
 }
 
 export async function getSupabaseExpenses(accessToken?: string, limit = 200): Promise<ExpenseRecord[]> {
