@@ -455,6 +455,63 @@ textarea {
   resize: vertical;
 }
 
+.review-section {
+  display: grid;
+  gap: 12px;
+}
+
+.review-actions {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.review-actions label {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  color: var(--muted);
+  font-weight: 700;
+}
+
+.review-table td {
+  vertical-align: top;
+}
+
+.review-table td:nth-child(4) {
+  min-width: 220px;
+  white-space: normal;
+}
+
+.review-table strong,
+.review-table small {
+  display: block;
+}
+
+.review-table small {
+  margin-top: 3px;
+  color: var(--muted);
+}
+
+.review-table select,
+.review-table input[type="text"],
+.review-table td input:not([type]) {
+  width: 100%;
+  min-width: 150px;
+  min-height: 36px;
+  border: 1px solid var(--line);
+  border-radius: 7px;
+  background: #fffefa;
+  color: var(--ink);
+  padding: 7px 8px;
+}
+
+.review-payment-controls {
+  display: grid;
+  min-width: 170px;
+  gap: 6px;
+}
+
 .setting-tile {
   border: 1px solid var(--line);
   border-radius: 8px;

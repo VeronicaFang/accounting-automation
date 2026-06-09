@@ -31,11 +31,13 @@ export type SupabaseCreditCardStatementRow = {
 export type SupabaseCreditCardLookupRow = {
   id: string;
   name: string;
+  legacy_id?: string | null;
 };
 
 export type SupabaseBudgetItemLookupRow = {
   id: string;
   budget_group_id?: string;
+  legacy_id?: string | null;
   legacy_name: string | null;
   name: string | null;
   annual_budget?: string | number;

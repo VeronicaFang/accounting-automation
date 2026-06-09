@@ -1,3 +1,8 @@
+import {
+  mapInvoiceDraftReviewItems,
+  type InvoiceDraftReviewItem,
+  type InvoiceDraftReviewRow
+} from "@/lib/accounting/invoice-review";
 import type { BudgetStatus, ExpenseRecord, ReviewTask } from "@/lib/types";
 
 import type { AccountingDashboardData } from "./accounting-dashboard";
@@ -132,6 +137,36 @@ export async function getSupabaseReviewTasks(accessToken?: string): Promise<Revi
   ]);
 
   return mapReviewCounts(invoiceDraftRows.length, mappingDraftRows.length);
+}
+
+export async function getSupabaseInvoiceDrafts(accessToken?: string, limit = 100): Promise<InvoiceDraftReviewItem[]> {
+  const [rows, budgetItems, creditCards] = await Promise.all([
+    fetchSupabaseRows<InvoiceDraftReviewRow>(
+      "invoice_drafts",
+      {
+        select:
+          "id,source_line_key,consumption_date,merchant_tax_id,merchant_name,item_description,amount,suggested_payment_tool_type,suggested_credit_card_id,suggested_budget_item_id,legacy_suggested_budget_item,review_status,notes",
+        review_status: "eq.needs_review",
+        order: "consumption_date.asc,id.asc",
+        limit: String(limit)
+      },
+      undefined,
+      accessToken
+    ),
+    fetchSupabaseRows<SupabaseBudgetItemLookupRow>(
+      "budget_items",
+      {
+        select: "id,name,legacy_id,legacy_name",
+        is_active: "eq.true",
+        order: "legacy_code.asc"
+      },
+      undefined,
+      accessToken
+    ),
+    getSupabaseCreditCards(accessToken)
+  ]);
+
+  return mapInvoiceDraftReviewItems(rows, budgetItems, creditCards);
 }
 
 export async function getSupabaseExpenses(accessToken?: string, limit = 200): Promise<ExpenseRecord[]> {

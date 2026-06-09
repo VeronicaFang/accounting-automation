@@ -10,6 +10,12 @@ import {
   type ParsedManualExpenseRow,
   type PaymentToolType
 } from "@/lib/accounting/entry-utils";
+import {
+  buildInvoiceDraftConfirmationInputs,
+  mapInvoiceDraftReviewItems,
+  type InvoiceDraftConfirmation,
+  type InvoiceDraftReviewRow
+} from "@/lib/accounting/invoice-review";
 import { createSupabaseRestHeaders, getSupabaseRestConfig } from "@/lib/data/supabase-rest";
 
 export const runtime = "nodejs";
@@ -71,6 +77,7 @@ type EntryReferences = {
 
 type ExpenseInput = {
   consumptionDate: string;
+  merchantTaxId?: string | null;
   itemDescription: string;
   amount: number;
   merchantName: string;
@@ -83,6 +90,7 @@ type ExpenseInput = {
   notes?: string;
   sourceSystem?: string;
   sourceTable?: string;
+  sourceRowId?: string;
 };
 
 type InvoiceDraftInput = {
@@ -393,9 +401,14 @@ async function createExpenses(
   requestConfig: SupabaseRequestConfig,
   references: EntryReferences,
   inputs: ExpenseInput[]
-): Promise<{ insertedExpenses: number; insertedPaymentSchedules: number }> {
+): Promise<{
+  insertedExpenses: number;
+  insertedPaymentSchedules: number;
+  createdExpenses: { id: string; sourceRowId: string | null }[];
+}> {
   let insertedExpenses = 0;
   let insertedPaymentSchedules = 0;
+  const createdExpenses: { id: string; sourceRowId: string | null }[] = [];
 
   for (const input of inputs) {
     if (!input.consumptionDate || !input.itemDescription || !input.merchantName) {
@@ -411,6 +424,7 @@ async function createExpenses(
     const creditCard = input.paymentToolType === "credit_card" ? findCreditCard(references, input) : null;
     const installmentCount = Math.max(1, Math.trunc(Number(input.installmentCount || 1)));
     const legacyId = buildLegacyId(input.sourceSystem === "monthly_fixed_expense" ? "WEB_FIXED_EXPENSE" : "WEB_EXPENSE");
+    const sourceRowId = input.sourceRowId ?? legacyId;
 
     const [expense] = await supabaseInsert<ExpenseInsertResult>(
       requestConfig,
@@ -421,6 +435,7 @@ async function createExpenses(
           user_id: references.userId,
           consumption_date: normalizedDate,
           budget_month: monthKeyFromDate(normalizedDate),
+          merchant_tax_id: input.merchantTaxId || null,
           merchant_name: input.merchantName,
           item_description: input.itemDescription,
           budget_item_id: budgetItem.id,
@@ -433,7 +448,7 @@ async function createExpenses(
           status: "active",
           source_system: input.sourceSystem ?? "vercel_web",
           source_table: input.sourceTable ?? "expense_entry",
-          source_row_id: legacyId,
+          source_row_id: sourceRowId,
           legacy_id: legacyId,
           notes: input.notes || null,
           imported_at: new Date().toISOString()
@@ -443,6 +458,7 @@ async function createExpenses(
     );
 
     insertedExpenses += 1;
+    createdExpenses.push({ id: expense.id, sourceRowId });
 
     const paymentPlans = buildPaymentPlans({
       amount: input.amount,
@@ -467,7 +483,7 @@ async function createExpenses(
         payment_status: "estimated",
         source_system: input.sourceSystem ?? "vercel_web",
         source_table: "expense_entry_payment_schedule",
-        source_row_id: `${legacyId}_P${String(plan.sequence).padStart(2, "0")}`,
+        source_row_id: `${sourceRowId}_P${String(plan.sequence).padStart(2, "0")}`,
         legacy_id: `${legacyId}_P${String(plan.sequence).padStart(2, "0")}`,
         notes: input.notes || null,
         imported_at: new Date().toISOString()
@@ -488,7 +504,7 @@ async function createExpenses(
     }
   }
 
-  return { insertedExpenses, insertedPaymentSchedules };
+  return { insertedExpenses, insertedPaymentSchedules, createdExpenses };
 }
 
 function manualRowToExpenseInput(row: ParsedManualExpenseRow): ExpenseInput {
@@ -820,6 +836,88 @@ function pickInvoiceField(row: Record<string, string>, names: string[]): string 
   return "";
 }
 
+function buildInFilter(values: string[]): string {
+  return `in.(${values.map((value) => `"${value.replace(/"/g, '\\"')}"`).join(",")})`;
+}
+
+async function confirmInvoiceDrafts(
+  requestConfig: SupabaseRequestConfig,
+  references: EntryReferences,
+  payload: Record<string, unknown>
+) {
+  const confirmations = Array.isArray(payload.confirmations)
+    ? (payload.confirmations as InvoiceDraftConfirmation[])
+    : [];
+
+  if (confirmations.length === 0) {
+    throw new Error("No invoice drafts were selected for confirmation.");
+  }
+
+  const draftIds = confirmations.map((confirmation) => confirmation.draftId).filter(Boolean);
+  const rows = await supabaseRead<InvoiceDraftReviewRow>(requestConfig, "invoice_drafts", {
+    select:
+      "id,source_line_key,consumption_date,merchant_tax_id,merchant_name,item_description,amount,suggested_payment_tool_type,suggested_credit_card_id,suggested_budget_item_id,legacy_suggested_budget_item,review_status,notes",
+    household_id: `eq.${references.householdId}`,
+    review_status: "eq.needs_review",
+    id: buildInFilter(draftIds)
+  });
+
+  if (rows.length !== draftIds.length) {
+    throw new Error("Some selected invoice drafts are no longer pending review.");
+  }
+
+  const reviewItems = mapInvoiceDraftReviewItems(rows, references.budgetItems, references.creditCards);
+  const confirmationInputs = buildInvoiceDraftConfirmationInputs(reviewItems, confirmations);
+  const result = await createExpenses(
+    requestConfig,
+    references,
+    confirmationInputs.map((input) => ({
+      consumptionDate: input.consumptionDate,
+      merchantTaxId: input.merchantTaxId,
+      itemDescription: input.itemDescription,
+      amount: input.amount,
+      merchantName: input.merchantName,
+      budgetItemId: input.budgetItemId,
+      paymentToolType: input.paymentToolType,
+      creditCardId: input.creditCardId,
+      installmentCount: 1,
+      notes: input.notes,
+      sourceSystem: "finance_ministry_invoice",
+      sourceTable: "invoice_drafts",
+      sourceRowId: input.sourceLineKey
+    }))
+  );
+
+  for (let index = 0; index < confirmationInputs.length; index += 1) {
+    const input = confirmationInputs[index];
+    const createdExpense = result.createdExpenses[index];
+
+    await supabasePatch(
+      requestConfig,
+      "invoice_drafts",
+      {
+        household_id: `eq.${references.householdId}`,
+        id: `eq.${input.draftId}`
+      },
+      {
+        review_status: "confirmed",
+        confirmed_expense_id: createdExpense.id,
+        suggested_payment_tool_type: input.paymentToolType,
+        suggested_credit_card_id: input.creditCardId ?? null,
+        suggested_budget_item_id: input.budgetItemId,
+        notes: input.notes || null,
+        updated_at: new Date().toISOString()
+      }
+    );
+  }
+
+  return {
+    confirmedDrafts: confirmationInputs.length,
+    insertedExpenses: result.insertedExpenses,
+    insertedPaymentSchedules: result.insertedPaymentSchedules
+  };
+}
+
 export async function POST(request: Request) {
   const accessToken = readBearerToken(request.headers.get("authorization"));
 
@@ -873,6 +971,12 @@ export async function POST(request: Request) {
 
     if (action === "invoiceImport") {
       const result = await importInvoiceDrafts(requestConfig, references, payload);
+
+      return NextResponse.json(result);
+    }
+
+    if (action === "confirmInvoiceDrafts") {
+      const result = await confirmInvoiceDrafts(requestConfig, references, payload);
 
       return NextResponse.json(result);
     }
