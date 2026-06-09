@@ -7,6 +7,7 @@ import {
   hasSupabaseHashSession,
   isStoredSupabaseSessionValid,
   parseSupabaseAccessTokenUser,
+  parseSupabaseHashError,
   parseSupabaseHashSession,
   readStoredSupabaseSession,
   readStoredSupabaseUser,
@@ -40,6 +41,17 @@ assert.deepEqual(
 );
 
 assert.equal(parseSupabaseHashSession("#error=access_denied"), null);
+assert.deepEqual(
+  parseSupabaseHashError(
+    "#error=access_denied&error_code=otp_expired&error_description=Email+link+is+invalid+or+has+expired"
+  ),
+  {
+    error: "access_denied",
+    errorCode: "otp_expired",
+    errorDescription: "Email link is invalid or has expired"
+  }
+);
+assert.equal(parseSupabaseHashError("#access_token=a&refresh_token=r"), null);
 assert.equal(hasSupabaseHashSession("#access_token=a&refresh_token=r&type=signup"), true);
 assert.equal(hasSupabaseHashSession("#access_token=a&type=signup"), false);
 

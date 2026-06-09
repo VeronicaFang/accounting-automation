@@ -6,6 +6,7 @@ import {
   clearStoredSupabaseSession,
   getSessionExpiryDate,
   isStoredSupabaseSessionValid,
+  parseSupabaseHashError,
   readStoredSupabaseSession
 } from "@/lib/auth/supabase-auth";
 
@@ -21,6 +22,11 @@ type SessionState =
   | { status: "signed-out" }
   | { status: "expired"; expiryLabel: string | null }
   | { status: "signed-in"; expiryLabel: string | null };
+
+type AuthLinkError = {
+  code: string;
+  message: string;
+};
 
 function formatExpiry(date: Date | null): string | null {
   return date ? date.toLocaleString("zh-TW") : null;
@@ -46,8 +52,30 @@ function readSessionState(): SessionState {
 export function LoginForm() {
   const [state, formAction, isPending] = useActionState(sendMagicLink, initialState);
   const [sessionState, setSessionState] = useState<SessionState>({ status: "checking" });
+  const [authLinkError, setAuthLinkError] = useState<AuthLinkError | null>(null);
 
   useEffect(() => {
+    const hashError = parseSupabaseHashError(window.location.hash);
+    const params = new URLSearchParams(window.location.search);
+    const queryErrorCode = params.get("auth_error");
+
+    if (hashError || queryErrorCode) {
+      const code = hashError?.errorCode ?? queryErrorCode ?? "auth_error";
+      const description = hashError?.errorDescription ?? params.get("auth_error_description");
+
+      clearStoredSupabaseSession(window.localStorage);
+      setAuthLinkError({
+        code,
+        message:
+          code === "otp_expired"
+            ? "這封 Supabase 登入信已失效或已使用過，請重新寄送 magic link。"
+            : description ?? "Supabase 登入連結無效，請重新寄送 magic link。"
+      });
+      window.history.replaceState(null, "", "/login");
+      setSessionState({ status: "signed-out" });
+      return;
+    }
+
     setSessionState(readSessionState());
   }, []);
 
@@ -74,6 +102,7 @@ export function LoginForm() {
 
   return (
     <form action={formAction} className="auth-form">
+      {authLinkError ? <p className="auth-message auth-error">{authLinkError.message}</p> : null}
       {sessionState.status === "expired" ? (
         <p className="auth-message auth-error">
           Supabase session 已過期{sessionState.expiryLabel ? `（${sessionState.expiryLabel}）` : ""}，請重新登入。

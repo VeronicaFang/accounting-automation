@@ -77,6 +77,12 @@ export type ParsedHashSession = {
   tokenType: string | null;
 };
 
+export type ParsedHashError = {
+  error: string;
+  errorCode: string | null;
+  errorDescription: string | null;
+};
+
 export type SupabaseSessionUser = {
   userId: string;
   email: string | null;
@@ -133,6 +139,21 @@ export function parseSupabaseHashSession(hash: string): ParsedHashSession | null
     expiresIn: params.get("expires_in"),
     expiresAt: params.get("expires_at"),
     tokenType: params.get("token_type")
+  };
+}
+
+export function parseSupabaseHashError(hash: string): ParsedHashError | null {
+  const params = new URLSearchParams(hash.replace(/^#/, ""));
+  const error = params.get("error");
+
+  if (!error) {
+    return null;
+  }
+
+  return {
+    error,
+    errorCode: params.get("error_code"),
+    errorDescription: params.get("error_description")
   };
 }
 
