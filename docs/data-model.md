@@ -174,6 +174,8 @@
 
 The current deployed MVP still uses Google Sheets as the operational data store. Supabase is the next-system schema and must preserve source traceability during the dual-track transition.
 
+Runtime handoff note: see `docs/handoff-status.md` for the current implementation snapshot. As of 2026-06-09, the Supabase schema and Vercel read/write foundation exist, and Google Sheet transaction data has been imported for the active household. The schema already includes future-facing tables such as `credit_card_statements`, but some user workflows that write to those tables are still pending.
+
 Supabase v1 uses product-oriented tables instead of copying Google Sheet tab names directly:
 
 - `budget_groups` and `budget_items` replace the flat `BudgetItems` view while keeping `legacy_code` and `legacy_name`.
