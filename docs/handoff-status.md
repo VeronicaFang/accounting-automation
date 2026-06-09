@@ -94,6 +94,13 @@ Known limitations:
 - The Vercel entry API currently rejects negative manual entry amounts at the write path; legacy signed adjustments are supported by schema and migration importer.
 - Merchant rule management in Vercel is still a read/use behavior, not a full management UI.
 
+## Vercel Test Findings To-Do
+
+Observed on deployed Vercel app on 2026-06-09:
+
+1. `記帳 > 新增手動消費` can successfully create an expense and payment schedule, but the browser surfaced a suspected interaction timeout / slow input warning during testing. Reproduce with Chrome performance tooling and check whether the form is rerendering too much, especially budget/card selects and page-wide state updates.
+2. `記帳 > 財政部發票匯入` can create pending `invoice_drafts`. The `待處理` page currently only shows a summary card such as `45 筆待確認發票 Supabase invoice_drafts 仍有待確認資料。` It does not yet provide an actionable invoice review table, edit controls, batch confirm, batch delete, or confirm-and-save-rules flow. This should be the next parity item before Vercel can replace the Apps Script invoice workflow.
+
 ## Apps Script Status
 
 Apps Script currently remains the mature workflow for:
