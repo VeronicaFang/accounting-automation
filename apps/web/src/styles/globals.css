@@ -399,6 +399,62 @@ textarea {
   color: var(--muted);
 }
 
+.entry-message {
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  margin-bottom: 16px;
+  padding: 12px 14px;
+  background: var(--panel);
+  color: var(--muted);
+  font-weight: 700;
+}
+
+.entry-message-success {
+  border-color: rgba(21, 128, 61, 0.28);
+  color: var(--good);
+}
+
+.entry-message-error {
+  border-color: rgba(185, 28, 28, 0.28);
+  color: var(--danger);
+}
+
+.entry-section {
+  display: grid;
+  gap: 12px;
+}
+
+.entry-form-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 12px;
+}
+
+.entry-form-grid label {
+  display: grid;
+  gap: 6px;
+  color: var(--muted);
+  font-size: 13px;
+  font-weight: 700;
+}
+
+.entry-form-grid input,
+.entry-form-grid select,
+.entry-textarea {
+  width: 100%;
+  min-height: 40px;
+  border: 1px solid var(--line);
+  border-radius: 7px;
+  background: #fffefa;
+  color: var(--ink);
+  padding: 9px 10px;
+}
+
+.entry-textarea {
+  min-height: 150px;
+  resize: vertical;
+}
+
 .setting-tile {
   border: 1px solid var(--line);
   border-radius: 8px;
@@ -520,6 +576,7 @@ textarea {
 
   .grid-two,
   .grid-three,
+  .entry-form-grid,
   .stat-strip {
     grid-template-columns: 1fr;
   }
