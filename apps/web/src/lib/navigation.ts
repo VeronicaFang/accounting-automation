@@ -7,6 +7,7 @@ export type NavigationItem = {
 export const navigationItems: NavigationItem[] = [
   { href: "/", label: "首頁", description: "本月狀態與待辦" },
   { href: "/expense-entry", label: "記帳", description: "單筆、固定、批次" },
+  { href: "/income-entry", label: "收入", description: "薪資、獎金與其他收入" },
   { href: "/expenses", label: "消費明細", description: "已記錄消費" },
   { href: "/review", label: "待處理", description: "匯入與規則審核" },
   { href: "/bills", label: "帳單中心", description: "信用卡帳單預估與真實帳單" },

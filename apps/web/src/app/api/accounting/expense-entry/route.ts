@@ -93,6 +93,8 @@ type InvoiceDraftInput = {
   sourceLineKey: string;
 };
 
+type IncomeStatus = "estimated" | "received" | "corrected";
+
 type SupabaseRequestConfig = {
   restUrl: string;
   headers: Record<string, string>;
@@ -583,6 +585,56 @@ async function createMonthlyFixedExpense(
   return createExpenses(requestConfig, references, expenseInputs);
 }
 
+async function createIncome(
+  requestConfig: SupabaseRequestConfig,
+  references: EntryReferences,
+  payload: Record<string, unknown>
+) {
+  const incomeDate = normalizeDateInput(String(payload.incomeDate || ""));
+  const incomeItem = String(payload.incomeItem || "").trim();
+  const incomeAmount = Number(payload.incomeAmount || 0);
+  const rawStatus = String(payload.incomeStatus || "received");
+  const incomeStatus: IncomeStatus =
+    rawStatus === "estimated" || rawStatus === "corrected" || rawStatus === "received" ? rawStatus : "received";
+  const legacyId = buildLegacyId("WEB_INCOME");
+
+  if (!incomeDate || !incomeItem) {
+    throw new Error("收入日期與收入項目為必填。");
+  }
+
+  if (!Number.isFinite(incomeAmount) || incomeAmount < 0) {
+    throw new Error("收入金額必須大於或等於 0。");
+  }
+
+  const incomeMonth = monthKeyFromDate(incomeDate);
+
+  await supabaseInsert(requestConfig, "income_schedules", [
+    {
+      household_id: references.householdId,
+      user_id: references.userId,
+      income_date: incomeDate,
+      income_month: incomeMonth,
+      income_item: incomeItem,
+      income_amount: incomeAmount,
+      income_status: incomeStatus,
+      source: String(payload.source || "") || "web",
+      source_system: "vercel_web",
+      source_table: "income_entry",
+      source_row_id: legacyId,
+      legacy_id: legacyId,
+      imported_at: new Date().toISOString(),
+      notes: String(payload.notes || "") || null
+    }
+  ]);
+
+  await addCashFlowDelta(requestConfig, references.householdId, incomeMonth, { income: incomeAmount });
+
+  return {
+    insertedIncomes: 1,
+    cashFlowMonth: incomeMonth
+  };
+}
+
 function addMonthsSafe(monthKey: string, offset: number): string {
   const [year, month] = monthKey.split("-").map(Number);
   const date = new Date(year, month - 1 + offset, 1);
@@ -947,6 +999,12 @@ export async function POST(request: Request) {
 
     if (action === "monthlyFixedExpense") {
       const result = await createMonthlyFixedExpense(requestConfig, references, payload);
+
+      return NextResponse.json(result);
+    }
+
+    if (action === "singleIncome") {
+      const result = await createIncome(requestConfig, references, payload);
 
       return NextResponse.json(result);
     }
