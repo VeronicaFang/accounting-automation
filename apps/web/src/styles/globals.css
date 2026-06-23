@@ -135,8 +135,17 @@ textarea {
   place-items: center;
   border: 1px solid rgba(255, 254, 250, 0.35);
   border-radius: 8px;
+  overflow: hidden;
+  background: #15130f;
   color: #d9f99d;
   font-weight: 800;
+}
+
+.brand-mark img {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
 }
 
 .brand strong,

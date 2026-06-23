@@ -7,7 +7,9 @@ export function Navigation() {
   return (
     <aside className="sidebar">
       <div className="brand">
-        <span className="brand-mark">AA</span>
+        <span className="brand-mark" aria-hidden="true">
+          <img alt="" src="/private-finance-icon.png" />
+        </span>
         <div>
           <strong>記帳軟體</strong>
           <span>Private Finance</span>
