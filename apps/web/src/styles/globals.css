@@ -360,6 +360,97 @@ textarea {
   text-align: right;
 }
 
+.bill-statement-edit-cell,
+.bill-statement-display-cell {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.action-btn-sm {
+  padding: 3px 10px;
+  font-size: 0.8rem;
+  border-radius: 6px;
+  border: 1px solid var(--line);
+  background: var(--surface);
+  color: var(--ink);
+  cursor: pointer;
+  white-space: nowrap;
+}
+.action-btn-sm:hover {
+  background: var(--line);
+}
+.action-btn-sm.muted {
+  color: var(--muted);
+}
+
+.save-message {
+  font-size: 0.85rem;
+  color: var(--muted);
+  margin: 4px 0 8px;
+}
+
+.quick-add-form {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.quick-add-title {
+  font-weight: 600;
+  font-size: 0.95rem;
+  color: var(--ink);
+}
+
+.quick-add-fields {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px 20px;
+}
+
+.quick-add-fields label {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  font-size: 0.82rem;
+  color: var(--muted);
+}
+
+.quick-add-fields input,
+.quick-add-fields select {
+  min-width: 110px;
+  height: 34px;
+  border: 1px solid var(--line);
+  border-radius: 7px;
+  padding: 4px 8px;
+  font-size: 0.88rem;
+  background: var(--surface);
+  color: var(--ink);
+}
+
+.quick-add-actions {
+  display: flex;
+  gap: 10px;
+}
+
+.primary-action {
+  padding: 6px 18px;
+  border-radius: 8px;
+  border: none;
+  background: var(--accent, #2d8a6e);
+  color: #fff;
+  font-size: 0.88rem;
+  cursor: pointer;
+  font-weight: 600;
+}
+.primary-action:hover {
+  opacity: 0.88;
+}
+.primary-action:disabled {
+  opacity: 0.5;
+  cursor: default;
+}
+
 .row-actions {
   display: inline-flex;
   gap: 8px;

@@ -28,6 +28,7 @@ export const billEstimates: BillEstimate[] = [
   {
     id: "bill-2026-05-lianbang",
     month: "2026-05",
+    creditCardId: "mock-card-lianbang",
     creditCardName: "聯邦",
     estimatedAmount: 11993,
     statementAmount: 30680,
@@ -39,6 +40,7 @@ export const billEstimates: BillEstimate[] = [
   {
     id: "bill-2026-06-yushan",
     month: "2026-06",
+    creditCardId: "mock-card-yushan",
     creditCardName: "玉山",
     estimatedAmount: 14432,
     paymentDate: "2026-06-17",

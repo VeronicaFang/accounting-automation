@@ -81,6 +81,18 @@ export function ExpensesClient() {
   const [error, setError] = useState<string | null>(null);
   const [message, setMessage] = useState<Message>({ tone: "muted", text: "可直接修正品項、預算項目，或刪除錯誤與重複消費。" });
   const [busyExpenseId, setBusyExpenseId] = useState<string | null>(null);
+  const [showAddForm, setShowAddForm] = useState(false);
+  const [addBusy, setAddBusy] = useState(false);
+  const today = new Date().toISOString().slice(0, 10);
+  const [newExpense, setNewExpense] = useState({
+    consumptionDate: today,
+    merchantName: "",
+    itemDescription: "",
+    amount: "",
+    budgetItemId: "",
+    paymentToolType: "cash",
+    creditCardId: ""
+  });
   const searchParams = useSearchParams();
   const currentMonth = monthKeyFromDateValue();
   const defaultMonths = useMemo(() => getDefaultExpenseMonths(currentMonth), [currentMonth]);
@@ -300,6 +312,75 @@ export function ExpensesClient() {
     }
   }
 
+  function resetAddForm() {
+    setNewExpense({
+      consumptionDate: new Date().toISOString().slice(0, 10),
+      merchantName: "",
+      itemDescription: "",
+      amount: "",
+      budgetItemId: "",
+      paymentToolType: "cash",
+      creditCardId: ""
+    });
+    setShowAddForm(false);
+  }
+
+  async function addExpense() {
+    const { consumptionDate, merchantName, itemDescription, amount, budgetItemId, paymentToolType, creditCardId } = newExpense;
+
+    if (!consumptionDate) {
+      setMessage({ tone: "error", text: "請填寫消費日期。" });
+      return;
+    }
+
+    if (!itemDescription.trim()) {
+      setMessage({ tone: "error", text: "品項不可空白。" });
+      return;
+    }
+
+    if (!budgetItemId) {
+      setMessage({ tone: "error", text: "請選擇預算項目。" });
+      return;
+    }
+
+    const amountNum = Number(amount);
+
+    if (!amount || !Number.isFinite(amountNum) || amountNum <= 0) {
+      setMessage({ tone: "error", text: "請輸入有效的消費金額（> 0）。" });
+      return;
+    }
+
+    if (paymentToolType === "credit_card" && !creditCardId) {
+      setMessage({ tone: "error", text: "請選擇信用卡。" });
+      return;
+    }
+
+    setAddBusy(true);
+    setMessage({ tone: "muted", text: "正在新增消費..." });
+
+    try {
+      await submitExpenseAction("singleExpense", {
+        consumptionDate,
+        merchantName,
+        itemDescription,
+        amount: amountNum,
+        budgetItemId,
+        paymentToolType,
+        creditCardId: paymentToolType === "credit_card" ? creditCardId : "",
+        installmentCount: 1,
+        notes: "",
+        sourceSystem: "manual_no_invoice",
+        sourceTable: "expense_entry"
+      });
+      setMessage({ tone: "success", text: "消費已新增。" });
+      resetAddForm();
+    } catch (caughtError) {
+      setMessage({ tone: "error", text: caughtError instanceof Error ? caughtError.message : "新增消費失敗。" });
+    } finally {
+      setAddBusy(false);
+    }
+  }
+
   return (
     <>
       <PageHeader
@@ -348,6 +429,109 @@ export function ExpensesClient() {
           ))}
         </div>
         <p className="muted">{activeContext.length > 0 ? `目前條件：${activeContext.join("、")}` : "目前條件：本月與前月"}</p>
+      </section>
+      <section className="surface section-block">
+        {showAddForm ? (
+          <div className="quick-add-form">
+            <div className="quick-add-title">新增消費</div>
+            <div className="quick-add-fields">
+              <label>
+                消費日
+                <input
+                  type="date"
+                  value={newExpense.consumptionDate}
+                  onChange={(e) => setNewExpense((prev) => ({ ...prev, consumptionDate: e.target.value }))}
+                />
+              </label>
+              <label>
+                店家
+                <input
+                  type="text"
+                  placeholder="選填"
+                  value={newExpense.merchantName}
+                  onChange={(e) => setNewExpense((prev) => ({ ...prev, merchantName: e.target.value }))}
+                />
+              </label>
+              <label>
+                品項
+                <input
+                  type="text"
+                  placeholder="必填"
+                  value={newExpense.itemDescription}
+                  onChange={(e) => setNewExpense((prev) => ({ ...prev, itemDescription: e.target.value }))}
+                />
+              </label>
+              <label>
+                金額
+                <input
+                  type="number"
+                  min={1}
+                  step={1}
+                  placeholder="必填"
+                  value={newExpense.amount}
+                  onChange={(e) => setNewExpense((prev) => ({ ...prev, amount: e.target.value }))}
+                />
+              </label>
+              <label>
+                預算項目
+                <select
+                  value={newExpense.budgetItemId}
+                  onChange={(e) => setNewExpense((prev) => ({ ...prev, budgetItemId: e.target.value }))}
+                >
+                  <option value="">請選擇</option>
+                  {budgetItems.map((item) => (
+                    <option key={item.id} value={item.id}>
+                      {getBudgetItemLabel(item)}
+                    </option>
+                  ))}
+                </select>
+              </label>
+              <label>
+                支付
+                <select
+                  value={newExpense.paymentToolType}
+                  onChange={(e) => setNewExpense((prev) => ({ ...prev, paymentToolType: e.target.value, creditCardId: "" }))}
+                >
+                  <option value="cash">現金</option>
+                  <option value="credit_card">信用卡</option>
+                </select>
+              </label>
+              {newExpense.paymentToolType === "credit_card" ? (
+                <label>
+                  信用卡
+                  <select
+                    value={newExpense.creditCardId}
+                    onChange={(e) => setNewExpense((prev) => ({ ...prev, creditCardId: e.target.value }))}
+                  >
+                    <option value="">請選擇</option>
+                    {creditCards.map((card) => (
+                      <option key={card.id} value={card.id}>
+                        {card.name}
+                      </option>
+                    ))}
+                  </select>
+                </label>
+              ) : null}
+            </div>
+            <div className="quick-add-actions">
+              <button className="primary-action" type="button" onClick={addExpense} disabled={addBusy}>
+                {addBusy ? "新增中..." : "確認新增"}
+              </button>
+              <button className="secondary-action" type="button" onClick={resetAddForm} disabled={addBusy}>
+                取消
+              </button>
+            </div>
+          </div>
+        ) : (
+          <button
+            className="secondary-action"
+            type="button"
+            onClick={() => setShowAddForm(true)}
+            disabled={state !== "ready"}
+          >
+            + 新增消費
+          </button>
+        )}
       </section>
       <section className="surface section-block">
         <div className="section-heading">

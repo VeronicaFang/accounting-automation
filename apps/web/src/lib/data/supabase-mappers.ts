@@ -110,6 +110,7 @@ export function mapBillEstimateRows(
     return {
       id: estimate.id,
       month: estimate.bill_month,
+      creditCardId: estimate.credit_card_id,
       creditCardName: creditCardNameById.get(estimate.credit_card_id) ?? "未知信用卡",
       estimatedAmount: toNumber(estimate.estimated_bill_amount),
       statementAmount: statement ? toNumber(statement.actual_amount) : undefined,

@@ -1,10 +1,28 @@
+"use client";
+
 import Link from "next/link";
 
 import { getDisplayedBillAmount, getStatementVariance } from "@/lib/bill-calculations";
 import { formatCurrency, formatVariance } from "@/lib/format";
 import type { BillEstimate } from "@/lib/types";
 
-export function BillEstimateTable({ bills, title = "每月帳單預估" }: { bills: BillEstimate[]; title?: string }) {
+export type BillStatementEditProps = {
+  editingId: string | null;
+  statementEdits: Record<string, string>;
+  busy: boolean;
+  onEditStart: (billId: string, currentAmount: number | undefined) => void;
+  onAmountChange: (billId: string, value: string) => void;
+  onSave: (bill: BillEstimate) => void;
+  onCancel: () => void;
+};
+
+type Props = {
+  bills: BillEstimate[];
+  title?: string;
+  statementEdit?: BillStatementEditProps;
+};
+
+export function BillEstimateTable({ bills, title = "每月帳單預估", statementEdit }: Props) {
   return (
     <section className="surface section-block">
       <div className="section-heading">
@@ -34,11 +52,12 @@ export function BillEstimateTable({ bills, title = "每月帳單預估" }: { bil
                 estimatedAmount: bill.estimatedAmount,
                 statementAmount: bill.statementAmount
               });
+              const isEditing = statementEdit?.editingId === bill.id;
 
               return (
                 <tr key={bill.id}>
                   <td>{bill.month}</td>
-                                    <td>
+                  <td>
                     <Link
                       className="table-link"
                       href={`/expenses?billMonth=${encodeURIComponent(bill.month)}&card=${encodeURIComponent(bill.creditCardName)}`}
@@ -47,7 +66,44 @@ export function BillEstimateTable({ bills, title = "每月帳單預估" }: { bil
                     </Link>
                   </td>
                   <td>{formatCurrency(bill.estimatedAmount)}</td>
-                  <td>{bill.statementAmount ? formatCurrency(bill.statementAmount) : "尚未輸入"}</td>
+                  <td>
+                    {statementEdit && isEditing ? (
+                      <span className="bill-statement-edit-cell">
+                        <input
+                          type="number"
+                          className="expense-amount-input"
+                          value={statementEdit.statementEdits[bill.id] ?? ""}
+                          onChange={(e) => statementEdit.onAmountChange(bill.id, e.target.value)}
+                          disabled={statementEdit.busy}
+                          min={0}
+                          step={1}
+                        />
+                        <button
+                          className="action-btn-sm"
+                          onClick={() => statementEdit.onSave(bill)}
+                          disabled={statementEdit.busy}
+                        >
+                          確認
+                        </button>
+                        <button className="action-btn-sm muted" onClick={statementEdit.onCancel} disabled={statementEdit.busy}>
+                          取消
+                        </button>
+                      </span>
+                    ) : (
+                      <span className="bill-statement-display-cell">
+                        <span>{bill.statementAmount ? formatCurrency(bill.statementAmount) : "尚未輸入"}</span>
+                        {statementEdit ? (
+                          <button
+                            className="action-btn-sm"
+                            onClick={() => statementEdit.onEditStart(bill.id, bill.statementAmount)}
+                            disabled={statementEdit.busy}
+                          >
+                            {bill.statementAmount ? "修改" : "輸入"}
+                          </button>
+                        ) : null}
+                      </span>
+                    )}
+                  </td>
                   <td>{formatCurrency(displayedAmount)}</td>
                   <td className={variance && variance > 0 ? "text-danger" : ""}>
                     {variance === null ? "尚未比對" : formatVariance(variance)}

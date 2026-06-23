@@ -15,9 +15,9 @@ assert.equal(addMonths("2026-01", -1), "2025-12");
 assert.deepEqual(getDefaultExpenseMonths("2026-06"), ["2026-06", "2026-05"]);
 
 const bills = [
-  { id: "jan", month: "2026-01", creditCardName: "CTBC", estimatedAmount: 100, paymentDate: "2026-01-17", cutoffLabel: "", status: "estimated" as const, scheduleCount: 1 },
-  { id: "jun", month: "2026-06", creditCardName: "Union", estimatedAmount: 300, paymentDate: "2026-06-17", cutoffLabel: "", status: "estimated" as const, scheduleCount: 2 },
-  { id: "jul", month: "2026-07", creditCardName: "Cathay", estimatedAmount: 500, paymentDate: "2026-07-17", cutoffLabel: "", status: "estimated" as const, scheduleCount: 3 }
+  { id: "jan", month: "2026-01", creditCardId: "card-1", creditCardName: "CTBC", estimatedAmount: 100, paymentDate: "2026-01-17", cutoffLabel: "", status: "estimated" as const, scheduleCount: 1 },
+  { id: "jun", month: "2026-06", creditCardId: "card-2", creditCardName: "Union", estimatedAmount: 300, paymentDate: "2026-06-17", cutoffLabel: "", status: "estimated" as const, scheduleCount: 2 },
+  { id: "jul", month: "2026-07", creditCardId: "card-3", creditCardName: "Cathay", estimatedAmount: 500, paymentDate: "2026-07-17", cutoffLabel: "", status: "estimated" as const, scheduleCount: 3 }
 ];
 
 assert.deepEqual(filterFutureBills(bills, "2026-06").map((bill) => bill.id), ["jun", "jul"]);

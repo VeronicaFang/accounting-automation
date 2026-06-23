@@ -22,6 +22,7 @@ export type CashFlowMonth = {
 export type BillEstimate = {
   id: string;
   month: string;
+  creditCardId: string;
   creditCardName: string;
   estimatedAmount: number;
   statementAmount?: number;

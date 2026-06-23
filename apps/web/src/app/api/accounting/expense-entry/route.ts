@@ -1269,6 +1269,59 @@ async function updateExpenseItemDescription(
   };
 }
 
+async function updateBillStatement(
+  requestConfig: SupabaseRequestConfig,
+  references: EntryReferences,
+  payload: Record<string, unknown>
+) {
+  const creditCardId = String(payload.creditCardId || "").trim();
+  const billMonth = String(payload.billMonth || "").trim();
+  const paymentDueDate = String(payload.paymentDueDate || "").trim();
+  const actualAmount = Number(payload.actualAmount);
+
+  if (!creditCardId || !billMonth) {
+    throw new Error("請提供信用卡 ID 與帳單月份。");
+  }
+
+  if (!Number.isFinite(actualAmount) || actualAmount < 0) {
+    throw new Error("請輸入有效的帳單金額（≥ 0）。");
+  }
+
+  const existing = await supabaseRead<{ statement_month: string }>(requestConfig, "credit_card_statements", {
+    select: "statement_month",
+    household_id: `eq.${references.householdId}`,
+    credit_card_id: `eq.${creditCardId}`,
+    statement_month: `eq.${billMonth}`,
+    limit: "1"
+  });
+
+  if (existing.length > 0) {
+    await supabasePatch(
+      requestConfig,
+      "credit_card_statements",
+      {
+        household_id: `eq.${references.householdId}`,
+        credit_card_id: `eq.${creditCardId}`,
+        statement_month: `eq.${billMonth}`
+      },
+      { actual_amount: actualAmount, statement_status: "confirmed", updated_at: new Date().toISOString() }
+    );
+  } else {
+    await supabaseInsert(requestConfig, "credit_card_statements", [
+      {
+        household_id: references.householdId,
+        credit_card_id: creditCardId,
+        statement_month: billMonth,
+        actual_amount: actualAmount,
+        payment_due_date: paymentDueDate || null,
+        statement_status: "confirmed"
+      }
+    ]);
+  }
+
+  return { updatedStatements: 1 };
+}
+
 async function deleteExpenses(
   requestConfig: SupabaseRequestConfig,
   references: EntryReferences,
@@ -1528,6 +1581,12 @@ export async function POST(request: Request) {
     }
     if (action === "updateExpenseItemDescription") {
       const result = await updateExpenseItemDescription(requestConfig, references, payload);
+
+      return NextResponse.json(result);
+    }
+
+    if (action === "updateBillStatement") {
+      const result = await updateBillStatement(requestConfig, references, payload);
 
       return NextResponse.json(result);
     }

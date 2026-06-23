@@ -1,8 +1,9 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 
 import { BillEstimateTable } from "@/components/bill-estimate-table";
+import type { BillStatementEditProps } from "@/components/bill-estimate-table";
 import { filterFutureBills, filterHistoricalBills, monthKeyFromDateValue } from "@/lib/accounting/dashboard-filters";
 import { DetailDrawer } from "@/components/detail-drawer";
 import { PageHeader } from "@/components/page-header";
@@ -36,6 +37,27 @@ export function BillsClient() {
   const [bills, setBills] = useState<BillEstimate[]>([]);
   const [state, setState] = useState<LoadState>("signed-out");
   const [error, setError] = useState<string | null>(null);
+  const [editingId, setEditingId] = useState<string | null>(null);
+  const [statementEdits, setStatementEdits] = useState<Record<string, string>>({});
+  const [busy, setBusy] = useState(false);
+  const [saveMessage, setSaveMessage] = useState<string | null>(null);
+  const tokenRef = useRef<string | null>(null);
+
+  const loadBills = useCallback((accessToken: string) => {
+    setState("loading");
+    setError(null);
+
+    getSupabaseBillEstimates(accessToken)
+      .then((rows) => {
+        setBills(rows);
+        setState("ready");
+      })
+      .catch((caughtError) => {
+        setBills([]);
+        setError(caughtError instanceof Error ? caughtError.message : "Supabase 讀取失敗");
+        setState("error");
+      });
+  }, []);
 
   useEffect(() => {
     const session = readStoredSupabaseSession(window.localStorage);
@@ -50,33 +72,80 @@ export function BillsClient() {
       return;
     }
 
-    let isCurrent = true;
-    setState("loading");
-    setError(null);
+    tokenRef.current = session.accessToken;
+    loadBills(session.accessToken);
+  }, [loadBills]);
 
-    getSupabaseBillEstimates(session.accessToken)
-      .then((rows) => {
-        if (!isCurrent) {
-          return;
-        }
+  const handleEditStart: BillStatementEditProps["onEditStart"] = (billId, currentAmount) => {
+    setEditingId(billId);
+    setStatementEdits((prev) => ({
+      ...prev,
+      [billId]: currentAmount !== undefined ? String(currentAmount) : ""
+    }));
+    setSaveMessage(null);
+  };
 
-        setBills(rows);
-        setState("ready");
-      })
-      .catch((caughtError) => {
-        if (!isCurrent) {
-          return;
-        }
+  const handleAmountChange: BillStatementEditProps["onAmountChange"] = (billId, value) => {
+    setStatementEdits((prev) => ({ ...prev, [billId]: value }));
+  };
 
-        setBills([]);
-        setError(caughtError instanceof Error ? caughtError.message : "Supabase 讀取失敗");
-        setState("error");
+  const handleCancel = () => {
+    setEditingId(null);
+    setSaveMessage(null);
+  };
+
+  const handleSave: BillStatementEditProps["onSave"] = async (bill) => {
+    const raw = statementEdits[bill.id] ?? "";
+    const amount = Number(raw);
+
+    if (!Number.isFinite(amount) || amount < 0) {
+      setSaveMessage("請輸入有效的金額（≥ 0）");
+      return;
+    }
+
+    setBusy(true);
+    setSaveMessage(null);
+
+    try {
+      const res = await fetch("/api/accounting/expense-entry", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          action: "updateBillStatement",
+          creditCardId: bill.creditCardId,
+          billMonth: bill.month,
+          paymentDueDate: bill.paymentDate,
+          actualAmount: amount
+        })
       });
 
-  return () => {
-      isCurrent = false;
-    };
-  }, []);
+      if (!res.ok) {
+        const data = (await res.json().catch(() => ({}))) as { error?: string };
+        throw new Error(data.error ?? `HTTP ${res.status}`);
+      }
+
+      setEditingId(null);
+      setSaveMessage("帳單金額已儲存");
+
+      if (tokenRef.current) {
+        loadBills(tokenRef.current);
+      }
+    } catch (err) {
+      setSaveMessage(err instanceof Error ? err.message : "儲存失敗");
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const statementEdit: BillStatementEditProps = {
+    editingId,
+    statementEdits,
+    busy,
+    onEditStart: handleEditStart,
+    onAmountChange: handleAmountChange,
+    onSave: handleSave,
+    onCancel: handleCancel
+  };
 
   const currentMonth = monthKeyFromDateValue();
   const futureBills = filterFutureBills(bills, currentMonth);
@@ -91,15 +160,17 @@ export function BillsClient() {
       />
       <div className={`data-source-pill data-source-${state}`}>{getStateText(state, bills.length)}</div>
       {error ? <p className="error-text">{error}</p> : null}
+      {saveMessage ? <p className="save-message">{saveMessage}</p> : null}
       <div className="grid-two">
         <div>
-          <BillEstimateTable bills={futureBills} title="本月以後帳單" />
-          <BillEstimateTable bills={historicalBills} title="歷史帳單" />
+          <BillEstimateTable bills={futureBills} title="本月以後帳單" statementEdit={statementEdit} />
+          <BillEstimateTable bills={historicalBills} title="歷史帳單" statementEdit={statementEdit} />
         </div>
         <DetailDrawer title="帳單預估邏輯">
           <p className="muted">
             點擊信用卡名稱可查看該月份、該信用卡連結到的消費明細，用來對照是否有消費漏記或帳單差異。
           </p>
+          <p className="muted">點擊「輸入」可填入信用卡寄來的真實帳單金額，系統會用真實金額取代預估金額計算現金流。</p>
         </DetailDrawer>
       </div>
     </>
