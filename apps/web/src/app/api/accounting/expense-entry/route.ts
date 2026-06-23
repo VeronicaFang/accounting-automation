@@ -1304,7 +1304,7 @@ async function updateBillStatement(
         credit_card_id: `eq.${creditCardId}`,
         statement_month: `eq.${billMonth}`
       },
-      { actual_amount: actualAmount, statement_status: "confirmed", updated_at: new Date().toISOString() }
+      { actual_amount: actualAmount, statement_status: "entered", updated_at: new Date().toISOString() }
     );
   } else {
     await supabaseInsert(requestConfig, "credit_card_statements", [
@@ -1314,7 +1314,7 @@ async function updateBillStatement(
         statement_month: billMonth,
         actual_amount: actualAmount,
         payment_due_date: paymentDueDate || null,
-        statement_status: "confirmed"
+        statement_status: "entered"
       }
     ]);
   }
