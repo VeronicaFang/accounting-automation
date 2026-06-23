@@ -241,9 +241,47 @@
   - `npm run typecheck`：通過
   - `npm test`：9 個測試檔全部通過（77 assertions）
 - Production 部署狀態：
+  - 使用者已 push `87f48d6`，Vercel 部署成功。
+  - 使用者回報畫面與原始 mockup 有落差，啟動 UI 第二輪修正（見下方）。
+
+### UI 第二輪修正 — 貼近 Mockup
+
+- Commit: `3c281d2 feat: UI closer to mockup — light sidebar, stat subtitles, bill badges`
+- 觸發原因：使用者對比截圖發現：sidebar 深色、統計卡無副標題、預算條細、帳單無狀態 badge。
+- 範圍：
+
+  **Sidebar 淺色重設計**
+  - 背景改為白色 `#ffffff`，邊框改為淺線
+  - Navigation 分三組（瀏覽/記帳/管理），每組有小標題
+  - 每個 nav item 左側加彩色圓點（每條目獨立色）
+  - `usePathname()` 偵測 active → teal pill 底色高亮
+  - Brand mark 改為 violet→teal 漸層圓角，品牌名稱 "澄帳"
+  - `navigation.ts` 加 `group`、`color` 欄位；`navigation.tsx` 改為 client component
+
+  **統計卡副標題**
+  - `StatStrip` 新增 `subtitle` 選填 prop
+  - `home-dashboard-client.tsx` 即時計算：
+    - 收入：與上月差異（持平 / 多 X / 少 X）
+    - 支出：與上月差異
+    - 信用卡：本月帳單所有信用卡名稱（如「玉山 + 富邦」）
+    - 結餘：「現金流健康」/「本月超支」
+  - 標籤改為：待付信用卡、本月結餘
+
+  **帳單狀態 Badge**
+  - `BillEstimateTable` 新增「狀態」欄，顯示彩色膠囊 badge：
+    - 今日到期（紅）、已付款（綠）、帳單確認（天藍）、預估中（橘）、待確認（紅）
+  - 根據 `bill.status` 與 `bill.paymentDate` vs 今日動態產生
+
+  **預算進度條**
+  - 高度 5px → 8px
+  - warning/over_budget 使用漸層色（sky→orange、orange→red）
+  - 超標/警告時百分比數字加色
+
+- 本地驗證：
+  - `npm run typecheck`：通過
+  - `npm test`：9 個測試檔全部通過
+- Production 部署狀態：
   - 等待使用者手動執行 `git push origin main`
-  - 最新本地 commit：`87f48d6`（work log）← 包含 `bc8c57b`（UI）和 `494c614`（B+C gap）
-  - Push 後 Codex 應查詢 Vercel deployment 確認狀態為 `READY`
 
 ---
 
