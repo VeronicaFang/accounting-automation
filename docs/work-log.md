@@ -1,0 +1,70 @@
+# Work Log
+
+## Operating Rules
+
+- Production updates are triggered by the user manually running `git push origin main`.
+- The push triggers the Vercel GitHub integration for the `accounting-automation` project.
+- Codex should not attempt `git push` from this Windows environment because local GitHub credential access fails with `SEC_E_NO_CREDENTIALS`.
+- Codex should make and verify local commits, then remind the user to run `git push origin main`.
+- After the user pushes, Codex should check Vercel deployments and confirm whether production reached `READY` for the expected commit.
+- If Vercel deployment is `ERROR`, Codex should inspect build logs, fix the cause, commit the fix, and again ask the user to push.
+
+## Vercel Project
+
+- Team: `heartfish0309-9529s-projects`
+- Team ID: `team_nyi3DTXGOPS7UKhWHpEunSl0`
+- Project: `accounting-automation`
+- Project ID: `prj_9YOLmvNnDmspmWgrhcRdypbNds0d`
+- Production domain: `https://accounting-automation-ten.vercel.app`
+- GitHub repo: `VeronicaFang/accounting-automation`
+- Production branch: `main`
+
+## 2026-06-23
+
+### Dashboard Drilldowns And Filters
+
+- Commit: `65e6523 feat: add dashboard drilldowns and filters`
+- Scope:
+  - Home page uses the current month for the headline and current-month stat cards.
+  - Home page bill estimates are filtered to current month and later.
+  - Annual dashboard table added for estimated spend, income, and net cash flow.
+  - Bill estimate credit-card names link to expense details filtered by month and card.
+  - Bills page is split into current/future bills and historical bills.
+  - Budget items link to expense details filtered by budget item.
+  - Expenses page adds month filter, keyword search, and merchant tags.
+- Local verification:
+  - `npm run typecheck`: passed.
+  - `npm test`: passed.
+  - `npm run build`: compiled, then failed locally with known Windows/Codex `spawn EPERM`.
+- Production deployment result:
+  - Vercel deployment: `dpl_B5x1vqSUf2NjPLciAeStM5QhXYvS`
+  - State: `ERROR`
+  - Cause: Next.js build error on `/expenses`: `useSearchParams() should be wrapped in a suspense boundary`.
+  - Result: Production stayed on the previous successful deployment, so most dashboard/filter changes were not visible.
+
+### Expenses Suspense Fix
+
+- Commit: `b969547 fix: wrap expenses filters in suspense`
+- Scope:
+  - Wrapped `ExpensesClient` in `Suspense` in `apps/web/src/app/expenses/page.tsx`.
+  - This addresses the Vercel build failure caused by `useSearchParams()`.
+- Local verification:
+  - `npm run typecheck`: passed.
+  - `npm test`: passed.
+  - `npm run build`: compiled, then failed locally with known Windows/Codex `spawn EPERM`.
+- Production deployment status:
+  - Awaiting user manual push: `git push origin main`.
+  - After push, Codex should check Vercel deployments for commit `b969547` and confirm `READY` before treating production as updated.
+
+## Pending Production Check Procedure
+
+1. User runs:
+
+   ```powershell
+   git push origin main
+   ```
+
+2. Codex checks latest Vercel deployment for project `prj_9YOLmvNnDmspmWgrhcRdypbNds0d` under team `team_nyi3DTXGOPS7UKhWHpEunSl0`.
+3. Expected deployment commit: latest local `main` commit.
+4. If state is `READY`, production should show the committed changes.
+5. If state is `ERROR`, inspect Vercel build logs and fix before asking the user to push again.
