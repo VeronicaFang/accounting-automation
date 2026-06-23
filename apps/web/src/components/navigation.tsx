@@ -6,7 +6,7 @@ import { usePathname } from "next/navigation";
 import { AuthSessionIndicator } from "@/components/auth-session-indicator";
 import { navigationGroups, navigationItems } from "@/lib/navigation";
 
-export function Navigation() {
+export function Navigation({ onClose }: { onClose?: () => void }) {
   const pathname = usePathname();
 
   return (
@@ -37,6 +37,7 @@ export function Navigation() {
                       key={item.href}
                       className={`nav-item${isActive ? " nav-item-active" : ""}`}
                       href={item.href}
+                      onClick={onClose}
                     >
                       <span className="nav-dot" style={{ background: item.color }} />
                       <span className="nav-label">{item.label}</span>

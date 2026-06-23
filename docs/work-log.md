@@ -307,3 +307,32 @@
 - Production deployment status:
   - Awaiting user manual push: `git push origin main`.
   - After push, Codex should check Vercel deployments for the latest local commit and confirm `READY` before treating production as updated.
+
+---
+
+## 2026-06-23（五）
+
+### 三項功能實作：漢堡選單、最近消費 Feed、月份切換器
+
+#### 1. 漢堡選單（Mobile hamburger navigation）
+
+- 目標：視窗寬度 ≤ 920px 時，sidebar 收合、顯示漢堡按鈕；點擊後 sidebar 從左側滑入，backdrop overlay 點擊可關閉。
+- 範圍：
+  - `app-shell.tsx`（components）：改為 "use client" 元件；加入 `mobileOpen` state；漢堡按鈕（固定定位左上角）；`sidebar-overlay` div。
+  - `navigation.tsx`：接受 `onClose?` prop，每個 Link 點擊後呼叫 `onClose` 關閉 sidebar。
+  - `globals.css`：新增 `.hamburger-btn`、`.sidebar-overlay`、`.sidebar-mobile-open`；@media (max-width: 920px) sidebar `position: fixed; left: -260px`，開啟時 `left: 0`；`.main-panel` 加 `padding-top: 64px`。
+
+#### 2. 首頁「最近消費」動態 Feed
+
+- 新建 `recent-expenses-feed.tsx`（"use client"）：接受 `accessToken` prop；useEffect 呼叫 `getSupabaseExpensesByMonth`；顯示消費列表（日期、店家、品項、分類 chip、支付工具、金額）。
+- `supabase-repository.ts`：新增 `getSupabaseExpensesByMonth(month, accessToken)`，加 `budget_month: eq.${month}` filter。
+- `home-dashboard-client.tsx`：import `RecentExpensesFeed`，放在首頁 grid 左欄；帳單/現金流表格移到下方。
+
+#### 3. 分類 Chip 篩選 + 月份切換器
+
+- Chip 從當月消費動態提取唯一分類（最多 8 類 + 全部），client-side filter。
+- 月份切換器：右上角 `‹ 2026-06 ›`；切換月份後自動重新 fetch 並清除 chip 篩選；不可超過當月。
+- CSS：`.chip-row`、`.category-chip`、`.chip-active`、`.month-picker`、`.month-arrow`、`.month-label`。
+
+- 本地驗證：`npm run typecheck` 通過（0 errors）
+- Production 部署狀態：等待使用者手動執行 `git push origin main`

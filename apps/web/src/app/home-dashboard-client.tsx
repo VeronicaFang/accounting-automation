@@ -6,6 +6,7 @@ import { BillEstimateTable } from "@/components/bill-estimate-table";
 import { BudgetStatusList } from "@/components/budget-status-list";
 import { CashFlowTable } from "@/components/cash-flow-table";
 import { PageHeader } from "@/components/page-header";
+import { RecentExpensesFeed } from "@/components/recent-expenses-feed";
 import { StatStrip } from "@/components/stat-strip";
 import { TaskWorkbench } from "@/components/task-workbench";
 import {
@@ -132,6 +133,7 @@ export function HomeDashboardClient({ initialData }: { initialData: AccountingDa
   const [error, setError] = useState<string | null>(null);
   const [sessionUser, setSessionUser] = useState<SupabaseSessionUser | null>(null);
   const [households, setHouseholds] = useState<SupabaseHouseholdRow[]>([]);
+  const [accessToken, setAccessToken] = useState<string | null>(null);
 
   useEffect(() => {
     const session = readStoredSupabaseSession(window.localStorage);
@@ -155,6 +157,7 @@ export function HomeDashboardClient({ initialData }: { initialData: AccountingDa
     let isCurrent = true;
     setStatus("loading");
     setError(null);
+    setAccessToken(session.accessToken);
 
     Promise.all([
       getSupabaseDashboardData(initialData, session.accessToken),
@@ -250,16 +253,17 @@ export function HomeDashboardClient({ initialData }: { initialData: AccountingDa
           }
         ]}
       />
-      <AnnualDashboardTable rows={annualRows} />
       <div className="grid-two">
-        <div>
-          <BillEstimateTable bills={futureBillEstimates} title="每月帳單預估（本月以後）" />
-          <CashFlowTable months={cashFlowMonths} />
-        </div>
+        <RecentExpensesFeed accessToken={accessToken} />
         <div>
           <TaskWorkbench tasks={reviewTasks} />
           <BudgetStatusList items={budgetStatuses} />
         </div>
+      </div>
+      <AnnualDashboardTable rows={annualRows} />
+      <div className="grid-two">
+        <BillEstimateTable bills={futureBillEstimates} title="每月帳單預估（本月以後）" />
+        <CashFlowTable months={cashFlowMonths} />
       </div>
     </>
   );

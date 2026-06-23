@@ -189,6 +189,28 @@ export async function getSupabaseInvoiceDrafts(accessToken?: string, limit = 100
   return mapInvoiceDraftReviewItems(rows, budgetItems, creditCards, { paymentRules, itemRules });
 }
 
+export async function getSupabaseExpensesByMonth(month: string, accessToken?: string): Promise<ExpenseRecord[]> {
+  const [rows, budgetItems, creditCards] = await Promise.all([
+    fetchSupabaseRows<SupabaseExpenseRow>(
+      "expenses",
+      {
+        select:
+          "id,budget_item_id,credit_card_id,consumption_date,budget_month,merchant_name,item_description,legacy_budget_item,amount,payment_tool_type,status",
+        status: "eq.active",
+        budget_month: `eq.${month}`,
+        order: "consumption_date.desc,id.desc",
+        limit: "200"
+      },
+      undefined,
+      accessToken
+    ),
+    fetchSupabaseRows<SupabaseBudgetItemLookupRow>("budget_items", { select: "id,legacy_name,name" }, undefined, accessToken),
+    getSupabaseCreditCards(accessToken)
+  ]);
+
+  return mapExpenseRows(rows, budgetItems, creditCards);
+}
+
 export async function getSupabaseExpenses(accessToken?: string, limit = 200): Promise<ExpenseRecord[]> {
   const [rows, budgetItems, creditCards] = await Promise.all([
     fetchSupabaseRows<SupabaseExpenseRow>(
