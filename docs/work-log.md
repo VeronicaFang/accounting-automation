@@ -86,3 +86,25 @@
 3. Expected deployment commit: latest local `main` commit.
 4. If state is `READY`, production should show the committed changes.
 5. If state is `ERROR`, inspect Vercel build logs and fix before asking the user to push again.
+### Invoice Reimport After Deleted Drafts
+
+- Commit: `this commit fix: allow reimporting deleted invoice drafts`
+- Root cause:
+  - The latest `1535437_20260623103253.csv` import batch was created with `row_count = 107`, but inserted 0 `invoice_drafts` rows.
+  - Live Supabase check showed 59 valid invoice/date keys from the CSV, 0 pending draft keys, 59 deleted draft keys, 20 confirmed draft keys, and 20 active expense keys.
+  - The importer treated deleted `invoice_drafts` as existing import records, so every row in the reimport was skipped before writing new `needs_review` drafts.
+- Scope:
+  - Deleted invoice drafts no longer block reimport.
+  - Confirmed drafts and active expenses still block reimport to prevent real duplicates.
+  - Added a regression test for deleted-only drafts being reimportable.
+- Expected effect for the checked CSV:
+  - 20 invoice/date keys remain blocked because they are already confirmed/active expenses.
+  - 39 deleted-only invoice/date keys become reimportable and should return to the review page after deployment and reimport.
+- Local verification:
+  - `node --experimental-strip-types src/lib/accounting/invoice-import-dedupe.test.ts` from `apps/web`: passed.
+  - `npm run typecheck` from `apps/web`: passed.
+  - `npm test` from `apps/web`: passed.
+  - `npm run build` from `apps/web`: compiled successfully, then failed locally with known Windows/Codex `spawn EPERM` during the post-compile TypeScript child process.
+- Production deployment status:
+  - Awaiting user manual push: `git push origin main`.
+  - After push, Codex should check Vercel deployments for the latest local commit and confirm `READY` before treating production as updated.

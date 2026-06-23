@@ -21,7 +21,7 @@ import {
   type InvoiceMerchantPaymentRule
 } from "@/lib/accounting/invoice-review";
 import {
-  buildInvoiceDateKey,
+  buildExistingInvoiceImportKeys,
   shouldSkipInvoiceImportRow,
   type ExistingInvoiceImportKeys
 } from "@/lib/accounting/invoice-import-dedupe";
@@ -909,11 +909,13 @@ function findMerchantItemRule(row: InvoiceDraftInput, rules: MerchantItemRuleRow
 type ExistingInvoiceDraftIdentityRow = {
   source_line_key: string;
   consumption_date: string;
+  review_status: string;
 };
 
 type ExistingInvoiceExpenseIdentityRow = {
   source_row_id: string | null;
   consumption_date: string;
+  status: string;
 };
 
 async function existingInvoiceImportKeys(
@@ -932,13 +934,13 @@ async function existingInvoiceImportKeys(
 
   const [draftRows, invoiceDateDraftRows, expenseRows] = await Promise.all([
     supabaseRead<ExistingInvoiceDraftIdentityRow>(requestConfig, "invoice_drafts", {
-      select: "source_line_key,consumption_date",
+      select: "source_line_key,consumption_date,review_status",
       household_id: `eq.${householdId}`,
       source_line_key: `in.(${quotedSourceLineKeys})`
     }),
     dates.length > 0
       ? supabaseRead<ExistingInvoiceDraftIdentityRow>(requestConfig, "invoice_drafts", {
-          select: "source_line_key,consumption_date",
+          select: "source_line_key,consumption_date,review_status",
           household_id: `eq.${householdId}`,
           source_system: "eq.finance_ministry_invoice",
           consumption_date: dateFilter
@@ -946,7 +948,7 @@ async function existingInvoiceImportKeys(
       : Promise.resolve([]),
     dates.length > 0
       ? supabaseRead<ExistingInvoiceExpenseIdentityRow>(requestConfig, "expenses", {
-          select: "source_row_id,consumption_date",
+          select: "source_row_id,consumption_date,status",
           household_id: `eq.${householdId}`,
           source_system: "eq.finance_ministry_invoice",
           consumption_date: dateFilter
@@ -954,26 +956,18 @@ async function existingInvoiceImportKeys(
       : Promise.resolve([])
   ]);
 
-  const invoiceDateKeys = new Set<string>();
-
-  for (const row of invoiceDateDraftRows) {
-    const key = buildInvoiceDateKey(row.source_line_key, row.consumption_date);
-    if (key) {
-      invoiceDateKeys.add(key);
-    }
-  }
-
-  for (const row of expenseRows) {
-    const key = buildInvoiceDateKey(row.source_row_id, row.consumption_date);
-    if (key) {
-      invoiceDateKeys.add(key);
-    }
-  }
-
-  return {
-    sourceLineKeys: new Set(draftRows.map((row) => row.source_line_key)),
-    invoiceDateKeys
-  };
+  return buildExistingInvoiceImportKeys(
+    [...draftRows, ...invoiceDateDraftRows].map((row) => ({
+      sourceLineKey: row.source_line_key,
+      consumptionDate: row.consumption_date,
+      reviewStatus: row.review_status
+    })),
+    expenseRows.map((row) => ({
+      sourceRecordId: row.source_row_id,
+      consumptionDate: row.consumption_date,
+      status: row.status
+    }))
+  );
 }
 function findDefaultMealBudgetItem(references: EntryReferences): BudgetItemRow | null {
   return (
