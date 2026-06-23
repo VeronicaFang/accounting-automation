@@ -103,13 +103,23 @@ export function BillsClient() {
       return;
     }
 
+    const session = readStoredSupabaseSession(window.localStorage);
+
+    if (!session || !isStoredSupabaseSessionValid(window.localStorage)) {
+      setSaveMessage("Supabase session 已過期，請重新登入。");
+      return;
+    }
+
     setBusy(true);
     setSaveMessage(null);
 
     try {
       const res = await fetch("/api/accounting/expense-entry", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${session.accessToken}`
+        },
         body: JSON.stringify({
           action: "updateBillStatement",
           creditCardId: bill.creditCardId,
