@@ -853,10 +853,16 @@ function normalizeInvoiceRow(row: Record<string, string>): Omit<InvoiceDraftInpu
     consumptionDate: normalizeDateInput(
       pickInvoiceField(row, ["消費日", "交易日期", "發票日期", "發票開立日期", "invoice_date", "consumption_date"])
     ),
-    merchantTaxId: pickInvoiceField(row, ["統編", "店家統編", "營業人統編", "賣方統編", "merchant_tax_id"]),
+    merchantTaxId: pickInvoiceField(row, ["統編", "店家統編", "營業人統編", "賣方統編", "賣方統一編號", "merchant_tax_id"]),
     merchantName: pickInvoiceField(row, ["店家", "店家名稱", "營業人名稱", "賣方名稱", "merchant_name"]),
-    itemDescription: pickInvoiceField(row, ["品項", "品名", "購買品項", "商品名稱", "item_description"]),
-    amount: Number(pickInvoiceField(row, ["金額", "消費金額", "發票明細金額", "amount"]).replace(/[,$\s]/g, "")) || 0
+    itemDescription: pickInvoiceField(row, ["消費明細_品名", "發票明細_品名", "品項", "品名", "購買品項", "商品名稱", "item_description"]),
+    amount:
+      Number(
+        pickInvoiceField(row, ["消費明細_金額", "發票明細_金額", "發票明細金額", "金額", "消費金額", "發票金額", "amount"]).replace(
+          /[,$\s]/g,
+          ""
+        )
+      ) || 0
   };
 }
 
