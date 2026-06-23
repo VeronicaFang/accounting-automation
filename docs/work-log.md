@@ -200,6 +200,47 @@
   - `npm run typecheck`：通過。
   - `npm test`：9 個測試檔全部通過（77 assertions）。
 
+### UI 實作 — Pastel Storybook 彩繪風格
+
+- Commit: `bc8c57b feat: colorful UI redesign — Pastel Storybook style`
+- 範圍：
+
+  **CSS 變數與底色**
+  - 背景改為冷色調白 `#f4f6fb`，panel 改為純白 `#ffffff`
+  - 新增四色卡片 CSS 變數：`--teal`、`--sky`、`--orange`、`--violet`、`--rose` 及對應 `*-bg`、`*-border`
+
+  **KPI 統計卡（首頁）**
+  - 收入：薄荷綠 `--teal`，淡綠底，4px 左邊框
+  - 現金支出：天藍 `--sky`，淡藍底
+  - 信用卡付款：橘橙 `--orange`，淡橙底
+  - 月淨流量：正值紫羅蘭 `--violet`，負值玫瑰紅 `--rose`
+  - 卡片 border-radius 12px，hover 有陰影提升效果
+  - 標籤全大寫 uppercase + 寬字距，金額字重加重 26px
+
+  **預算使用狀態**
+  - 每個預算項目加入 `.budget-bar-track / .budget-bar-fill` 進度條
+  - 進度條顏色跟隨 severity：normal=綠、reminder=藍、warning=橘、over_budget=紅
+  - `budget-row` 左側邊框顏色依 severity 區分
+  - 超預算列加玫瑰底色
+  - ✏️ emoji 改為文字按鈕「編輯」
+
+  **整體排版**
+  - `section-heading h2` 加 3px teal 左邊框 + padding-left，使章節感更明確
+  - page-header eyebrow 改為全大寫 11px 寬字距
+  - page-header h1 改為 28px 800 字重負字距
+  - Surface border-radius 升為 12px
+  - Sidebar 改為深色 teal 漸層（from `#1a2a28` to `#0f1f1d`）
+  - Nav item hover 改為 teal 半透明底色
+
+  **元件更新**
+  - `stat-strip.tsx`：tone 型別擴充 teal/sky/orange/violet/rose
+  - `home-dashboard-client.tsx`：套用新色彩 tone
+  - `budget-status-list.tsx`：進度條 + 移除 emoji
+
+- 本地驗證：
+  - `npm run typecheck`：通過
+  - `npm test`：9 個測試檔全部通過（77 assertions）
+
 ---
 
 ### Invoice Reimport After Deleted Drafts
