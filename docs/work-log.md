@@ -158,9 +158,47 @@
 
 ### 帳單月份篩選 Bug
 
+- Commit: `1a9e341 fix: filter expenses by credit card bill month instead of budget month`
 - 問題：從帳單預估表點擊信用卡連結後，消費明細頁顯示的是「消費月份」而非「帳單月份」。
 - Root cause: `bill-estimate-table.tsx` 連結傳 `?month=2026-06&card=YuShan`，`filterExpenses` 用 `expense.budgetMonth` 比對 `month`。`budgetMonth` 是消費月，不是帳單月。以玉山結帳日 25 為例，5/26–6/25 的消費都屬於 6 月帳單，但 5 月消費的 `budgetMonth = 2026-05`，被錯誤過濾掉。
-- Fix（本次 commit）：詳見下方。
+- Fix:
+  - `dashboard-filters.ts`：加 `billMonth` + `creditCardCutoffDay` 至 `ExpenseFilters`；啟用時用 `consumptionDate` + 結帳日推算帳單月比對，而非 `budgetMonth`。
+  - `expenses-client.tsx`：fetch credit cards 加入 `cutoff_day`；解析 `queryBillMonth` URL param；建 name→cutoff_day Map 傳給 filter；`activeContext` 顯示帳單月。
+  - `bill-estimate-table.tsx`：連結改用 `billMonth=` param。
+
+## 2026-06-23（四）
+
+### 下一步計畫
+
+優先順序（使用者確認）：
+1. 補三個明顯功能缺口
+2. 實作新 UI 設計
+
+**缺口清單：**
+- A. 首頁 KPI 統計卡（收入/支出/待付信用卡/月結餘）缺少 UI 呈現
+- B. 帳單中心「真實帳單金額」無法填入，只顯示「尚未輸入」
+- C. 消費明細頁沒有行內新增單筆消費的入口
+
+### 功能缺口 B：帳單真實金額輸入 + 功能缺口 C：消費明細快速新增
+
+- Commit: `494c614 feat: bill statement amount entry and inline expense quick-add`
+- 範圍：
+
+  **Gap B — 帳單真實金額輸入**
+  - `BillEstimate` 型別加入 `creditCardId: string`；`mapBillEstimateRows` 與 mock-data 同步更新。
+  - `BillEstimateTable` 新增選擇性 `statementEdit` prop；「真實帳單」欄位顯示「輸入」/「修改」按鈕，點擊後出現行內數字 input + 確認/取消按鈕。
+  - `bills-client.tsx` 加入 `editingId`、`statementEdits`、`busy`、`saveMessage` 狀態及 `saveStatement` 函式。
+  - `saveStatement` 呼叫 expense-entry API 新 action `updateBillStatement`，後端查詢 `credit_card_statements` 是否已存在，存在則 PATCH，不存在則 INSERT，欄位包含 `household_id`、`credit_card_id`、`statement_month`、`actual_amount`、`payment_due_date`、`statement_status = "confirmed"`。
+
+  **Gap C — 消費明細快速新增**
+  - `expenses-client.tsx` 增加 `showAddForm`、`newExpense`、`addBusy` 狀態。
+  - 消費列表上方出現「+ 新增消費」按鈕；點擊展開含消費日、店家、品項、金額、預算項目、支付工具（選信用卡時顯示卡片選單）的表單。
+  - 提交呼叫既有 `submitExpenseAction("singleExpense", {...})`，成功後重新載入並收合表單。
+  - `globals.css` 加入 `.quick-add-form`、`.quick-add-fields`、`.quick-add-actions`、`.primary-action` 樣式；帳單頁加入 `.bill-statement-edit-cell`、`.bill-statement-display-cell`、`.action-btn-sm`、`.save-message`。
+
+- 本地驗證：
+  - `npm run typecheck`：通過。
+  - `npm test`：9 個測試檔全部通過（77 assertions）。
 
 ---
 
