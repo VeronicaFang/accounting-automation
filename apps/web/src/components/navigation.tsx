@@ -1,9 +1,14 @@
+"use client";
+
 import Link from "next/link";
+import { usePathname } from "next/navigation";
 
 import { AuthSessionIndicator } from "@/components/auth-session-indicator";
-import { navigationItems } from "@/lib/navigation";
+import { navigationGroups, navigationItems } from "@/lib/navigation";
 
 export function Navigation() {
+  const pathname = usePathname();
+
   return (
     <aside className="sidebar">
       <div className="brand">
@@ -11,19 +16,42 @@ export function Navigation() {
           <img alt="" src="/private-finance-icon.png" />
         </span>
         <div>
-          <strong>記帳軟體</strong>
-          <span>Private Finance</span>
+          <strong>澄帳</strong>
+          <span>家庭財務管理</span>
         </div>
       </div>
 
-      <nav className="nav-list" aria-label="主選單">
-        {navigationItems.map((item) => (
-          <Link key={item.href} className="nav-item" href={item.href}>
-            <span>{item.label}</span>
-            <small>{item.description}</small>
-          </Link>
-        ))}
-        <AuthSessionIndicator />
+      <nav aria-label="主選單">
+        {navigationGroups.map((group) => {
+          const items = navigationItems.filter((item) => item.group === group);
+
+          return (
+            <div key={group} className="nav-group">
+              <p className="nav-group-label">{group}</p>
+              <div className="nav-list">
+                {items.map((item) => {
+                  const isActive = pathname === item.href || (item.href !== "/" && pathname.startsWith(item.href));
+
+                  return (
+                    <Link
+                      key={item.href}
+                      className={`nav-item${isActive ? " nav-item-active" : ""}`}
+                      href={item.href}
+                    >
+                      <span className="nav-dot" style={{ background: item.color }} />
+                      <span className="nav-label">{item.label}</span>
+                    </Link>
+                  );
+                })}
+              </div>
+            </div>
+          );
+        })}
+        <div className="nav-group">
+          <div className="nav-list">
+            <AuthSessionIndicator />
+          </div>
+        </div>
       </nav>
     </aside>
   );

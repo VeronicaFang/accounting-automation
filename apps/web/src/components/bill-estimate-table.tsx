@@ -2,6 +2,16 @@
 
 import Link from "next/link";
 
+const today = typeof window !== "undefined" ? new Date().toISOString().slice(0, 10) : "";
+
+function getBillBadge(status: string, paymentDate: string): { label: string; cls: string } {
+  if (paymentDate === today) return { label: "今日到期", cls: "bill-badge-overdue" };
+  if (status === "paid") return { label: "已付款", cls: "bill-badge-paid" };
+  if (status === "statement_received") return { label: "帳單確認", cls: "bill-badge-confirmed" };
+  if (status === "needs_review") return { label: "待確認", cls: "bill-badge-overdue" };
+  return { label: "預估中", cls: "bill-badge-estimated" };
+}
+
 import { getDisplayedBillAmount, getStatementVariance } from "@/lib/bill-calculations";
 import { formatCurrency, formatVariance } from "@/lib/format";
 import type { BillEstimate } from "@/lib/types";
@@ -40,6 +50,7 @@ export function BillEstimateTable({ bills, title = "每月帳單預估", stateme
               <th>現金流採計</th>
               <th>差異</th>
               <th>付款日</th>
+              <th>狀態</th>
             </tr>
           </thead>
           <tbody>
@@ -53,6 +64,8 @@ export function BillEstimateTable({ bills, title = "每月帳單預估", stateme
                 statementAmount: bill.statementAmount
               });
               const isEditing = statementEdit?.editingId === bill.id;
+
+              const badge = getBillBadge(bill.status, bill.paymentDate);
 
               return (
                 <tr key={bill.id}>
@@ -109,12 +122,13 @@ export function BillEstimateTable({ bills, title = "每月帳單預估", stateme
                     {variance === null ? "尚未比對" : formatVariance(variance)}
                   </td>
                   <td>{bill.paymentDate}</td>
+                  <td><span className={`bill-status-badge ${badge.cls}`}>{badge.label}</span></td>
                 </tr>
               );
             })}
             {bills.length === 0 ? (
               <tr>
-                <td colSpan={7}>目前沒有可顯示的帳單預估。</td>
+                <td colSpan={8}>目前沒有可顯示的帳單預估。</td>
               </tr>
             ) : null}
           </tbody>

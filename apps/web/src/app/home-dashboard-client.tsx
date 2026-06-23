@@ -198,8 +198,29 @@ export function HomeDashboardClient({ initialData }: { initialData: AccountingDa
     estimatedCardPayment: 0,
     netFlow: 0
   };
+  const prevCashFlow = cashFlowMonths.find((month) => month.month < displayMonth);
   const futureBillEstimates = filterFutureBills(billEstimates, displayMonth);
   const annualRows = buildAnnualDashboardMonths(Number(displayMonth.slice(0, 4)), cashFlowMonths, billEstimates);
+
+  // Stat card subtitles
+  const incomeDiff = prevCashFlow ? currentCashFlow.income - prevCashFlow.income : null;
+  const incomeSubtitle = incomeDiff === null
+    ? undefined
+    : Math.abs(incomeDiff) < 500
+    ? "與上月持平"
+    : `比上月${incomeDiff > 0 ? "多" : "少"} ${formatCurrency(Math.abs(incomeDiff))}`;
+
+  const cashDiff = prevCashFlow ? currentCashFlow.cashExpense - prevCashFlow.cashExpense : null;
+  const cashSubtitle = cashDiff === null
+    ? undefined
+    : cashDiff > 0
+    ? `比上月多 ${formatCurrency(cashDiff)}`
+    : `比上月少 ${formatCurrency(Math.abs(cashDiff))}`;
+
+  const thisMonthCards = [...new Set(futureBillEstimates.filter((b) => b.month === displayMonth).map((b) => b.creditCardName))];
+  const cardSubtitle = thisMonthCards.length > 0 ? thisMonthCards.join(" + ") : undefined;
+
+  const netSubtitle = currentCashFlow.netFlow >= 0 ? "現金流健康" : "本月超支";
 
   return (
     <>
@@ -213,17 +234,19 @@ export function HomeDashboardClient({ initialData }: { initialData: AccountingDa
       {error ? <p className="error-text">{error}</p> : null}
       <StatStrip
         stats={[
-          { label: "本月收入", value: currentCashFlow.income, tone: "teal" },
-          { label: "現金支出", value: currentCashFlow.cashExpense, tone: "sky" },
+          { label: "本月收入", value: currentCashFlow.income, tone: "teal", subtitle: incomeSubtitle },
+          { label: "現金支出", value: currentCashFlow.cashExpense, tone: "sky", subtitle: cashSubtitle },
           {
-            label: "信用卡付款",
+            label: "待付信用卡",
             value: currentCashFlow.actualCardPayment ?? currentCashFlow.estimatedCardPayment,
-            tone: "orange"
+            tone: "orange",
+            subtitle: cardSubtitle
           },
           {
-            label: "月淨流量",
+            label: "本月結餘",
             value: currentCashFlow.netFlow,
-            tone: currentCashFlow.netFlow < 0 ? "rose" : "violet"
+            tone: currentCashFlow.netFlow < 0 ? "rose" : "violet",
+            subtitle: netSubtitle
           }
         ]}
       />
