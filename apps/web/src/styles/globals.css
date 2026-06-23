@@ -895,6 +895,48 @@ textarea {
   color: var(--muted);
 }
 
+/* ── Installment toggle (review & quick-add) ──────────────────── */
+.installment-toggle-btn {
+  padding: 2px 9px;
+  font-size: 0.75rem;
+  font-weight: 600;
+  border: 1px solid var(--teal-border);
+  background: var(--teal-bg);
+  color: var(--teal-border);
+  border-radius: 12px;
+  cursor: pointer;
+  white-space: nowrap;
+  line-height: 1.6;
+}
+.installment-toggle-btn:hover { filter: brightness(0.93); }
+
+.installment-inline {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.installment-inline select {
+  height: 30px;
+  font-size: 0.82rem;
+  border: 1px solid var(--teal-border);
+  border-radius: 6px;
+  background: var(--teal-bg);
+  color: var(--ink);
+  padding: 0 4px;
+}
+
+.installment-cancel-btn {
+  background: transparent;
+  border: none;
+  font-size: 1rem;
+  color: var(--muted);
+  cursor: pointer;
+  padding: 0 4px;
+  line-height: 1;
+}
+.installment-cancel-btn:hover { color: var(--ink); }
+
 .auth-divider {
   border: none;
   border-top: 1px solid var(--line);

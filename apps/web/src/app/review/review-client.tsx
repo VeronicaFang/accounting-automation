@@ -24,6 +24,8 @@ type DraftEdit = {
   paymentToolType: InvoiceDraftPaymentToolType;
   creditCardId: string;
   notes: string;
+  installmentCount: number;
+  showInstallment: boolean;
 };
 
 type Message = {
@@ -44,7 +46,9 @@ function buildDefaultDraftEdit(draft: InvoiceDraftReviewItem): DraftEdit {
     budgetItemId: draft.suggestedBudgetItemId,
     paymentToolType: draft.suggestedPaymentToolType,
     creditCardId: draft.suggestedCreditCardId,
-    notes: draft.notes ?? ""
+    notes: draft.notes ?? "",
+    installmentCount: 1,
+    showInstallment: false
   };
 }
 
@@ -177,7 +181,8 @@ export function ReviewClient() {
         budgetItemId: edit?.budgetItemId ?? "",
         paymentToolType: edit?.paymentToolType ?? "cash",
         creditCardId: edit?.paymentToolType === "credit_card" ? edit.creditCardId : undefined,
-        notes: edit?.notes ?? ""
+        notes: edit?.notes ?? "",
+        installmentCount: edit?.installmentCount ?? 1
       };
     });
 
@@ -360,7 +365,9 @@ export function ReviewClient() {
                               onChange={(event) =>
                                 updateDraftEdit(draft.id, {
                                   paymentToolType: event.target.value === "credit_card" ? "credit_card" : "cash",
-                                  creditCardId: event.target.value === "credit_card" ? edit.creditCardId : ""
+                                  creditCardId: event.target.value === "credit_card" ? edit.creditCardId : "",
+                                  installmentCount: 1,
+                                  showInstallment: false
                                 })
                               }
                             >
@@ -379,6 +386,34 @@ export function ReviewClient() {
                                   </option>
                                 ))}
                               </select>
+                            ) : null}
+                            {edit.paymentToolType === "credit_card" && !edit.showInstallment ? (
+                              <button
+                                className="installment-toggle-btn"
+                                type="button"
+                                onClick={() => updateDraftEdit(draft.id, { showInstallment: true })}
+                              >
+                                分期
+                              </button>
+                            ) : null}
+                            {edit.paymentToolType === "credit_card" && edit.showInstallment ? (
+                              <div className="installment-inline">
+                                <select
+                                  value={edit.installmentCount}
+                                  onChange={(event) => updateDraftEdit(draft.id, { installmentCount: Number(event.target.value) })}
+                                >
+                                  {[3, 6, 12, 18, 24, 30, 36].map((n) => (
+                                    <option key={n} value={n}>{n} 期</option>
+                                  ))}
+                                </select>
+                                <button
+                                  className="installment-cancel-btn"
+                                  type="button"
+                                  onClick={() => updateDraftEdit(draft.id, { showInstallment: false, installmentCount: 1 })}
+                                >
+                                  ×
+                                </button>
+                              </div>
                             ) : null}
                           </div>
                         </td>

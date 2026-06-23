@@ -91,7 +91,9 @@ export function ExpensesClient() {
     amount: "",
     budgetItemId: "",
     paymentToolType: "cash",
-    creditCardId: ""
+    creditCardId: "",
+    installmentCount: 1,
+    showInstallment: false
   });
   const searchParams = useSearchParams();
   const currentMonth = monthKeyFromDateValue();
@@ -320,13 +322,15 @@ export function ExpensesClient() {
       amount: "",
       budgetItemId: "",
       paymentToolType: "cash",
-      creditCardId: ""
+      creditCardId: "",
+      installmentCount: 1,
+      showInstallment: false
     });
     setShowAddForm(false);
   }
 
   async function addExpense() {
-    const { consumptionDate, merchantName, itemDescription, amount, budgetItemId, paymentToolType, creditCardId } = newExpense;
+    const { consumptionDate, merchantName, itemDescription, amount, budgetItemId, paymentToolType, creditCardId, installmentCount } = newExpense;
 
     if (!consumptionDate) {
       setMessage({ tone: "error", text: "請填寫消費日期。" });
@@ -367,7 +371,7 @@ export function ExpensesClient() {
         budgetItemId,
         paymentToolType,
         creditCardId: paymentToolType === "credit_card" ? creditCardId : "",
-        installmentCount: 1,
+        installmentCount: paymentToolType === "credit_card" ? installmentCount : 1,
         notes: "",
         sourceSystem: "manual_no_invoice",
         sourceTable: "expense_entry"
@@ -510,6 +514,40 @@ export function ExpensesClient() {
                       </option>
                     ))}
                   </select>
+                </label>
+              ) : null}
+              {newExpense.paymentToolType === "credit_card" && !newExpense.showInstallment ? (
+                <label style={{ alignSelf: "flex-end" }}>
+                  <span style={{ visibility: "hidden" }}>placeholder</span>
+                  <button
+                    className="installment-toggle-btn"
+                    type="button"
+                    onClick={() => setNewExpense((prev) => ({ ...prev, showInstallment: true }))}
+                  >
+                    分期
+                  </button>
+                </label>
+              ) : null}
+              {newExpense.paymentToolType === "credit_card" && newExpense.showInstallment ? (
+                <label>
+                  分期期數
+                  <div className="installment-inline">
+                    <select
+                      value={newExpense.installmentCount}
+                      onChange={(e) => setNewExpense((prev) => ({ ...prev, installmentCount: Number(e.target.value) }))}
+                    >
+                      {[3, 6, 12, 18, 24, 30, 36].map((n) => (
+                        <option key={n} value={n}>{n} 期</option>
+                      ))}
+                    </select>
+                    <button
+                      className="installment-cancel-btn"
+                      type="button"
+                      onClick={() => setNewExpense((prev) => ({ ...prev, showInstallment: false, installmentCount: 1 }))}
+                    >
+                      ×
+                    </button>
+                  </div>
                 </label>
               ) : null}
             </div>

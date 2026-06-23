@@ -74,6 +74,7 @@ export type InvoiceDraftConfirmation = {
   paymentToolType: InvoiceDraftPaymentToolType;
   creditCardId?: string;
   notes?: string;
+  installmentCount?: number;
 };
 
 export type InvoiceDraftConfirmationInput = {
@@ -88,6 +89,7 @@ export type InvoiceDraftConfirmationInput = {
   creditCardId?: string;
   notes: string;
   sourceLineKey: string;
+  installmentCount: number;
 };
 
 function valueIncludes(value: string, fragment: string | null | undefined): boolean {
@@ -214,7 +216,8 @@ export function buildInvoiceDraftConfirmationInputs(
       paymentToolType: confirmation.paymentToolType,
       creditCardId: confirmation.paymentToolType === "credit_card" ? confirmation.creditCardId : undefined,
       notes: String(confirmation.notes ?? ""),
-      sourceLineKey: draft.sourceLineKey
+      sourceLineKey: draft.sourceLineKey,
+      installmentCount: Math.max(1, Math.trunc(Number(confirmation.installmentCount || 1)))
     };
   });
 }

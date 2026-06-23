@@ -1467,7 +1467,7 @@ async function confirmInvoiceDrafts(
       budgetItemId: input.budgetItemId,
       paymentToolType: input.paymentToolType,
       creditCardId: input.creditCardId,
-      installmentCount: 1,
+      installmentCount: input.installmentCount,
       notes: input.notes,
       sourceSystem: "finance_ministry_invoice",
       sourceTable: "invoice_drafts",
