@@ -392,6 +392,30 @@ textarea {
   font-weight: 800;
 }
 
+.budget-edit-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.budget-amount-input {
+  width: 100px;
+  min-height: 32px;
+  border: 1px solid var(--accent);
+  border-radius: 6px;
+  padding: 4px 8px;
+  text-align: right;
+}
+
+.budget-edit-btn {
+  border: none;
+  background: none;
+  cursor: pointer;
+  font-size: 13px;
+  padding: 0 4px;
+  opacity: 0.6;
+}
+
 .severity-warning {
   border-left: 4px solid var(--warning);
 }

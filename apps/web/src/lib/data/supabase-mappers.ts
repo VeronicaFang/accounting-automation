@@ -218,6 +218,7 @@ export function mapBudgetStatuses(
       const usageRatio = annualBudget > 0 ? usedAmount / annualBudget : 0;
 
       return {
+        id: item.id,
         groupName: item.budget_group_id ? groupNameById.get(item.budget_group_id) ?? "" : "",
         itemName: item.legacy_name ?? item.name ?? "",
         annualBudget,

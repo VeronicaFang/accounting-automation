@@ -876,7 +876,7 @@ async function importInvoiceDrafts(
       };
     });
 
-  await supabaseInsert(requestConfig, "invoice_drafts", insertRows);
+  await supabaseUpsert(requestConfig, "invoice_drafts", insertRows, "household_id,source_line_key");
 
   return {
     parsedRows: rows.length,

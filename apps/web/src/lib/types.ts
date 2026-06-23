@@ -32,6 +32,7 @@ export type BillEstimate = {
 };
 
 export type BudgetStatus = {
+  id: string;
   groupName: string;
   itemName: string;
   annualBudget: number;

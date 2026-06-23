@@ -50,6 +50,7 @@ export const billEstimates: BillEstimate[] = [
 
 export const budgetStatuses: BudgetStatus[] = [
   {
+    id: "mock-1",
     groupName: "家庭生活",
     itemName: "24. 餐費",
     annualBudget: 240000,
@@ -59,6 +60,7 @@ export const budgetStatuses: BudgetStatus[] = [
     severity: "normal"
   },
   {
+    id: "mock-2",
     groupName: "家人",
     itemName: "01. 老公家用",
     annualBudget: 120000,
@@ -68,6 +70,7 @@ export const budgetStatuses: BudgetStatus[] = [
     severity: "warning"
   },
   {
+    id: "mock-3",
     groupName: "旅遊休閒",
     itemName: "32. 其他國內旅遊(含露營)",
     annualBudget: 60000,
