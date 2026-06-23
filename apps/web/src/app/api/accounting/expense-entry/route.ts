@@ -891,6 +891,41 @@ function buildInFilter(values: string[]): string {
   return `in.(${values.map((value) => `"${value.replace(/"/g, '\\"')}"`).join(",")})`;
 }
 
+async function updateExpenseDetails(
+  requestConfig: SupabaseRequestConfig,
+  references: EntryReferences,
+  payload: Record<string, unknown>
+) {
+  const expenseId = String(payload.expenseId || "").trim();
+  const itemDescription = String(payload.itemDescription || "").trim();
+  const budgetItemId = String(payload.budgetItemId || "").trim();
+
+  if (!expenseId || !itemDescription || !budgetItemId) {
+    throw new Error("請填寫品項並選擇預算項目。");
+  }
+
+  const budgetItem = findBudgetItem(references, { budgetItemId });
+
+  await supabasePatch(
+    requestConfig,
+    "expenses",
+    {
+      household_id: `eq.${references.householdId}`,
+      id: `eq.${expenseId}`,
+      status: "eq.active"
+    },
+    {
+      item_description: itemDescription,
+      budget_item_id: budgetItem.id,
+      legacy_budget_item: budgetItem.legacy_name ?? budgetItem.legacy_id ?? budgetItem.name,
+      updated_at: new Date().toISOString()
+    }
+  );
+
+  return {
+    updatedExpenses: 1
+  };
+}
 async function updateExpenseItemDescription(
   requestConfig: SupabaseRequestConfig,
   references: EntryReferences,
@@ -1162,6 +1197,11 @@ export async function POST(request: Request) {
       return NextResponse.json(result);
     }
 
+    if (action === "updateExpenseDetails") {
+      const result = await updateExpenseDetails(requestConfig, references, payload);
+
+      return NextResponse.json(result);
+    }
     if (action === "updateExpenseItemDescription") {
       const result = await updateExpenseItemDescription(requestConfig, references, payload);
 

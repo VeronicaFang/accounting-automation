@@ -56,6 +56,7 @@ export type ExpenseRecord = {
   budgetMonth: string;
   merchantName: string;
   itemDescription: string;
+  budgetItemId: string;
   budgetItemName: string;
   amount: number;
   paymentToolType: "cash" | "credit_card";

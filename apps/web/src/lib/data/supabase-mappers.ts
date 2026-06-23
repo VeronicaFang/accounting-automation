@@ -138,6 +138,7 @@ export function mapExpenseRows(
       budgetMonth: row.budget_month,
       merchantName: row.merchant_name ?? "",
       itemDescription: row.item_description,
+      budgetItemId: row.budget_item_id,
       budgetItemName: budgetItem?.legacy_name ?? budgetItem?.name ?? row.legacy_budget_item ?? "",
       amount: toNumber(row.amount),
       paymentToolType: row.payment_tool_type,

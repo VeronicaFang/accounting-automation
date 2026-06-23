@@ -318,9 +318,10 @@ textarea {
   min-width: 260px;
 }
 
+.expense-budget-select,
 .expense-item-input {
   width: 100%;
-  min-width: 240px;
+  min-width: 220px;
   min-height: 36px;
   border: 1px solid var(--line);
   border-radius: 7px;

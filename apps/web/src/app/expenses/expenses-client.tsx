@@ -4,11 +4,19 @@ import { useEffect, useState } from "react";
 
 import { PageHeader } from "@/components/page-header";
 import { isStoredSupabaseSessionValid, readStoredSupabaseSession } from "@/lib/auth/supabase-auth";
+import { fetchSupabaseRows } from "@/lib/data/supabase-rest";
 import { getSupabaseExpenses } from "@/lib/data/supabase-repository";
 import { formatCurrency } from "@/lib/format";
 import type { ExpenseRecord } from "@/lib/types";
 
 type LoadState = "signed-out" | "expired" | "loading" | "ready" | "error";
+
+type BudgetItemLookup = {
+  id: string;
+  name: string | null;
+  legacy_id: string | null;
+  legacy_name: string | null;
+};
 
 type Message = {
   tone: "success" | "error" | "muted";
@@ -21,6 +29,10 @@ function paymentLabel(expense: ExpenseRecord): string {
   }
 
   return "現金";
+}
+
+function getBudgetItemLabel(item: BudgetItemLookup): string {
+  return item.legacy_name ?? item.legacy_id ?? item.name ?? "";
 }
 
 function getStateText(state: LoadState, count: number): string {
@@ -45,21 +57,37 @@ function getStateText(state: LoadState, count: number): string {
 
 export function ExpensesClient() {
   const [expenses, setExpenses] = useState<ExpenseRecord[]>([]);
+  const [budgetItems, setBudgetItems] = useState<BudgetItemLookup[]>([]);
   const [itemEdits, setItemEdits] = useState<Record<string, string>>({});
+  const [budgetEdits, setBudgetEdits] = useState<Record<string, string>>({});
   const [state, setState] = useState<LoadState>("signed-out");
   const [error, setError] = useState<string | null>(null);
-  const [message, setMessage] = useState<Message>({ tone: "muted", text: "可直接修正品項，或刪除錯誤與重複消費。" });
+  const [message, setMessage] = useState<Message>({ tone: "muted", text: "可直接修正品項、預算項目，或刪除錯誤與重複消費。" });
   const [busyExpenseId, setBusyExpenseId] = useState<string | null>(null);
 
   async function loadExpenses(accessToken: string, isCurrent = () => true) {
-    const rows = await getSupabaseExpenses(accessToken, 200);
+    const [rows, budgetRows] = await Promise.all([
+      getSupabaseExpenses(accessToken, 200),
+      fetchSupabaseRows<BudgetItemLookup>(
+        "budget_items",
+        {
+          select: "id,name,legacy_id,legacy_name",
+          is_active: "eq.true",
+          order: "legacy_code.asc"
+        },
+        undefined,
+        accessToken
+      )
+    ]);
 
     if (!isCurrent()) {
       return;
     }
 
     setExpenses(rows);
+    setBudgetItems(budgetRows);
     setItemEdits(Object.fromEntries(rows.map((expense) => [expense.id, expense.itemDescription])));
+    setBudgetEdits(Object.fromEntries(rows.map((expense) => [expense.id, expense.budgetItemId])));
     setState("ready");
   }
 
@@ -121,22 +149,28 @@ export function ExpensesClient() {
     return result;
   }
 
-  async function saveItemDescription(expense: ExpenseRecord) {
+  async function saveExpenseDetails(expense: ExpenseRecord) {
     const itemDescription = String(itemEdits[expense.id] ?? "").trim();
+    const budgetItemId = String(budgetEdits[expense.id] ?? "").trim();
 
     if (!itemDescription) {
       setMessage({ tone: "error", text: "品項不可空白。" });
       return;
     }
 
+    if (!budgetItemId) {
+      setMessage({ tone: "error", text: "請選擇預算項目。" });
+      return;
+    }
+
     setBusyExpenseId(expense.id);
-    setMessage({ tone: "muted", text: "正在更新品項..." });
+    setMessage({ tone: "muted", text: "正在更新消費明細..." });
 
     try {
-      await submitExpenseAction("updateExpenseItemDescription", { expenseId: expense.id, itemDescription });
-      setMessage({ tone: "success", text: "品項已更新。" });
+      await submitExpenseAction("updateExpenseDetails", { expenseId: expense.id, itemDescription, budgetItemId });
+      setMessage({ tone: "success", text: "消費明細已更新。" });
     } catch (caughtError) {
-      setMessage({ tone: "error", text: caughtError instanceof Error ? caughtError.message : "品項更新失敗。" });
+      setMessage({ tone: "error", text: caughtError instanceof Error ? caughtError.message : "消費明細更新失敗。" });
     } finally {
       setBusyExpenseId(null);
     }
@@ -193,7 +227,8 @@ export function ExpensesClient() {
               {expenses.map((expense) => {
                 const isBusy = busyExpenseId === expense.id;
                 const itemValue = itemEdits[expense.id] ?? expense.itemDescription;
-                const isChanged = itemValue.trim() !== expense.itemDescription;
+                const budgetValue = budgetEdits[expense.id] ?? expense.budgetItemId;
+                const isChanged = itemValue.trim() !== expense.itemDescription || budgetValue !== expense.budgetItemId;
 
                 return (
                   <tr key={expense.id}>
@@ -207,12 +242,25 @@ export function ExpensesClient() {
                         onChange={(event) => setItemEdits((current) => ({ ...current, [expense.id]: event.target.value }))}
                       />
                     </td>
-                    <td>{expense.budgetItemName}</td>
+                    <td>
+                      <select
+                        className="expense-budget-select"
+                        value={budgetValue}
+                        onChange={(event) => setBudgetEdits((current) => ({ ...current, [expense.id]: event.target.value }))}
+                      >
+                        <option value="">請選擇</option>
+                        {budgetItems.map((item) => (
+                          <option key={item.id} value={item.id}>
+                            {getBudgetItemLabel(item)}
+                          </option>
+                        ))}
+                      </select>
+                    </td>
                     <td>{paymentLabel(expense)}</td>
                     <td className={expense.amount < 0 ? "text-good" : ""}>{formatCurrency(expense.amount)}</td>
                     <td>
                       <div className="row-actions">
-                        <button className="secondary-action" disabled={isBusy || !isChanged} onClick={() => saveItemDescription(expense)} type="button">
+                        <button className="secondary-action" disabled={isBusy || !isChanged} onClick={() => saveExpenseDetails(expense)} type="button">
                           儲存
                         </button>
                         <button className="secondary-action danger-action" disabled={isBusy} onClick={() => deleteExpense(expense)} type="button">
