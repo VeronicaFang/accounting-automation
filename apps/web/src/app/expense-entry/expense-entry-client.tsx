@@ -1,5 +1,6 @@
 "use client";
 
+import { useRouter } from "next/navigation";
 import { useEffect, useMemo, useState } from "react";
 
 import { PageHeader } from "@/components/page-header";
@@ -62,6 +63,7 @@ async function readFileText(file: File): Promise<string> {
 }
 
 export function ExpenseEntryClient() {
+  const router = useRouter();
   const [budgetItems, setBudgetItems] = useState<ReferenceBudgetItem[]>([]);
   const [creditCards, setCreditCards] = useState<ReferenceCreditCard[]>([]);
   const [singleExpense, setSingleExpense] = useState(defaultSingleExpense);
@@ -224,6 +226,7 @@ export function ExpenseEntryClient() {
     });
     setInvoiceText("");
     setInvoiceFileName("");
+    router.push("/review");
   }
 
   return (
