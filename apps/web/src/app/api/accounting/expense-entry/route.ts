@@ -20,6 +20,11 @@ import {
   type InvoiceMerchantItemRule,
   type InvoiceMerchantPaymentRule
 } from "@/lib/accounting/invoice-review";
+import {
+  buildInvoiceDateKey,
+  shouldSkipInvoiceImportRow,
+  type ExistingInvoiceImportKeys
+} from "@/lib/accounting/invoice-import-dedupe";
 import { createSupabaseRestHeaders, getSupabaseRestConfig } from "@/lib/data/supabase-rest";
 
 export const runtime = "nodejs";
@@ -685,7 +690,7 @@ async function importInvoiceDrafts(
   );
 
   const [existing, paymentRules, itemRules] = await Promise.all([
-    existingInvoiceSourceLineKeys(requestConfig, references.householdId, rows.map((row) => row.sourceLineKey)),
+    existingInvoiceImportKeys(requestConfig, references.householdId, rows),
     supabaseRead<MerchantPaymentRuleRow>(requestConfig, "merchant_payment_rules", {
       select: "merchant_tax_id,merchant_name_contains,payment_tool_type,credit_card_id,default_budget_item_id,is_active",
       household_id: `eq.${references.householdId}`,
@@ -699,7 +704,7 @@ async function importInvoiceDrafts(
   ]);
   const mealBudgetItem = findDefaultMealBudgetItem(references);
   const insertRows = rows
-    .filter((row) => !existing.has(row.sourceLineKey))
+    .filter((row) => !shouldSkipInvoiceImportRow(row, existing))
     .map((row) => {
       const paymentRule = findMerchantPaymentRule(row, paymentRules);
       const itemRule = findMerchantItemRule(row, itemRules);
@@ -761,25 +766,75 @@ function findMerchantItemRule(row: InvoiceDraftInput, rules: MerchantItemRuleRow
   );
 }
 
-async function existingInvoiceSourceLineKeys(
+type ExistingInvoiceDraftIdentityRow = {
+  source_line_key: string;
+  consumption_date: string;
+};
+
+type ExistingInvoiceExpenseIdentityRow = {
+  source_row_id: string | null;
+  consumption_date: string;
+};
+
+async function existingInvoiceImportKeys(
   requestConfig: SupabaseRequestConfig,
   householdId: string,
-  keys: string[]
-): Promise<Set<string>> {
-  if (keys.length === 0) {
-    return new Set();
+  rows: InvoiceDraftInput[]
+): Promise<ExistingInvoiceImportKeys> {
+  if (rows.length === 0) {
+    return { sourceLineKeys: new Set(), invoiceDateKeys: new Set() };
   }
 
-  const quoted = keys.map((key) => `"${key.replace(/"/g, '\\"')}"`).join(",");
-  const rows = await supabaseRead<{ source_line_key: string }>(requestConfig, "invoice_drafts", {
-    select: "source_line_key",
-    household_id: `eq.${householdId}`,
-    source_line_key: `in.(${quoted})`
-  });
+  const sourceLineKeys = rows.map((row) => row.sourceLineKey);
+  const quotedSourceLineKeys = sourceLineKeys.map((key) => `"${key.replace(/"/g, '\\"')}"`).join(",");
+  const dates = [...new Set(rows.map((row) => row.consumptionDate).filter(Boolean))];
+  const dateFilter = buildInFilter(dates);
 
-  return new Set(rows.map((row) => row.source_line_key));
+  const [draftRows, invoiceDateDraftRows, expenseRows] = await Promise.all([
+    supabaseRead<ExistingInvoiceDraftIdentityRow>(requestConfig, "invoice_drafts", {
+      select: "source_line_key,consumption_date",
+      household_id: `eq.${householdId}`,
+      source_line_key: `in.(${quotedSourceLineKeys})`
+    }),
+    dates.length > 0
+      ? supabaseRead<ExistingInvoiceDraftIdentityRow>(requestConfig, "invoice_drafts", {
+          select: "source_line_key,consumption_date",
+          household_id: `eq.${householdId}`,
+          source_system: "eq.finance_ministry_invoice",
+          consumption_date: dateFilter
+        })
+      : Promise.resolve([]),
+    dates.length > 0
+      ? supabaseRead<ExistingInvoiceExpenseIdentityRow>(requestConfig, "expenses", {
+          select: "source_row_id,consumption_date",
+          household_id: `eq.${householdId}`,
+          source_system: "eq.finance_ministry_invoice",
+          consumption_date: dateFilter
+        })
+      : Promise.resolve([])
+  ]);
+
+  const invoiceDateKeys = new Set<string>();
+
+  for (const row of invoiceDateDraftRows) {
+    const key = buildInvoiceDateKey(row.source_line_key, row.consumption_date);
+    if (key) {
+      invoiceDateKeys.add(key);
+    }
+  }
+
+  for (const row of expenseRows) {
+    const key = buildInvoiceDateKey(row.source_row_id, row.consumption_date);
+    if (key) {
+      invoiceDateKeys.add(key);
+    }
+  }
+
+  return {
+    sourceLineKeys: new Set(draftRows.map((row) => row.source_line_key)),
+    invoiceDateKeys
+  };
 }
-
 function findDefaultMealBudgetItem(references: EntryReferences): BudgetItemRow | null {
   return (
     references.budgetItems.find((item) => item.legacy_name === "24. 餐費" || item.legacy_id === "24. 餐費") ??
