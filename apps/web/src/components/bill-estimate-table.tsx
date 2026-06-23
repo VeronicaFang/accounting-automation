@@ -41,7 +41,7 @@ export function BillEstimateTable({ bills, title = "每月帳單預估" }: { bil
                                     <td>
                     <Link
                       className="table-link"
-                      href={`/expenses?month=${encodeURIComponent(bill.month)}&card=${encodeURIComponent(bill.creditCardName)}`}
+                      href={`/expenses?billMonth=${encodeURIComponent(bill.month)}&card=${encodeURIComponent(bill.creditCardName)}`}
                     >
                       {bill.creditCardName}
                     </Link>

@@ -7,6 +7,10 @@ export type ExpenseFilters = {
   budgetItemName?: string;
   query?: string;
   merchantTag?: string;
+  /** Bill month filter (YYYY-MM). When set, overrides month/months and filters by computed card billing month. */
+  billMonth?: string;
+  /** Card cutoff day (1–31). Required for billMonth to work correctly. */
+  creditCardCutoffDay?: number;
 };
 
 export type AnnualDashboardMonth = {
@@ -43,10 +47,29 @@ function normalize(value: string | null | undefined): string {
 }
 
 export function expenseMatchesFilters(expense: ExpenseRecord, filters: ExpenseFilters): boolean {
-  const months = filters.month ? [filters.month] : filters.months;
+  if (filters.billMonth) {
+    // Bill month mode: compute which billing cycle this expense belongs to.
+    if (filters.creditCardCutoffDay !== undefined && expense.paymentToolType === "credit_card") {
+      const consumptionDay = Number(expense.consumptionDate.slice(8, 10));
+      const consumptionMonth = expense.consumptionDate.slice(0, 7);
+      const computedBillMonth =
+        consumptionDay <= filters.creditCardCutoffDay ? consumptionMonth : addMonths(consumptionMonth, 1);
 
-  if (months && months.length > 0 && !months.includes(expense.budgetMonth)) {
-    return false;
+      if (computedBillMonth !== filters.billMonth) {
+        return false;
+      }
+    } else {
+      // No cutoff info available: fall back to budgetMonth comparison.
+      if (expense.budgetMonth !== filters.billMonth) {
+        return false;
+      }
+    }
+  } else {
+    const months = filters.month ? [filters.month] : filters.months;
+
+    if (months && months.length > 0 && !months.includes(expense.budgetMonth)) {
+      return false;
+    }
   }
 
   if (filters.creditCardName && normalize(expense.creditCardName) !== normalize(filters.creditCardName)) {

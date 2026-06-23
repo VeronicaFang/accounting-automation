@@ -131,6 +131,39 @@
 
 ---
 
+## 2026-06-23（三）
+
+### UI 方向調整：彩繪風格、去除 Emoji
+
+- No code commit（設計探索）。
+- 依使用者反饋，從深森林綠系改為繽紛多色彩繪風格（第二版 "Pastel Storybook"）。
+- 最終確認方向：薄荷綠、天藍、橘橙、紫羅蘭四色統計卡，分類標籤各自獨立顏色，白底乾淨背景，去除全部 emoji，改用色塊與圓點。
+- 更新 `docs/superpowers/accounting-ui-philosophy.md` 為 "Pastel Storybook" 哲學。
+
+### 消費明細新增支付工具與金額修改
+
+- Commit: `60158df feat: allow editing payment tool and amount on expense records`
+- Scope:
+  - **API** (`route.ts`): `updateExpenseDetails` 擴充接受 `paymentToolType`、`creditCardName`、`amount`。有金融欄位變動時：讀取現有 `payment_schedules`，逆轉舊現金流 delta 和信用卡帳單預估 delta，更新 schedule，寫入新 delta，最後更新 `expenses` 主表。分期付款消費拒絕修改。
+  - **UI** (`expenses-client.tsx`): 載入信用卡列表；支付工具欄改為下拉選單（現金/信用卡），選信用卡時出現卡片名稱下拉；金額欄改為數字 input。
+  - **CSS**: `.expense-payment-cell`、`.expense-amount-input` 樣式。
+
+### 信用卡結算規則設定頁
+
+- Commit: `3b80128 feat: credit card billing rules management in settings page`
+- Scope:
+  - 新 API `/api/settings/credit-cards`: GET 列出全部卡片（含停用）；POST 支援 `create`（新增）和 `update`（名稱、結帳日、繳款日、啟用狀態）。
+  - 新 `settings-client.tsx`: 信用卡清單 table，行內編輯（名稱、結帳日、繳款日），可停用；「新增信用卡」插入新行表單。
+  - `settings/page.tsx` 引用 `SettingsClient`。
+
+### 帳單月份篩選 Bug
+
+- 問題：從帳單預估表點擊信用卡連結後，消費明細頁顯示的是「消費月份」而非「帳單月份」。
+- Root cause: `bill-estimate-table.tsx` 連結傳 `?month=2026-06&card=YuShan`，`filterExpenses` 用 `expense.budgetMonth` 比對 `month`。`budgetMonth` 是消費月，不是帳單月。以玉山結帳日 25 為例，5/26–6/25 的消費都屬於 6 月帳單，但 5 月消費的 `budgetMonth = 2026-05`，被錯誤過濾掉。
+- Fix（本次 commit）：詳見下方。
+
+---
+
 ### Invoice Reimport After Deleted Drafts
 
 - Commit: `this commit fix: allow reimporting deleted invoice drafts`

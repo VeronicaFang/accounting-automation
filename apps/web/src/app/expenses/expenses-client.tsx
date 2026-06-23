@@ -23,6 +23,7 @@ type BudgetItemLookup = {
 type CreditCardLookup = {
   id: string;
   name: string;
+  cutoff_day: number;
 };
 
 type Message = {
@@ -84,6 +85,7 @@ export function ExpensesClient() {
   const currentMonth = monthKeyFromDateValue();
   const defaultMonths = useMemo(() => getDefaultExpenseMonths(currentMonth), [currentMonth]);
   const queryMonth = searchParams.get("month") ?? "";
+  const queryBillMonth = searchParams.get("billMonth") ?? "";
   const queryCard = searchParams.get("card") ?? "";
   const queryBudget = searchParams.get("budget") ?? "";
   const queryMerchant = searchParams.get("merchant") ?? "";
@@ -108,7 +110,7 @@ export function ExpensesClient() {
       ),
       fetchSupabaseRows<CreditCardLookup>(
         "credit_cards",
-        { select: "id,name", is_active: "eq.true", order: "name.asc" },
+        { select: "id,name,cutoff_day", is_active: "eq.true", order: "name.asc" },
         undefined,
         accessToken
       )
@@ -170,20 +172,30 @@ export function ExpensesClient() {
     () => [...new Set(expenses.map((expense) => expense.budgetMonth))].sort().reverse(),
     [expenses]
   );
-  const visibleExpenses = useMemo(
-    () =>
-      filterExpenses(expenses, {
-        month: selectedMonth || undefined,
-        months: selectedMonth ? undefined : defaultMonths,
-        creditCardName: queryCard || undefined,
-        budgetItemName: queryBudget || undefined,
-        merchantTag: activeTag || undefined,
-        query: searchText || undefined
-      }),
-    [activeTag, defaultMonths, expenses, queryBudget, queryCard, searchText, selectedMonth]
+  const cardCutoffDayByName = useMemo(
+    () => new Map(creditCards.map((c) => [c.name.toLowerCase(), c.cutoff_day])),
+    [creditCards]
   );
+
+  const visibleExpenses = useMemo(() => {
+    const activeBillMonth = queryBillMonth || undefined;
+    const cutoffDay = activeBillMonth && queryCard
+      ? cardCutoffDayByName.get(queryCard.toLowerCase())
+      : undefined;
+
+    return filterExpenses(expenses, {
+      billMonth: activeBillMonth,
+      creditCardCutoffDay: cutoffDay,
+      month: activeBillMonth ? undefined : (selectedMonth || undefined),
+      months: activeBillMonth || selectedMonth ? undefined : defaultMonths,
+      creditCardName: queryCard || undefined,
+      budgetItemName: queryBudget || undefined,
+      merchantTag: activeTag || undefined,
+      query: searchText || undefined
+    });
+  }, [activeTag, cardCutoffDayByName, defaultMonths, expenses, queryBillMonth, queryBudget, queryCard, searchText, selectedMonth]);
   const activeContext = [
-    selectedMonth ? `月份 ${selectedMonth}` : `預設 ${defaultMonths.join("、")}`,
+    queryBillMonth ? `帳單月 ${queryBillMonth}` : selectedMonth ? `月份 ${selectedMonth}` : `預設 ${defaultMonths.join("、")}`,
     queryCard ? `信用卡 ${queryCard}` : "",
     queryBudget ? `預算 ${queryBudget}` : "",
     activeTag ? `店家 ${activeTag}` : "",
