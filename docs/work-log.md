@@ -56,6 +56,24 @@
   - Awaiting user manual push: `git push origin main`.
   - After push, Codex should check Vercel deployments for commit `b969547` and confirm `READY` before treating production as updated.
 
+
+### Income Detail Management
+
+- Commit: `this commit feat: manage income details`
+- Scope:
+  - Income page now loads existing `income_schedules` rows from Supabase.
+  - Added annual total income cards grouped by year.
+  - Added editable income detail rows for date, item, amount, status, source, and notes.
+  - Added delete support for income rows.
+  - Income add, edit, and delete actions update the matching cash-flow month totals.
+- Local verification:
+  - `npm run typecheck` from `apps/web`: passed.
+  - `npm test` from `apps/web`: passed.
+  - `npm run build` from `apps/web`: compiled successfully, then failed locally with known Windows/Codex `spawn EPERM` during the post-compile TypeScript child process.
+- Production deployment status:
+  - Awaiting user manual push: `git push origin main`.
+  - After push, Codex should check Vercel deployments for the latest local commit and confirm `READY` before treating production as updated.
+
 ## Pending Production Check Procedure
 
 1. User runs:

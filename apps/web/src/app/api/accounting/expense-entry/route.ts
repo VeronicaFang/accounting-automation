@@ -65,6 +65,16 @@ type ExpenseMaintenanceRow = {
   status: string;
 };
 
+type IncomeMaintenanceRow = {
+  id: string;
+  income_date: string;
+  income_month: string;
+  income_item: string;
+  income_amount: string | number;
+  income_status: IncomeStatus;
+  source: string | null;
+  notes: string | null;
+};
 type PaymentScheduleMaintenanceRow = {
   cash_flow_month: string;
   payment_amount: string | number;
@@ -227,6 +237,27 @@ async function supabasePatch(
 
   if (!response.ok) {
     throw new Error(`更新 ${tableName} 失敗：${response.status} ${await response.text()}`);
+  }
+}
+
+async function supabaseDelete(
+  requestConfig: SupabaseRequestConfig,
+  tableName: string,
+  query: Record<string, string>
+): Promise<void> {
+  const url = new URL(`${requestConfig.restUrl}/${tableName}`);
+  Object.entries(query).forEach(([key, value]) => url.searchParams.set(key, value));
+
+  const response = await fetch(url, {
+    method: "DELETE",
+    headers: {
+      ...requestConfig.headers,
+      Prefer: "return=minimal"
+    }
+  });
+
+  if (!response.ok) {
+    throw new Error(`刪除 ${tableName} 失敗：${response.status} ${await response.text()}`);
   }
 }
 
@@ -607,51 +638,160 @@ async function createIncome(
   references: EntryReferences,
   payload: Record<string, unknown>
 ) {
+  const income = readIncomePayload(payload);
+  const legacyId = buildLegacyId("WEB_INCOME");
+
+  await supabaseInsert(requestConfig, "income_schedules", [
+    {
+      household_id: references.householdId,
+      user_id: references.userId,
+      income_date: income.incomeDate,
+      income_month: income.incomeMonth,
+      income_item: income.incomeItem,
+      income_amount: income.incomeAmount,
+      income_status: income.incomeStatus,
+      source: income.source,
+      source_system: "vercel_web",
+      source_table: "income_entry",
+      source_row_id: legacyId,
+      legacy_id: legacyId,
+      imported_at: new Date().toISOString(),
+      notes: income.notes
+    }
+  ]);
+
+  await addCashFlowDelta(requestConfig, references.householdId, income.incomeMonth, { income: income.incomeAmount });
+
+  return {
+    insertedIncomes: 1,
+    cashFlowMonth: income.incomeMonth
+  };
+}
+
+function readIncomePayload(payload: Record<string, unknown>) {
   const incomeDate = normalizeDateInput(String(payload.incomeDate || ""));
   const incomeItem = String(payload.incomeItem || "").trim();
   const incomeAmount = Number(payload.incomeAmount || 0);
   const rawStatus = String(payload.incomeStatus || "received");
   const incomeStatus: IncomeStatus =
     rawStatus === "estimated" || rawStatus === "corrected" || rawStatus === "received" ? rawStatus : "received";
-  const legacyId = buildLegacyId("WEB_INCOME");
+  const source = String(payload.source || "").trim() || "web";
+  const notes = String(payload.notes || "").trim() || null;
 
   if (!incomeDate || !incomeItem) {
     throw new Error("收入日期與收入項目為必填。");
   }
 
   if (!Number.isFinite(incomeAmount) || incomeAmount < 0) {
-    throw new Error("收入金額必須大於或等於 0。");
+    throw new Error("收入金額必須是大於或等於 0 的數字。");
   }
 
-  const incomeMonth = monthKeyFromDate(incomeDate);
-
-  await supabaseInsert(requestConfig, "income_schedules", [
-    {
-      household_id: references.householdId,
-      user_id: references.userId,
-      income_date: incomeDate,
-      income_month: incomeMonth,
-      income_item: incomeItem,
-      income_amount: incomeAmount,
-      income_status: incomeStatus,
-      source: String(payload.source || "") || "web",
-      source_system: "vercel_web",
-      source_table: "income_entry",
-      source_row_id: legacyId,
-      legacy_id: legacyId,
-      imported_at: new Date().toISOString(),
-      notes: String(payload.notes || "") || null
-    }
-  ]);
-
-  await addCashFlowDelta(requestConfig, references.householdId, incomeMonth, { income: incomeAmount });
-
   return {
-    insertedIncomes: 1,
-    cashFlowMonth: incomeMonth
+    incomeDate,
+    incomeMonth: monthKeyFromDate(incomeDate),
+    incomeItem,
+    incomeAmount,
+    incomeStatus,
+    source,
+    notes
   };
 }
 
+async function updateIncome(
+  requestConfig: SupabaseRequestConfig,
+  references: EntryReferences,
+  payload: Record<string, unknown>
+) {
+  const incomeId = String(payload.incomeId || "").trim();
+
+  if (!incomeId) {
+    throw new Error("請提供要更新的收入資料。");
+  }
+
+  const [current] = await supabaseRead<IncomeMaintenanceRow>(requestConfig, "income_schedules", {
+    select: "id,income_date,income_month,income_item,income_amount,income_status,source,notes",
+    household_id: `eq.${references.householdId}`,
+    id: `eq.${incomeId}`,
+    limit: "1"
+  });
+
+  if (!current) {
+    throw new Error("找不到要更新的收入資料。");
+  }
+
+  const next = readIncomePayload(payload);
+  const previousAmount = Number(current.income_amount || 0);
+
+  await supabasePatch(
+    requestConfig,
+    "income_schedules",
+    {
+      household_id: `eq.${references.householdId}`,
+      id: `eq.${incomeId}`
+    },
+    {
+      income_date: next.incomeDate,
+      income_month: next.incomeMonth,
+      income_item: next.incomeItem,
+      income_amount: next.incomeAmount,
+      income_status: next.incomeStatus,
+      source: next.source,
+      notes: next.notes,
+      updated_at: new Date().toISOString()
+    }
+  );
+
+  if (current.income_month === next.incomeMonth) {
+    await addCashFlowDelta(requestConfig, references.householdId, next.incomeMonth, {
+      income: next.incomeAmount - previousAmount
+    });
+  } else {
+    await addCashFlowDelta(requestConfig, references.householdId, current.income_month, { income: -previousAmount });
+    await addCashFlowDelta(requestConfig, references.householdId, next.incomeMonth, { income: next.incomeAmount });
+  }
+
+  return {
+    updatedIncomes: 1,
+    cashFlowMonth: next.incomeMonth
+  };
+}
+
+async function deleteIncome(
+  requestConfig: SupabaseRequestConfig,
+  references: EntryReferences,
+  payload: Record<string, unknown>
+) {
+  const incomeId = String(payload.incomeId || "").trim();
+
+  if (!incomeId) {
+    throw new Error("請提供要刪除的收入資料。");
+  }
+
+  const [current] = await supabaseRead<IncomeMaintenanceRow>(requestConfig, "income_schedules", {
+    select: "id,income_date,income_month,income_item,income_amount,income_status,source,notes",
+    household_id: `eq.${references.householdId}`,
+    id: `eq.${incomeId}`,
+    limit: "1"
+  });
+
+  if (!current) {
+    throw new Error("找不到要刪除的收入資料。");
+  }
+
+  await supabaseDelete(requestConfig, "income_schedules", {
+    household_id: `eq.${references.householdId}`,
+    id: `eq.${incomeId}`
+  });
+
+  await addCashFlowDelta(requestConfig, references.householdId, current.income_month, {
+    income: -Number(current.income_amount || 0)
+  });
+
+  return {
+    deletedIncomes: 1,
+    cashFlowMonth: current.income_month
+  };
+}
 function addMonthsSafe(monthKey: string, offset: number): string {
   const [year, month] = monthKey.split("-").map(Number);
   const date = new Date(year, month - 1 + offset, 1);
@@ -1248,6 +1388,18 @@ export async function POST(request: Request) {
 
     if (action === "singleIncome") {
       const result = await createIncome(requestConfig, references, payload);
+
+      return NextResponse.json(result);
+    }
+
+    if (action === "updateIncome") {
+      const result = await updateIncome(requestConfig, references, payload);
+
+      return NextResponse.json(result);
+    }
+
+    if (action === "deleteIncome") {
+      const result = await deleteIncome(requestConfig, references, payload);
 
       return NextResponse.json(result);
     }
