@@ -55,6 +55,18 @@ type BillEstimateRow = {
   detail_count: number;
 };
 
+type ExpenseMaintenanceRow = {
+  id: string;
+  status: string;
+};
+
+type PaymentScheduleMaintenanceRow = {
+  cash_flow_month: string;
+  payment_amount: string | number;
+  payment_tool_type: PaymentToolType;
+  credit_card_id: string | null;
+};
+
 type MerchantPaymentRuleRow = InvoiceMerchantPaymentRule;
 type MerchantItemRuleRow = InvoiceMerchantItemRule;
 
@@ -879,6 +891,112 @@ function buildInFilter(values: string[]): string {
   return `in.(${values.map((value) => `"${value.replace(/"/g, '\\"')}"`).join(",")})`;
 }
 
+async function updateExpenseItemDescription(
+  requestConfig: SupabaseRequestConfig,
+  references: EntryReferences,
+  payload: Record<string, unknown>
+) {
+  const expenseId = String(payload.expenseId || "").trim();
+  const itemDescription = String(payload.itemDescription || "").trim();
+
+  if (!expenseId || !itemDescription) {
+    throw new Error("請填寫要更新的品項。");
+  }
+
+  await supabasePatch(
+    requestConfig,
+    "expenses",
+    {
+      household_id: `eq.${references.householdId}`,
+      id: `eq.${expenseId}`,
+      status: "eq.active"
+    },
+    {
+      item_description: itemDescription,
+      updated_at: new Date().toISOString()
+    }
+  );
+
+  return {
+    updatedExpenses: 1
+  };
+}
+
+async function deleteExpenses(
+  requestConfig: SupabaseRequestConfig,
+  references: EntryReferences,
+  payload: Record<string, unknown>
+) {
+  const expenseIds = Array.isArray(payload.expenseIds) ? payload.expenseIds.map(String).filter(Boolean) : [];
+
+  if (expenseIds.length === 0) {
+    throw new Error("請先選擇要刪除的消費。");
+  }
+
+  const expenses = await supabaseRead<ExpenseMaintenanceRow>(requestConfig, "expenses", {
+    select: "id,status",
+    household_id: `eq.${references.householdId}`,
+    id: buildInFilter(expenseIds),
+    status: "eq.active"
+  });
+
+  for (const expense of expenses) {
+    const schedules = await supabaseRead<PaymentScheduleMaintenanceRow>(requestConfig, "payment_schedules", {
+      select: "cash_flow_month,payment_amount,payment_tool_type,credit_card_id",
+      household_id: `eq.${references.householdId}`,
+      expense_id: `eq.${expense.id}`
+    });
+
+    for (const schedule of schedules) {
+      const amount = Number(schedule.payment_amount || 0);
+
+      await addCashFlowDelta(requestConfig, references.householdId, schedule.cash_flow_month, {
+        cashExpense: schedule.payment_tool_type === "cash" ? -amount : 0,
+        creditCardPayment: schedule.payment_tool_type === "credit_card" ? -amount : 0
+      });
+
+      if (schedule.payment_tool_type === "credit_card" && schedule.credit_card_id) {
+        const creditCard = references.creditCards.find((card) => card.id === schedule.credit_card_id);
+
+        if (creditCard) {
+          await addBillEstimateDelta(requestConfig, references.householdId, creditCard, schedule.cash_flow_month, -amount, -1);
+        }
+      }
+    }
+
+    await supabasePatch(
+      requestConfig,
+      "payment_schedules",
+      {
+        household_id: `eq.${references.householdId}`,
+        expense_id: `eq.${expense.id}`
+      },
+      {
+        payment_status: "corrected",
+        updated_at: new Date().toISOString()
+      }
+    );
+
+    await supabasePatch(
+      requestConfig,
+      "expenses",
+      {
+        household_id: `eq.${references.householdId}`,
+        id: `eq.${expense.id}`,
+        status: "eq.active"
+      },
+      {
+        status: "cancelled",
+        updated_at: new Date().toISOString()
+      }
+    );
+  }
+
+  return {
+    deletedExpenses: expenses.length,
+    requestedExpenses: expenseIds.length
+  };
+}
 async function deleteInvoiceDrafts(
   requestConfig: SupabaseRequestConfig,
   references: EntryReferences,
@@ -1044,6 +1162,17 @@ export async function POST(request: Request) {
       return NextResponse.json(result);
     }
 
+    if (action === "updateExpenseItemDescription") {
+      const result = await updateExpenseItemDescription(requestConfig, references, payload);
+
+      return NextResponse.json(result);
+    }
+
+    if (action === "deleteExpenses") {
+      const result = await deleteExpenses(requestConfig, references, payload);
+
+      return NextResponse.json(result);
+    }
     if (action === "invoiceImport") {
       const result = await importInvoiceDrafts(requestConfig, references, payload);
 

@@ -196,6 +196,7 @@ export async function getSupabaseExpenses(accessToken?: string, limit = 200): Pr
       {
         select:
           "id,budget_item_id,credit_card_id,consumption_date,budget_month,merchant_name,item_description,legacy_budget_item,amount,payment_tool_type,status",
+        status: "eq.active",
         order: "consumption_date.desc,id.desc",
         limit: String(limit)
       },

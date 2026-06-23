@@ -99,6 +99,16 @@ textarea {
   padding: 9px 13px;
 }
 
+
+.secondary-action:disabled {
+  cursor: not-allowed;
+  opacity: 0.65;
+}
+
+.danger-action {
+  border-color: rgba(185, 28, 28, 0.32);
+  color: var(--danger);
+}
 .error-text {
   color: var(--danger);
   font-weight: 700;
@@ -303,6 +313,26 @@ textarea {
   font-weight: 700;
 }
 
+
+.expenses-table td:nth-child(4) {
+  min-width: 260px;
+}
+
+.expense-item-input {
+  width: 100%;
+  min-width: 240px;
+  min-height: 36px;
+  border: 1px solid var(--line);
+  border-radius: 7px;
+  background: #fffefa;
+  color: var(--ink);
+  padding: 7px 8px;
+}
+
+.row-actions {
+  display: inline-flex;
+  gap: 8px;
+}
 .task-list,
 .budget-list {
   display: grid;
