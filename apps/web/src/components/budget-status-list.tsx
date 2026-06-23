@@ -1,3 +1,5 @@
+import Link from "next/link";
+
 import { formatCurrency, formatPercent } from "@/lib/format";
 import type { BudgetStatus } from "@/lib/types";
 
@@ -13,7 +15,7 @@ export function BudgetStatusList({ items }: { items: BudgetStatus[] }) {
           <article className={`budget-row severity-${item.severity}`} key={`${item.groupName}-${item.itemName}`}>
             <div>
               <span>{item.groupName}</span>
-              <strong>{item.itemName}</strong>
+              <Link className="table-link" href={`/expenses?budget=${encodeURIComponent(item.itemName)}`}><strong>{item.itemName}</strong></Link>
             </div>
             <div className="budget-numbers">
               <span>{formatPercent(item.usageRatio)}</span>

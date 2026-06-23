@@ -1,12 +1,14 @@
+import Link from "next/link";
+
 import { getDisplayedBillAmount, getStatementVariance } from "@/lib/bill-calculations";
 import { formatCurrency, formatVariance } from "@/lib/format";
 import type { BillEstimate } from "@/lib/types";
 
-export function BillEstimateTable({ bills }: { bills: BillEstimate[] }) {
+export function BillEstimateTable({ bills, title = "每月帳單預估" }: { bills: BillEstimate[]; title?: string }) {
   return (
     <section className="surface section-block">
       <div className="section-heading">
-        <h2>每月帳單預估</h2>
+        <h2>{title}</h2>
         <span>{bills.length} 筆</span>
       </div>
       <div className="table-scroll">
@@ -36,7 +38,14 @@ export function BillEstimateTable({ bills }: { bills: BillEstimate[] }) {
               return (
                 <tr key={bill.id}>
                   <td>{bill.month}</td>
-                  <td>{bill.creditCardName}</td>
+                                    <td>
+                    <Link
+                      className="table-link"
+                      href={`/expenses?month=${encodeURIComponent(bill.month)}&card=${encodeURIComponent(bill.creditCardName)}`}
+                    >
+                      {bill.creditCardName}
+                    </Link>
+                  </td>
                   <td>{formatCurrency(bill.estimatedAmount)}</td>
                   <td>{bill.statementAmount ? formatCurrency(bill.statementAmount) : "尚未輸入"}</td>
                   <td>{formatCurrency(displayedAmount)}</td>

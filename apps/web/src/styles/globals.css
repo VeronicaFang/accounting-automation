@@ -687,3 +687,90 @@ textarea {
     flex-direction: column;
   }
 }
+
+.table-link {
+  color: var(--accent);
+  font-weight: 800;
+  text-decoration: none;
+}
+
+.table-link:hover {
+  text-decoration: underline;
+}
+
+.annual-dashboard {
+  margin-bottom: 16px;
+}
+
+.annual-dashboard-table th,
+.annual-dashboard-table td {
+  min-width: 86px;
+  text-align: right;
+  white-space: nowrap;
+}
+
+.annual-dashboard-table th:first-child,
+.annual-dashboard-table td:first-child {
+  left: 0;
+  position: sticky;
+  text-align: left;
+  z-index: 1;
+}
+
+.filter-panel {
+  display: grid;
+  gap: 12px;
+}
+
+.filter-row {
+  align-items: end;
+  display: grid;
+  gap: 12px;
+  grid-template-columns: minmax(150px, 190px) minmax(240px, 1fr) auto;
+}
+
+.filter-row label {
+  color: var(--muted);
+  display: grid;
+  font-size: 13px;
+  font-weight: 800;
+  gap: 6px;
+}
+
+.filter-row input,
+.filter-row select {
+  border: 1px solid var(--line);
+  border-radius: 7px;
+  color: var(--ink);
+  min-height: 38px;
+  padding: 8px 10px;
+}
+
+.tag-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.tag-button {
+  background: #fffefa;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  color: var(--ink);
+  cursor: pointer;
+  font-weight: 800;
+  min-height: 34px;
+  padding: 0 12px;
+}
+
+.tag-button-active {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: #fffefa;
+}
+
+@media (max-width: 920px) {
+  .filter-row {
+    grid-template-columns: 1fr;
+  }
+}

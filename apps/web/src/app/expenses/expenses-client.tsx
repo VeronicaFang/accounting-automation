@@ -1,8 +1,10 @@
-﻿"use client";
+"use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
+import { useSearchParams } from "next/navigation";
 
 import { PageHeader } from "@/components/page-header";
+import { filterExpenses, getDefaultExpenseMonths, monthKeyFromDateValue } from "@/lib/accounting/dashboard-filters";
 import { isStoredSupabaseSessionValid, readStoredSupabaseSession } from "@/lib/auth/supabase-auth";
 import { fetchSupabaseRows } from "@/lib/data/supabase-rest";
 import { getSupabaseExpenses } from "@/lib/data/supabase-repository";
@@ -35,6 +37,11 @@ function getBudgetItemLabel(item: BudgetItemLookup): string {
   return item.legacy_name ?? item.legacy_id ?? item.name ?? "";
 }
 
+const merchantTags = [
+  { label: "蝦皮", value: "蝦皮" },
+  { label: "拼多多", value: "拼多多" },
+  { label: "淘寶", value: "淘寶" }
+];
 function getStateText(state: LoadState, count: number): string {
   if (state === "ready") {
     return `已連線 Supabase，顯示 ${count} 筆消費明細`;
@@ -64,10 +71,22 @@ export function ExpensesClient() {
   const [error, setError] = useState<string | null>(null);
   const [message, setMessage] = useState<Message>({ tone: "muted", text: "可直接修正品項、預算項目，或刪除錯誤與重複消費。" });
   const [busyExpenseId, setBusyExpenseId] = useState<string | null>(null);
+  const searchParams = useSearchParams();
+  const currentMonth = monthKeyFromDateValue();
+  const defaultMonths = useMemo(() => getDefaultExpenseMonths(currentMonth), [currentMonth]);
+  const queryMonth = searchParams.get("month") ?? "";
+  const queryCard = searchParams.get("card") ?? "";
+  const queryBudget = searchParams.get("budget") ?? "";
+  const queryMerchant = searchParams.get("merchant") ?? "";
+  const queryTag = searchParams.get("tag") ?? "";
+  const queryText = searchParams.get("q") ?? "";
+  const [selectedMonth, setSelectedMonth] = useState(queryMonth);
+  const [searchText, setSearchText] = useState(queryText);
+  const [activeTag, setActiveTag] = useState(queryTag || queryMerchant);
 
   async function loadExpenses(accessToken: string, isCurrent = () => true) {
     const [rows, budgetRows] = await Promise.all([
-      getSupabaseExpenses(accessToken, 200),
+      getSupabaseExpenses(accessToken, 1000),
       fetchSupabaseRows<BudgetItemLookup>(
         "budget_items",
         {
@@ -91,6 +110,11 @@ export function ExpensesClient() {
     setState("ready");
   }
 
+  useEffect(() => {
+    setSelectedMonth(queryMonth);
+    setSearchText(queryText);
+    setActiveTag(queryTag || queryMerchant);
+  }, [queryMonth, queryText, queryTag, queryMerchant]);
   useEffect(() => {
     const session = readStoredSupabaseSession(window.localStorage);
 
@@ -123,6 +147,29 @@ export function ExpensesClient() {
     };
   }, []);
 
+  const availableMonths = useMemo(
+    () => [...new Set(expenses.map((expense) => expense.budgetMonth))].sort().reverse(),
+    [expenses]
+  );
+  const visibleExpenses = useMemo(
+    () =>
+      filterExpenses(expenses, {
+        month: selectedMonth || undefined,
+        months: selectedMonth ? undefined : defaultMonths,
+        creditCardName: queryCard || undefined,
+        budgetItemName: queryBudget || undefined,
+        merchantTag: activeTag || undefined,
+        query: searchText || undefined
+      }),
+    [activeTag, defaultMonths, expenses, queryBudget, queryCard, searchText, selectedMonth]
+  );
+  const activeContext = [
+    selectedMonth ? `月份 ${selectedMonth}` : `預設 ${defaultMonths.join("、")}`,
+    queryCard ? `信用卡 ${queryCard}` : "",
+    queryBudget ? `預算 ${queryBudget}` : "",
+    activeTag ? `店家 ${activeTag}` : "",
+    searchText ? `搜尋 ${searchText}` : ""
+  ].filter(Boolean);
   async function submitExpenseAction(action: string, body: Record<string, unknown>) {
     const session = readStoredSupabaseSession(window.localStorage);
 
@@ -199,15 +246,54 @@ export function ExpensesClient() {
       <PageHeader
         eyebrow="消費明細"
         title="已記錄消費"
-        description="顯示目前登入帳號可讀取的 Supabase 消費資料，預設列出最近 200 筆。"
+        description="可依月份、店家、品項、信用卡或預算項目查找；預設顯示本月與前月。"
       />
-      <div className={`data-source-pill data-source-${state}`}>{getStateText(state, expenses.length)}</div>
+      <div className={`data-source-pill data-source-${state}`}>{getStateText(state, visibleExpenses.length)} / 全部 {expenses.length} 筆</div>
       <div className={`entry-message entry-message-${message.tone}`}>{message.text}</div>
       {error ? <p className="error-text">{error}</p> : null}
+      <section className="surface section-block filter-panel">
+        <div className="filter-row">
+          <label>
+            月份
+            <select value={selectedMonth} onChange={(event) => setSelectedMonth(event.target.value)}>
+              <option value="">本月與前月</option>
+              {availableMonths.map((month) => (
+                <option key={month} value={month}>
+                  {month}
+                </option>
+              ))}
+            </select>
+          </label>
+          <label className="filter-search">
+            搜尋
+            <input
+              placeholder="店家或品項關鍵字"
+              value={searchText}
+              onChange={(event) => setSearchText(event.target.value)}
+            />
+          </label>
+          <button className="secondary-action" type="button" onClick={() => { setSelectedMonth(""); setSearchText(""); setActiveTag(""); }}>
+            清除篩選
+          </button>
+        </div>
+        <div className="tag-row">
+          {merchantTags.map((tag) => (
+            <button
+              key={tag.value}
+              className={activeTag === tag.value ? "tag-button tag-button-active" : "tag-button"}
+              type="button"
+              onClick={() => setActiveTag((current) => (current === tag.value ? "" : tag.value))}
+            >
+              {tag.label}
+            </button>
+          ))}
+        </div>
+        <p className="muted">{activeContext.length > 0 ? `目前條件：${activeContext.join("、")}` : "目前條件：本月與前月"}</p>
+      </section>
       <section className="surface section-block">
         <div className="section-heading">
           <h2>消費列表</h2>
-          <span>最近 200 筆</span>
+          <span>{visibleExpenses.length} 筆</span>
         </div>
         <div className="table-scroll">
           <table className="data-table expenses-table">
@@ -224,7 +310,7 @@ export function ExpensesClient() {
               </tr>
             </thead>
             <tbody>
-              {expenses.map((expense) => {
+              {visibleExpenses.map((expense) => {
                 const isBusy = busyExpenseId === expense.id;
                 const itemValue = itemEdits[expense.id] ?? expense.itemDescription;
                 const budgetValue = budgetEdits[expense.id] ?? expense.budgetItemId;
@@ -271,7 +357,7 @@ export function ExpensesClient() {
                   </tr>
                 );
               })}
-              {state === "ready" && expenses.length === 0 ? (
+              {state === "ready" && visibleExpenses.length === 0 ? (
                 <tr>
                   <td colSpan={8}>目前沒有可顯示的消費明細。</td>
                 </tr>

@@ -9,6 +9,12 @@ import { PageHeader } from "@/components/page-header";
 import { StatStrip } from "@/components/stat-strip";
 import { TaskWorkbench } from "@/components/task-workbench";
 import {
+  buildAnnualDashboardMonths,
+  filterFutureBills,
+  monthKeyFromDateValue
+} from "@/lib/accounting/dashboard-filters";
+import { formatCurrency } from "@/lib/format";
+import {
   isStoredSupabaseSessionValid,
   readStoredSupabaseSession,
   readStoredSupabaseUser,
@@ -62,6 +68,63 @@ function statusText(
   return "請先登入 Supabase，登入前不顯示正式資料";
 }
 
+function AnnualDashboardTable({ rows }: { rows: ReturnType<typeof buildAnnualDashboardMonths> }) {
+  const totals = rows.reduce(
+    (current, row) => ({
+      estimatedSpend: current.estimatedSpend + row.estimatedSpend,
+      income: current.income + row.income,
+      netFlow: current.netFlow + row.netFlow
+    }),
+    { estimatedSpend: 0, income: 0, netFlow: 0 }
+  );
+
+  return (
+    <section className="surface section-block annual-dashboard">
+      <div className="section-heading">
+        <h2>年度儀表板</h2>
+        <span>全年預期</span>
+      </div>
+      <div className="table-scroll">
+        <table className="data-table annual-dashboard-table">
+          <thead>
+            <tr>
+              <th>項目</th>
+              {rows.map((row) => (
+                <th key={row.month}>{row.month.replace("-", "")}</th>
+              ))}
+              <th>全年</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <th>預期花費</th>
+              {rows.map((row) => (
+                <td key={row.month}>{formatCurrency(row.estimatedSpend)}</td>
+              ))}
+              <td>{formatCurrency(totals.estimatedSpend)}</td>
+            </tr>
+            <tr>
+              <th>薪資收入</th>
+              {rows.map((row) => (
+                <td key={row.month}>{formatCurrency(row.income)}</td>
+              ))}
+              <td>{formatCurrency(totals.income)}</td>
+            </tr>
+            <tr>
+              <th>現金流</th>
+              {rows.map((row) => (
+                <td key={row.month} className={row.netFlow < 0 ? "text-danger" : "text-good"}>
+                  {formatCurrency(row.netFlow)}
+                </td>
+              ))}
+              <td className={totals.netFlow < 0 ? "text-danger" : "text-good"}>{formatCurrency(totals.netFlow)}</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
+  );
+}
 export function HomeDashboardClient({ initialData }: { initialData: AccountingDashboardData }) {
   const emptyDashboard = useMemo(() => getEmptyDashboard(initialData), [initialData]);
   const [dashboardData, setDashboardData] = useState<AccountingDashboardData>(emptyDashboard);
@@ -126,20 +189,23 @@ export function HomeDashboardClient({ initialData }: { initialData: AccountingDa
     };
   }, [emptyDashboard, initialData]);
 
-  const { billEstimates, budgetStatuses, cashFlowMonths, currentMonth, reviewTasks } = dashboardData;
-  const currentCashFlow = cashFlowMonths[0] ?? {
-    month: currentMonth,
+  const { billEstimates, budgetStatuses, cashFlowMonths, reviewTasks } = dashboardData;
+  const displayMonth = monthKeyFromDateValue();
+  const currentCashFlow = cashFlowMonths.find((month) => month.month === displayMonth) ?? {
+    month: displayMonth,
     income: 0,
     cashExpense: 0,
     estimatedCardPayment: 0,
     netFlow: 0
   };
+  const futureBillEstimates = filterFutureBills(billEstimates, displayMonth);
+  const annualRows = buildAnnualDashboardMonths(Number(displayMonth.slice(0, 4)), cashFlowMonths, billEstimates);
 
   return (
     <>
       <PageHeader
         eyebrow="首頁"
-        title={`${currentMonth} 本月狀態與待辦`}
+        title={`${displayMonth} 本月狀態與待辦`}
         description="登入 Supabase 後，這裡只顯示目前帳號可讀取的 household 資料。"
       />
       <div className={`data-source-pill data-source-${status}`}>{statusText(status, dashboardData, sessionUser, households)}</div>
@@ -161,9 +227,10 @@ export function HomeDashboardClient({ initialData }: { initialData: AccountingDa
           }
         ]}
       />
+      <AnnualDashboardTable rows={annualRows} />
       <div className="grid-two">
         <div>
-          <BillEstimateTable bills={billEstimates} />
+          <BillEstimateTable bills={futureBillEstimates} title="每月帳單預估（本月以後）" />
           <CashFlowTable months={cashFlowMonths} />
         </div>
         <div>
