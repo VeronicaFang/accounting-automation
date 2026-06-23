@@ -7,7 +7,7 @@ import { PageHeader } from "@/components/page-header";
 import { filterExpenses, getDefaultExpenseMonths, monthKeyFromDateValue } from "@/lib/accounting/dashboard-filters";
 import { isStoredSupabaseSessionValid, readStoredSupabaseSession } from "@/lib/auth/supabase-auth";
 import { fetchSupabaseRows } from "@/lib/data/supabase-rest";
-import { getSupabaseExpenses } from "@/lib/data/supabase-repository";
+import { getSupabaseExpenses, getSupabaseInstallmentSchedulesByMonth, type InstallmentScheduleRecord } from "@/lib/data/supabase-repository";
 import { formatCurrency } from "@/lib/format";
 import type { ExpenseRecord } from "@/lib/types";
 
@@ -108,6 +108,7 @@ export function ExpensesClient() {
   const [selectedMonth, setSelectedMonth] = useState(queryMonth);
   const [searchText, setSearchText] = useState(queryText);
   const [activeTag, setActiveTag] = useState(queryTag || queryMerchant);
+  const [installmentSchedules, setInstallmentSchedules] = useState<InstallmentScheduleRecord[]>([]);
 
   async function loadExpenses(accessToken: string, isCurrent = () => true) {
     const [rows, budgetRows, cardRows] = await Promise.all([
@@ -143,6 +144,15 @@ export function ExpensesClient() {
     setCardEdits(Object.fromEntries(rows.map((expense) => [expense.id, expense.creditCardName ?? ""])));
     setAmountEdits(Object.fromEntries(rows.map((expense) => [expense.id, String(expense.amount)])));
     setState("ready");
+
+    if (queryBillMonth && queryCard) {
+      const matchedCard = cardRows.find((c) => c.name.toLowerCase() === queryCard.toLowerCase());
+      if (matchedCard) {
+        getSupabaseInstallmentSchedulesByMonth(queryBillMonth, matchedCard.id, accessToken)
+          .then((schedules) => { if (isCurrent()) setInstallmentSchedules(schedules); })
+          .catch(() => {});
+      }
+    }
   }
 
   useEffect(() => {
@@ -690,6 +700,41 @@ export function ExpensesClient() {
           </table>
         </div>
       </section>
+
+      {installmentSchedules.length > 0 ? (
+        <section className="surface section-block">
+          <div className="section-heading">
+            <h2>分期付款（本月應繳）</h2>
+            <span>{installmentSchedules.length} 筆・{formatCurrency(installmentSchedules.reduce((s, r) => s + r.scheduleAmount, 0))}</span>
+          </div>
+          <div className="table-scroll">
+            <table className="data-table">
+              <thead>
+                <tr>
+                  <th>商家</th>
+                  <th>品項</th>
+                  <th>期數</th>
+                  <th className="text-right">本期金額</th>
+                </tr>
+              </thead>
+              <tbody>
+                {installmentSchedules.map((s) => (
+                  <tr key={s.scheduleId}>
+                    <td>{s.merchantName || "—"}</td>
+                    <td>{s.itemDescription}</td>
+                    <td>
+                      <span className="installment-toggle-btn">
+                        第 {s.paymentSequence} 期 / 共 {s.installmentCount} 期
+                      </span>
+                    </td>
+                    <td className="text-right">{formatCurrency(s.scheduleAmount)}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </section>
+      ) : null}
     </>
   );
 }

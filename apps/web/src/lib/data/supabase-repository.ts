@@ -239,6 +239,63 @@ export async function getSupabaseExpenses(accessToken?: string, limit = 200): Pr
   return mapExpenseRows(rows, budgetItems, creditCards);
 }
 
+export type InstallmentScheduleRecord = {
+  scheduleId: string;
+  expenseId: string;
+  merchantName: string;
+  itemDescription: string;
+  paymentSequence: number;
+  installmentCount: number;
+  scheduleAmount: number;
+  cashFlowMonth: string;
+  creditCardId: string;
+};
+
+type RawInstallmentScheduleRow = {
+  id: string;
+  expense_id: string;
+  payment_sequence: number;
+  payment_amount: number;
+  cash_flow_month: string;
+  credit_card_id: string;
+  expenses: {
+    merchant_name: string | null;
+    item_description: string | null;
+    installment_count: number | null;
+  } | null;
+};
+
+export async function getSupabaseInstallmentSchedulesByMonth(
+  cashFlowMonth: string,
+  creditCardId: string,
+  accessToken?: string
+): Promise<InstallmentScheduleRecord[]> {
+  const rows = await fetchSupabaseRows<RawInstallmentScheduleRow>(
+    "payment_schedules",
+    {
+      select: "id,expense_id,payment_sequence,payment_amount,cash_flow_month,credit_card_id,expenses(merchant_name,item_description,installment_count)",
+      cash_flow_month: `eq.${cashFlowMonth}`,
+      credit_card_id: `eq.${creditCardId}`,
+      payment_sequence: "gt.1",
+      order: "payment_sequence.asc"
+    },
+    undefined,
+    accessToken
+  );
+
+  return rows.map((row) => ({
+    scheduleId: row.id,
+    expenseId: row.expense_id,
+    merchantName: row.expenses?.merchant_name ?? "",
+    itemDescription: row.expenses?.item_description ?? "",
+    paymentSequence: row.payment_sequence,
+    installmentCount: row.expenses?.installment_count ?? 0,
+    scheduleAmount: row.payment_amount,
+    cashFlowMonth: row.cash_flow_month,
+    creditCardId: row.credit_card_id
+  }));
+}
+
 export async function getSupabaseBudgetStatuses(accessToken?: string): Promise<BudgetStatus[]> {
   const [budgetItems, budgetGroups, expenseRows] = await Promise.all([
     fetchSupabaseRows<SupabaseBudgetItemLookupRow>(
