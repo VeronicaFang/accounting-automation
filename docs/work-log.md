@@ -336,3 +336,30 @@
 
 - 本地驗證：`npm run typecheck` 通過（0 errors）
 - Production 部署狀態：等待使用者手動執行 `git push origin main`
+
+---
+
+## 2026-06-23（六）
+
+### 登入 Session 過期 + 429 修復
+
+- 問題：Session 過期後嘗試寄 Magic Link 收到 429（rate limit），導致完全無法登入。
+- 根本原因：Supabase 每個信箱每 60 秒只允許寄一封 magic link；session 過期不應該強制要求重新收信，因為 refresh token 仍有效。
+
+#### 修復範圍：
+
+**`supabase-auth.ts`**
+- `requestMagicLink`：偵測 429 狀態碼，回傳 `rateLimited: true` 及友善訊息「寄送太頻繁，請等約 60 秒後再試。」
+- 新增 `refreshSupabaseSession(refreshToken)` 函式：POST `/auth/v1/token?grant_type=refresh_token`，成功時回傳新的 `accessToken`、`refreshToken`、`expiresAt`；400/401 時回傳「Refresh token 已失效，請重新登入。」
+
+**`login-form.tsx`**
+- Session 過期時，顯示「重新整理 Session（不需重新收信）」按鈕，呼叫 `refreshSupabaseSession`，成功後直接寫入 localStorage 並更新畫面至「已登入」。
+- Magic link 表單移到 divider 下方，作為 refresh 失敗時的備用登入入口。
+- 429 錯誤附加說明文字「Supabase 每封信箱每分鐘只允許寄一封 magic link」。
+
+**`actions.ts`**：`LoginActionState` 加入 `rateLimited?: boolean` 欄位。
+
+**`globals.css`**：新增 `.auth-divider`（分隔線）、`.rate-limit-hint`（說明文字）。
+
+- 本地驗證：`npm run typecheck` 通過（0 errors）
+- Production 部署狀態：等待使用者手動執行 `git push origin main`
