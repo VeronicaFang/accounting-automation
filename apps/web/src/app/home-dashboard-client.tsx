@@ -213,17 +213,17 @@ export function HomeDashboardClient({ initialData }: { initialData: AccountingDa
       {error ? <p className="error-text">{error}</p> : null}
       <StatStrip
         stats={[
-          { label: "收入", value: currentCashFlow.income, tone: "good" },
-          { label: "現金支出", value: currentCashFlow.cashExpense, tone: "neutral" },
+          { label: "本月收入", value: currentCashFlow.income, tone: "teal" },
+          { label: "現金支出", value: currentCashFlow.cashExpense, tone: "sky" },
           {
             label: "信用卡付款",
             value: currentCashFlow.actualCardPayment ?? currentCashFlow.estimatedCardPayment,
-            tone: "warning"
+            tone: "orange"
           },
           {
             label: "月淨流量",
             value: currentCashFlow.netFlow,
-            tone: currentCashFlow.netFlow < 0 ? "danger" : "good"
+            tone: currentCashFlow.netFlow < 0 ? "rose" : "violet"
           }
         ]}
       />

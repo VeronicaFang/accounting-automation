@@ -35,13 +35,18 @@ export function BudgetStatusList({
           const isEditing = editingId === item.id;
           const isSaving = savingId === item.id;
 
+          const fillPct = Math.min(item.usageRatio * 100, 100);
+
           return (
             <article className={`budget-row severity-${item.severity}`} key={item.id}>
-              <div>
+              <div className="budget-row-left">
                 <span>{item.groupName}</span>
                 <Link className="table-link" href={`/expenses?budget=${encodeURIComponent(item.itemName)}`}>
                   <strong>{item.itemName}</strong>
                 </Link>
+                <div className="budget-bar-track">
+                  <div className="budget-bar-fill" style={{ width: `${fillPct}%` }} />
+                </div>
               </div>
               <div className="budget-numbers">
                 {isEditing ? (
@@ -83,7 +88,7 @@ export function BudgetStatusList({
                           title="編輯年度預算"
                           onClick={() => onEditStart(item.id)}
                         >
-                          ✏️
+                          編輯
                         </button>
                       ) : null}
                     </small>

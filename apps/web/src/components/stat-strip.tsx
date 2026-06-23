@@ -3,7 +3,7 @@ import { formatCurrency } from "@/lib/format";
 type Stat = {
   label: string;
   value: number;
-  tone?: "neutral" | "good" | "warning" | "danger";
+  tone?: "neutral" | "good" | "warning" | "danger" | "teal" | "sky" | "orange" | "violet" | "rose";
 };
 
 export function StatStrip({ stats }: { stats: Stat[] }) {
