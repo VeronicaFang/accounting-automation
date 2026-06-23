@@ -895,6 +895,19 @@ textarea {
   color: var(--muted);
 }
 
+.auth-divider {
+  border: none;
+  border-top: 1px solid var(--line);
+  margin: 16px 0 12px;
+}
+
+.rate-limit-hint {
+  display: block;
+  font-size: 0.78rem;
+  margin-top: 4px;
+  color: var(--muted);
+}
+
 .auth-form {
   display: grid;
   gap: 10px;

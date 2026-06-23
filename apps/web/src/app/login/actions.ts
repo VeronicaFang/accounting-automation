@@ -5,6 +5,7 @@ import { requestMagicLink } from "@/lib/auth/supabase-auth";
 export type LoginActionState = {
   status: "idle" | "sent" | "error";
   message: string;
+  rateLimited?: boolean;
 };
 
 export async function sendMagicLink(
@@ -25,7 +26,8 @@ export async function sendMagicLink(
   if (!result.ok) {
     return {
       status: "error",
-      message: result.message
+      message: result.message,
+      rateLimited: result.rateLimited === true
     };
   }
 

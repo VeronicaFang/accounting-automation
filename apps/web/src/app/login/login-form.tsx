@@ -7,7 +7,9 @@ import {
   getSessionExpiryDate,
   isStoredSupabaseSessionValid,
   parseSupabaseHashError,
-  readStoredSupabaseSession
+  readStoredSupabaseSession,
+  refreshSupabaseSession,
+  supabaseSessionStorageKey
 } from "@/lib/auth/supabase-auth";
 
 import { sendMagicLink, type LoginActionState } from "./actions";
@@ -20,7 +22,7 @@ const initialState: LoginActionState = {
 type SessionState =
   | { status: "checking" }
   | { status: "signed-out" }
-  | { status: "expired"; expiryLabel: string | null }
+  | { status: "expired"; expiryLabel: string | null; refreshToken: string }
   | { status: "signed-in"; expiryLabel: string | null };
 
 type AuthLinkError = {
@@ -43,7 +45,7 @@ function readSessionState(): SessionState {
   const expiryLabel = formatExpiry(expiryDate);
 
   if (!isStoredSupabaseSessionValid(window.localStorage)) {
-    return { status: "expired", expiryLabel };
+    return { status: "expired", expiryLabel, refreshToken: session.refreshToken };
   }
 
   return { status: "signed-in", expiryLabel };
@@ -53,6 +55,8 @@ export function LoginForm() {
   const [state, formAction, isPending] = useActionState(sendMagicLink, initialState);
   const [sessionState, setSessionState] = useState<SessionState>({ status: "checking" });
   const [authLinkError, setAuthLinkError] = useState<AuthLinkError | null>(null);
+  const [refreshing, setRefreshing] = useState(false);
+  const [refreshMessage, setRefreshMessage] = useState<string | null>(null);
 
   useEffect(() => {
     const hashError = parseSupabaseHashError(window.location.hash);
@@ -84,6 +88,23 @@ export function LoginForm() {
     setSessionState({ status: "signed-out" });
   }
 
+  async function handleRefreshSession(refreshToken: string) {
+    setRefreshing(true);
+    setRefreshMessage(null);
+
+    const result = await refreshSupabaseSession(refreshToken);
+
+    if (!result.ok) {
+      setRefreshMessage(result.message);
+      setRefreshing(false);
+      return;
+    }
+
+    window.localStorage.setItem(supabaseSessionStorageKey, JSON.stringify(result.session));
+    setSessionState(readSessionState());
+    setRefreshing(false);
+  }
+
   if (sessionState.status === "checking") {
     return <p className="muted">正在確認 Supabase session...</p>;
   }
@@ -101,21 +122,48 @@ export function LoginForm() {
   }
 
   return (
-    <form action={formAction} className="auth-form">
+    <div>
       {authLinkError ? <p className="auth-message auth-error">{authLinkError.message}</p> : null}
+
       {sessionState.status === "expired" ? (
-        <p className="auth-message auth-error">
-          Supabase session 已過期{sessionState.expiryLabel ? `（${sessionState.expiryLabel}）` : ""}，請重新登入。
-        </p>
+        <div className="auth-status-card">
+          <p className="auth-message auth-error">
+            Supabase session 已過期{sessionState.expiryLabel ? `（${sessionState.expiryLabel}）` : ""}。
+          </p>
+          <p className="muted" style={{ marginBottom: "12px" }}>
+            可先嘗試使用 Refresh Token 重新連線，不需要重新收信。
+          </p>
+          <button
+            className="primary-action"
+            type="button"
+            disabled={refreshing}
+            onClick={() => handleRefreshSession(sessionState.refreshToken)}
+          >
+            {refreshing ? "更新中..." : "重新整理 Session（不需重新收信）"}
+          </button>
+          {refreshMessage ? <p className="auth-message auth-error" style={{ marginTop: "8px" }}>{refreshMessage}</p> : null}
+          <hr className="auth-divider" />
+          <p className="muted">Refresh Token 失效時，才需要重新寄送登入連結：</p>
+        </div>
       ) : null}
-      <label htmlFor="email">Email</label>
-      <div className="auth-row">
-        <input id="email" name="email" placeholder="you@example.com" type="email" required />
-        <button disabled={isPending} type="submit">
-          {isPending ? "寄送中..." : "寄送登入連結"}
-        </button>
-      </div>
-      {state.message ? <p className={`auth-message auth-${state.status}`}>{state.message}</p> : null}
-    </form>
+
+      <form action={formAction} className="auth-form">
+        <label htmlFor="email">Email</label>
+        <div className="auth-row">
+          <input id="email" name="email" placeholder="you@example.com" type="email" required />
+          <button disabled={isPending} type="submit">
+            {isPending ? "寄送中..." : "寄送登入連結"}
+          </button>
+        </div>
+        {state.message ? (
+          <p className={`auth-message auth-${state.status}`}>
+            {state.message}
+            {state.status === "error" && state.message.includes("60 秒") ? (
+              <span className="rate-limit-hint">（Supabase 每封信箱每分鐘只允許寄一封 magic link）</span>
+            ) : null}
+          </p>
+        ) : null}
+      </form>
+    </div>
   );
 }

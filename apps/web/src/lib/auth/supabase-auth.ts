@@ -39,7 +39,7 @@ export function getSupabaseAuthConfig(env: AuthEnv = getDefaultAuthEnv()): Supab
   };
 }
 
-export async function requestMagicLink(email: string): Promise<{ ok: true } | { ok: false; message: string }> {
+export async function requestMagicLink(email: string): Promise<{ ok: true } | { ok: false; message: string; rateLimited?: true }> {
   const config = getSupabaseAuthConfig();
 
   if (!config) {
@@ -63,10 +63,72 @@ export async function requestMagicLink(email: string): Promise<{ ok: true } | { 
   });
 
   if (!response.ok) {
+    if (response.status === 429) {
+      return { ok: false, message: "寄送太頻繁，請等約 60 秒後再試。", rateLimited: true };
+    }
     return { ok: false, message: `Magic link 發送失敗：${response.status}` };
   }
 
   return { ok: true };
+}
+
+export type RefreshedSession = {
+  accessToken: string;
+  refreshToken: string;
+  expiresIn: string | null;
+  expiresAt: string | null;
+  tokenType: string | null;
+};
+
+export async function refreshSupabaseSession(
+  refreshToken: string
+): Promise<{ ok: true; session: RefreshedSession } | { ok: false; message: string }> {
+  const config = getSupabaseAuthConfig();
+
+  if (!config) {
+    return { ok: false, message: "Supabase 設定尚未完成。" };
+  }
+
+  const response = await fetch(`${config.authUrl}/token?grant_type=refresh_token`, {
+    method: "POST",
+    headers: {
+      apikey: config.publishableKey,
+      Authorization: `Bearer ${config.publishableKey}`,
+      "Content-Type": "application/json"
+    },
+    body: JSON.stringify({ refresh_token: refreshToken })
+  });
+
+  if (!response.ok) {
+    const text = await response.text().catch(() => "");
+    if (response.status === 400 || response.status === 401) {
+      return { ok: false, message: "Refresh token 已失效，請重新登入。" };
+    }
+    return { ok: false, message: `Session 更新失敗（${response.status}）：${text}` };
+  }
+
+  const data = (await response.json()) as {
+    access_token?: string;
+    refresh_token?: string;
+    expires_in?: number;
+    expires_at?: number;
+    token_type?: string;
+  };
+
+  if (!data.access_token || !data.refresh_token) {
+    return { ok: false, message: "Supabase 回傳資料格式異常。" };
+  }
+
+  return {
+    ok: true,
+    session: {
+      accessToken: data.access_token,
+      refreshToken: data.refresh_token,
+      expiresIn: data.expires_in !== undefined ? String(data.expires_in) : null,
+      expiresAt: data.expires_at !== undefined ? String(data.expires_at) : null,
+      tokenType: data.token_type ?? null
+    }
+  };
 }
 
 export type ParsedHashSession = {
