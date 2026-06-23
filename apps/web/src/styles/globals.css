@@ -339,6 +339,27 @@ textarea {
   padding: 7px 8px;
 }
 
+.expense-payment-cell {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.expense-payment-cell .expense-budget-select {
+  min-width: 80px;
+}
+
+.expense-amount-input {
+  width: 90px;
+  min-height: 36px;
+  border: 1px solid var(--line);
+  border-radius: 7px;
+  background: #fffefa;
+  color: var(--ink);
+  padding: 7px 8px;
+  text-align: right;
+}
+
 .row-actions {
   display: inline-flex;
   gap: 8px;

@@ -65,6 +65,22 @@ type ExpenseMaintenanceRow = {
   status: string;
 };
 
+type ExpenseForUpdate = {
+  id: string;
+  amount: string | number;
+  is_installment: boolean;
+  payment_tool_type: PaymentToolType;
+  credit_card_id: string | null;
+};
+
+type PaymentScheduleForUpdate = {
+  id: string;
+  cash_flow_month: string;
+  payment_amount: string | number;
+  payment_tool_type: PaymentToolType;
+  credit_card_id: string | null;
+};
+
 type IncomeMaintenanceRow = {
   id: string;
   income_date: string;
@@ -1095,25 +1111,132 @@ async function updateExpenseDetails(
 
   const budgetItem = findBudgetItem(references, { budgetItemId });
 
-  await supabasePatch(
-    requestConfig,
-    "expenses",
-    {
+  const newPaymentToolType: PaymentToolType | null =
+    payload.paymentToolType != null
+      ? String(payload.paymentToolType) === "credit_card"
+        ? "credit_card"
+        : "cash"
+      : null;
+  const newCreditCardName = payload.creditCardName != null ? String(payload.creditCardName).trim() : null;
+  const newAmount = payload.amount != null && String(payload.amount) !== "" ? Number(payload.amount) : null;
+  const hasFinancialChange = newPaymentToolType !== null || newAmount !== null;
+
+  if (hasFinancialChange) {
+    const [currentExpense] = await supabaseRead<ExpenseForUpdate>(requestConfig, "expenses", {
+      select: "id,amount,is_installment,payment_tool_type,credit_card_id",
       household_id: `eq.${references.householdId}`,
       id: `eq.${expenseId}`,
-      status: "eq.active"
-    },
-    {
-      item_description: itemDescription,
-      budget_item_id: budgetItem.id,
-      legacy_budget_item: budgetItem.legacy_name ?? budgetItem.legacy_id ?? budgetItem.name,
-      updated_at: new Date().toISOString()
-    }
-  );
+      status: "eq.active",
+      limit: "1"
+    });
 
-  return {
-    updatedExpenses: 1
-  };
+    if (!currentExpense) {
+      throw new Error("找不到這筆消費。");
+    }
+
+    if (currentExpense.is_installment) {
+      throw new Error("分期付款消費不支援修改金額與支付工具。");
+    }
+
+    const resolvedPaymentType = newPaymentToolType ?? currentExpense.payment_tool_type;
+    let newCreditCardId: string | null = null;
+    let resolvedCreditCard: EntryCreditCard | null = null;
+
+    if (resolvedPaymentType === "credit_card") {
+      if (newCreditCardName) {
+        resolvedCreditCard = findCreditCard(references, { creditCardName: newCreditCardName });
+      } else if (currentExpense.credit_card_id) {
+        resolvedCreditCard = references.creditCards.find((c) => c.id === currentExpense.credit_card_id) ?? null;
+      }
+
+      if (!resolvedCreditCard) {
+        throw new Error("請指定有效的信用卡名稱。");
+      }
+
+      newCreditCardId = resolvedCreditCard.id;
+    }
+
+    const oldTotalAmount = Number(currentExpense.amount);
+    const targetAmount = newAmount ?? oldTotalAmount;
+
+    if (!Number.isFinite(targetAmount) || targetAmount < 0) {
+      throw new Error("請輸入有效的消費金額（≥ 0）。");
+    }
+
+    const schedules = await supabaseRead<PaymentScheduleForUpdate>(requestConfig, "payment_schedules", {
+      select: "id,cash_flow_month,payment_amount,payment_tool_type,credit_card_id",
+      household_id: `eq.${references.householdId}`,
+      expense_id: `eq.${expenseId}`
+    });
+
+    for (const schedule of schedules) {
+      const oldAmt = Number(schedule.payment_amount);
+      const newAmt = oldTotalAmount > 0 ? (oldAmt / oldTotalAmount) * targetAmount : targetAmount;
+
+      await addCashFlowDelta(requestConfig, references.householdId, schedule.cash_flow_month, {
+        cashExpense: schedule.payment_tool_type === "cash" ? -oldAmt : 0,
+        creditCardPayment: schedule.payment_tool_type === "credit_card" ? -oldAmt : 0
+      });
+
+      if (schedule.payment_tool_type === "credit_card" && schedule.credit_card_id) {
+        const oldCard = references.creditCards.find((c) => c.id === schedule.credit_card_id);
+
+        if (oldCard) {
+          await addBillEstimateDelta(requestConfig, references.householdId, oldCard, schedule.cash_flow_month, -oldAmt, -1);
+        }
+      }
+
+      await supabasePatch(
+        requestConfig,
+        "payment_schedules",
+        { household_id: `eq.${references.householdId}`, id: `eq.${schedule.id}` },
+        {
+          payment_amount: newAmt,
+          payment_tool_type: resolvedPaymentType,
+          credit_card_id: newCreditCardId,
+          updated_at: new Date().toISOString()
+        }
+      );
+
+      await addCashFlowDelta(requestConfig, references.householdId, schedule.cash_flow_month, {
+        cashExpense: resolvedPaymentType === "cash" ? newAmt : 0,
+        creditCardPayment: resolvedPaymentType === "credit_card" ? newAmt : 0
+      });
+
+      if (resolvedPaymentType === "credit_card" && resolvedCreditCard) {
+        await addBillEstimateDelta(requestConfig, references.householdId, resolvedCreditCard, schedule.cash_flow_month, newAmt, 1);
+      }
+    }
+
+    await supabasePatch(
+      requestConfig,
+      "expenses",
+      { household_id: `eq.${references.householdId}`, id: `eq.${expenseId}`, status: "eq.active" },
+      {
+        amount: targetAmount,
+        payment_tool_type: resolvedPaymentType,
+        credit_card_id: newCreditCardId,
+        item_description: itemDescription,
+        budget_item_id: budgetItem.id,
+        legacy_budget_item: budgetItem.legacy_name ?? budgetItem.legacy_id ?? budgetItem.name,
+        updated_at: new Date().toISOString()
+      }
+    );
+  } else {
+    await supabasePatch(
+      requestConfig,
+      "expenses",
+      { household_id: `eq.${references.householdId}`, id: `eq.${expenseId}`, status: "eq.active" },
+      {
+        item_description: itemDescription,
+        budget_item_id: budgetItem.id,
+        legacy_budget_item: budgetItem.legacy_name ?? budgetItem.legacy_id ?? budgetItem.name,
+        updated_at: new Date().toISOString()
+      }
+    );
+  }
+
+  return { updatedExpenses: 1 };
 }
 async function updateExpenseItemDescription(
   requestConfig: SupabaseRequestConfig,

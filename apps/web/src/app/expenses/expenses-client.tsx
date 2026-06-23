@@ -20,6 +20,11 @@ type BudgetItemLookup = {
   legacy_name: string | null;
 };
 
+type CreditCardLookup = {
+  id: string;
+  name: string;
+};
+
 type Message = {
   tone: "success" | "error" | "muted";
   text: string;
@@ -65,8 +70,12 @@ function getStateText(state: LoadState, count: number): string {
 export function ExpensesClient() {
   const [expenses, setExpenses] = useState<ExpenseRecord[]>([]);
   const [budgetItems, setBudgetItems] = useState<BudgetItemLookup[]>([]);
+  const [creditCards, setCreditCards] = useState<CreditCardLookup[]>([]);
   const [itemEdits, setItemEdits] = useState<Record<string, string>>({});
   const [budgetEdits, setBudgetEdits] = useState<Record<string, string>>({});
+  const [paymentEdits, setPaymentEdits] = useState<Record<string, string>>({});
+  const [cardEdits, setCardEdits] = useState<Record<string, string>>({});
+  const [amountEdits, setAmountEdits] = useState<Record<string, string>>({});
   const [state, setState] = useState<LoadState>("signed-out");
   const [error, setError] = useState<string | null>(null);
   const [message, setMessage] = useState<Message>({ tone: "muted", text: "可直接修正品項、預算項目，或刪除錯誤與重複消費。" });
@@ -85,7 +94,7 @@ export function ExpensesClient() {
   const [activeTag, setActiveTag] = useState(queryTag || queryMerchant);
 
   async function loadExpenses(accessToken: string, isCurrent = () => true) {
-    const [rows, budgetRows] = await Promise.all([
+    const [rows, budgetRows, cardRows] = await Promise.all([
       getSupabaseExpenses(accessToken, 1000),
       fetchSupabaseRows<BudgetItemLookup>(
         "budget_items",
@@ -94,6 +103,12 @@ export function ExpensesClient() {
           is_active: "eq.true",
           order: "legacy_code.asc"
         },
+        undefined,
+        accessToken
+      ),
+      fetchSupabaseRows<CreditCardLookup>(
+        "credit_cards",
+        { select: "id,name", is_active: "eq.true", order: "name.asc" },
         undefined,
         accessToken
       )
@@ -105,8 +120,12 @@ export function ExpensesClient() {
 
     setExpenses(rows);
     setBudgetItems(budgetRows);
+    setCreditCards(cardRows);
     setItemEdits(Object.fromEntries(rows.map((expense) => [expense.id, expense.itemDescription])));
     setBudgetEdits(Object.fromEntries(rows.map((expense) => [expense.id, expense.budgetItemId])));
+    setPaymentEdits(Object.fromEntries(rows.map((expense) => [expense.id, expense.paymentToolType])));
+    setCardEdits(Object.fromEntries(rows.map((expense) => [expense.id, expense.creditCardName ?? ""])));
+    setAmountEdits(Object.fromEntries(rows.map((expense) => [expense.id, String(expense.amount)])));
     setState("ready");
   }
 
@@ -199,6 +218,10 @@ export function ExpensesClient() {
   async function saveExpenseDetails(expense: ExpenseRecord) {
     const itemDescription = String(itemEdits[expense.id] ?? "").trim();
     const budgetItemId = String(budgetEdits[expense.id] ?? "").trim();
+    const paymentToolType = String(paymentEdits[expense.id] ?? expense.paymentToolType);
+    const creditCardName = String(cardEdits[expense.id] ?? expense.creditCardName ?? "").trim();
+    const amountRaw = String(amountEdits[expense.id] ?? expense.amount).replace(/,/g, "");
+    const newAmount = Number(amountRaw);
 
     if (!itemDescription) {
       setMessage({ tone: "error", text: "品項不可空白。" });
@@ -210,11 +233,35 @@ export function ExpensesClient() {
       return;
     }
 
+    if (!Number.isFinite(newAmount) || newAmount < 0) {
+      setMessage({ tone: "error", text: "請輸入有效的消費金額（≥ 0）。" });
+      return;
+    }
+
+    if (paymentToolType === "credit_card" && !creditCardName) {
+      setMessage({ tone: "error", text: "請選擇信用卡。" });
+      return;
+    }
+
+    const amountChanged = newAmount !== expense.amount;
+    const paymentChanged = paymentToolType !== expense.paymentToolType || creditCardName !== (expense.creditCardName ?? "");
+
     setBusyExpenseId(expense.id);
     setMessage({ tone: "muted", text: "正在更新消費明細..." });
 
     try {
-      await submitExpenseAction("updateExpenseDetails", { expenseId: expense.id, itemDescription, budgetItemId });
+      const body: Record<string, unknown> = { expenseId: expense.id, itemDescription, budgetItemId };
+
+      if (amountChanged || paymentChanged) {
+        body.amount = newAmount;
+        body.paymentToolType = paymentToolType;
+
+        if (paymentToolType === "credit_card") {
+          body.creditCardName = creditCardName;
+        }
+      }
+
+      await submitExpenseAction("updateExpenseDetails", body);
       setMessage({ tone: "success", text: "消費明細已更新。" });
     } catch (caughtError) {
       setMessage({ tone: "error", text: caughtError instanceof Error ? caughtError.message : "消費明細更新失敗。" });
@@ -314,7 +361,15 @@ export function ExpensesClient() {
                 const isBusy = busyExpenseId === expense.id;
                 const itemValue = itemEdits[expense.id] ?? expense.itemDescription;
                 const budgetValue = budgetEdits[expense.id] ?? expense.budgetItemId;
-                const isChanged = itemValue.trim() !== expense.itemDescription || budgetValue !== expense.budgetItemId;
+                const paymentValue = paymentEdits[expense.id] ?? expense.paymentToolType;
+                const cardValue = cardEdits[expense.id] ?? (expense.creditCardName ?? "");
+                const amountValue = amountEdits[expense.id] ?? String(expense.amount);
+                const isChanged =
+                  itemValue.trim() !== expense.itemDescription ||
+                  budgetValue !== expense.budgetItemId ||
+                  paymentValue !== expense.paymentToolType ||
+                  cardValue !== (expense.creditCardName ?? "") ||
+                  Number(amountValue) !== expense.amount;
 
                 return (
                   <tr key={expense.id}>
@@ -342,8 +397,43 @@ export function ExpensesClient() {
                         ))}
                       </select>
                     </td>
-                    <td>{paymentLabel(expense)}</td>
-                    <td className={expense.amount < 0 ? "text-good" : ""}>{formatCurrency(expense.amount)}</td>
+                    <td>
+                      <div className="expense-payment-cell">
+                        <select
+                          className="expense-budget-select"
+                          value={paymentValue}
+                          disabled={isBusy}
+                          onChange={(event) => setPaymentEdits((current) => ({ ...current, [expense.id]: event.target.value }))}
+                        >
+                          <option value="cash">現金</option>
+                          <option value="credit_card">信用卡</option>
+                        </select>
+                        {paymentValue === "credit_card" ? (
+                          <select
+                            className="expense-budget-select"
+                            value={cardValue}
+                            disabled={isBusy}
+                            onChange={(event) => setCardEdits((current) => ({ ...current, [expense.id]: event.target.value }))}
+                          >
+                            <option value="">請選擇</option>
+                            {creditCards.map((card) => (
+                              <option key={card.id} value={card.name}>{card.name}</option>
+                            ))}
+                          </select>
+                        ) : null}
+                      </div>
+                    </td>
+                    <td>
+                      <input
+                        className="expense-amount-input"
+                        type="number"
+                        min="0"
+                        step="1"
+                        value={amountValue}
+                        disabled={isBusy}
+                        onChange={(event) => setAmountEdits((current) => ({ ...current, [expense.id]: event.target.value }))}
+                      />
+                    </td>
                     <td>
                       <div className="row-actions">
                         <button className="secondary-action" disabled={isBusy || !isChanged} onClick={() => saveExpenseDetails(expense)} type="button">
