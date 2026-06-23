@@ -335,7 +335,8 @@
 - CSS：`.chip-row`、`.category-chip`、`.chip-active`、`.month-picker`、`.month-arrow`、`.month-label`。
 
 - 本地驗證：`npm run typecheck` 通過（0 errors）
-- Production 部署狀態：等待使用者手動執行 `git push origin main`
+- Commit: `1134c79 feat: mobile hamburger menu, homepage recent-expenses feed, month picker & category chips`
+- Production 部署狀態：使用者已 `git push origin main`，Vercel 部署成功。
 
 ---
 
@@ -343,23 +344,31 @@
 
 ### 登入 Session 過期 + 429 修復
 
-- 問題：Session 過期後嘗試寄 Magic Link 收到 429（rate limit），導致完全無法登入。
-- 根本原因：Supabase 每個信箱每 60 秒只允許寄一封 magic link；session 過期不應該強制要求重新收信，因為 refresh token 仍有效。
+- 問題：Session 過期後嘗試寄 Magic Link 收到 429（rate limit），導致完全無法登入；連 Supabase Dashboard 後台補寄也受限。
+- 根本原因（雙層問題）：
+  1. Supabase 內建 email 服務的 OTP rate limit（free tier 約每小時 3–4 封）鎖住整個 email，包含後台操作。
+  2. localStorage 的 session 若已被清空，refresh token 不存在，只能靠寄信。
 
-#### 修復範圍：
+#### 修復範圍（Commit: `0f4aee3`）：
 
 **`supabase-auth.ts`**
 - `requestMagicLink`：偵測 429 狀態碼，回傳 `rateLimited: true` 及友善訊息「寄送太頻繁，請等約 60 秒後再試。」
 - 新增 `refreshSupabaseSession(refreshToken)` 函式：POST `/auth/v1/token?grant_type=refresh_token`，成功時回傳新的 `accessToken`、`refreshToken`、`expiresAt`；400/401 時回傳「Refresh token 已失效，請重新登入。」
 
 **`login-form.tsx`**
-- Session 過期時，顯示「重新整理 Session（不需重新收信）」按鈕，呼叫 `refreshSupabaseSession`，成功後直接寫入 localStorage 並更新畫面至「已登入」。
-- Magic link 表單移到 divider 下方，作為 refresh 失敗時的備用登入入口。
-- 429 錯誤附加說明文字「Supabase 每封信箱每分鐘只允許寄一封 magic link」。
+- Session 過期時（localStorage 仍有 refresh token），顯示「重新整理 Session（不需重新收信）」按鈕，呼叫 `refreshSupabaseSession`，成功後直接寫入 localStorage 並更新畫面至「已登入」。
+- Magic link 表單移到 divider 下方，作為 refresh 失效時的備用入口。
+- 429 錯誤附加說明文字。
 
 **`actions.ts`**：`LoginActionState` 加入 `rateLimited?: boolean` 欄位。
 
-**`globals.css`**：新增 `.auth-divider`（分隔線）、`.rate-limit-hint`（說明文字）。
+**`globals.css`**：新增 `.auth-divider`、`.rate-limit-hint`。
 
-- 本地驗證：`npm run typecheck` 通過（0 errors）
-- Production 部署狀態：等待使用者手動執行 `git push origin main`
+#### 根本解法：Supabase 自訂 SMTP（Resend）
+
+- 問題：Supabase 內建 email rate limit 無法靠程式繞過，連 Dashboard 後台寄信也受限。
+- 解法：在 Supabase Dashboard → Project Settings → Auth → SMTP Settings 啟用自訂 SMTP，使用 Resend。
+- 設定值：Host `smtp.resend.com`、Port `587`、User `resend`、Password = Resend API Key、Sender `onboarding@resend.dev`（免費版，無 domain 驗證時使用）。
+- 結果：設定完成後，Supabase Dashboard 後台補寄 magic link 成功，rate limit 問題永久解決。
+
+- Production 部署狀態：Commit `0f4aee3` 已 push，Vercel 部署成功。
