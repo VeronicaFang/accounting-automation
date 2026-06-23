@@ -216,6 +216,45 @@ export function ReviewClient() {
     }
   }
 
+  async function deleteSelectedDrafts() {
+    const session = readStoredSupabaseSession(window.localStorage);
+
+    if (!session || !isStoredSupabaseSessionValid(window.localStorage)) {
+      setMessage({ tone: "error", text: "Supabase session 已失效，請重新登入。" });
+      return;
+    }
+
+    if (selectedIds.length === 0) {
+      setMessage({ tone: "error", text: "請先勾選要刪除的發票。" });
+      return;
+    }
+
+    setIsSubmitting(true);
+    setMessage({ tone: "muted", text: "正在刪除選取的待確認發票..." });
+
+    try {
+      const response = await fetch("/api/accounting/expense-entry", {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${session.accessToken}`,
+          "Content-Type": "application/json"
+        },
+        body: JSON.stringify({ action: "deleteInvoiceDrafts", draftIds: selectedIds })
+      });
+      const result = (await response.json()) as Record<string, unknown>;
+
+      if (!response.ok) {
+        throw new Error(typeof result.error === "string" ? result.error : "刪除發票失敗。");
+      }
+
+      setMessage({ tone: "success", text: `已刪除 ${result.deletedDrafts ?? 0} 筆待確認發票。` });
+      await loadReviewData(session.accessToken, () => true, false);
+    } catch (caughtError) {
+      setMessage({ tone: "error", text: caughtError instanceof Error ? caughtError.message : "刪除發票失敗。" });
+    } finally {
+      setIsSubmitting(false);
+    }
+  }
   return (
     <>
       <PageHeader
@@ -262,6 +301,9 @@ export function ReviewClient() {
               </label>
               <button className="primary-action" disabled={isSubmitting || selectedIds.length === 0} onClick={confirmSelectedDrafts} type="button">
                 確認選取發票
+              </button>
+              <button className="secondary-action" disabled={isSubmitting || selectedIds.length === 0} onClick={deleteSelectedDrafts} type="button">
+                刪除選取發票
               </button>
             </div>
             <div className="table-scroll">

@@ -407,8 +407,8 @@ async function createExpenses(
       throw new Error("消費日、購買品項、消費通路都是必填。");
     }
 
-    if (!Number.isFinite(input.amount) || input.amount < 0) {
-      throw new Error("Supabase 目前只支援 0 以上金額；退款或負數調整先用備註記錄。");
+    if (!Number.isFinite(input.amount)) {
+      throw new Error("消費金額必須是有效數字。");
     }
 
     const normalizedDate = normalizeDateInput(input.consumptionDate);
@@ -688,7 +688,6 @@ async function importInvoiceDrafts(
   const mealBudgetItem = findDefaultMealBudgetItem(references);
   const insertRows = rows
     .filter((row) => !existing.has(row.sourceLineKey))
-    .filter((row) => row.amount >= 0)
     .map((row) => {
       const paymentRule = findMerchantPaymentRule(row, paymentRules);
       const itemRule = findMerchantItemRule(row, itemRules);
@@ -880,6 +879,36 @@ function buildInFilter(values: string[]): string {
   return `in.(${values.map((value) => `"${value.replace(/"/g, '\\"')}"`).join(",")})`;
 }
 
+async function deleteInvoiceDrafts(
+  requestConfig: SupabaseRequestConfig,
+  references: EntryReferences,
+  payload: Record<string, unknown>
+) {
+  const draftIds = Array.isArray(payload.draftIds) ? payload.draftIds.map(String).filter(Boolean) : [];
+
+  if (draftIds.length === 0) {
+    throw new Error("請先勾選要刪除的發票。");
+  }
+
+  await supabasePatch(
+    requestConfig,
+    "invoice_drafts",
+    {
+      household_id: `eq.${references.householdId}`,
+      review_status: "eq.needs_review",
+      id: buildInFilter(draftIds)
+    },
+    {
+      review_status: "deleted",
+      updated_at: new Date().toISOString()
+    }
+  );
+
+  return {
+    deletedDrafts: draftIds.length
+  };
+}
+
 async function confirmInvoiceDrafts(
   requestConfig: SupabaseRequestConfig,
   references: EntryReferences,
@@ -1017,6 +1046,12 @@ export async function POST(request: Request) {
 
     if (action === "invoiceImport") {
       const result = await importInvoiceDrafts(requestConfig, references, payload);
+
+      return NextResponse.json(result);
+    }
+
+    if (action === "deleteInvoiceDrafts") {
+      const result = await deleteInvoiceDrafts(requestConfig, references, payload);
 
       return NextResponse.json(result);
     }
