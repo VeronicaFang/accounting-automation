@@ -490,4 +490,22 @@
   - 消費明細顯示一張發票一列，展開後呈現品項、折扣、原始與計入金額。
 - Supabase schema 已套用並驗證：353 筆 draft 回填發票號碼與順序，19 筆辨識為折扣列；RPC 權限 `anon=false`、`authenticated=true`。
 - 本機驗證：`npm test` 與 `npm run typecheck` 通過；`npm run build` 編譯成功後遇到既知 Windows `spawn EPERM`。
-- 待完成：舊 expenses 的安全回填 dry-run、Production Vercel deployment 與實際匯入畫面驗證。Supabase/CLI 操作於 2026-06-24 因平台用量限制暫停，提示下午 2:20 後重試。
+- 舊 expenses 安全回填已於 2026-06-24 完成；待完成：Production Vercel deployment 與實際匯入畫面驗證。
+
+### Grouped Invoice Expense Backfill
+
+- Date: 2026-06-24
+- Migration: `20260624094755_backfill_invoice_numbers.sql`
+- Production Supabase result:
+  - Backfilled 127 existing expense lines into 72 invoice groups.
+  - Identified 9 discount lines.
+  - Missing source keys: 0.
+  - Invoice amount mismatches: 0.
+  - Unmatched confirmed invoice draft lines: 0.
+- Safety:
+  - Matching used exact `source_line_key` / `source_row_id` only.
+  - Date and merchant similarity were not used.
+  - Existing payment schedules, bill estimates, and cash-flow totals were not rebuilt.
+- Production application deployment:
+  - Awaiting user manual push: `git push origin main`.
+  - After push, Codex must confirm the Vercel deployment is `READY` and test the grouped invoice display on production.
