@@ -25,6 +25,7 @@ import {
   shouldSkipInvoiceImportRow,
   type ExistingInvoiceImportKeys
 } from "@/lib/accounting/invoice-import-dedupe";
+import { parseInvoiceText, type InvoiceDraftInput } from "@/lib/accounting/invoice-import";
 import { createSupabaseRestHeaders, getSupabaseRestConfig } from "@/lib/data/supabase-rest";
 
 export const runtime = "nodejs";
@@ -124,16 +125,6 @@ type ExpenseInput = {
   sourceSystem?: string;
   sourceTable?: string;
   sourceRowId?: string;
-};
-
-type InvoiceDraftInput = {
-  sourceRecordId: string;
-  consumptionDate: string;
-  merchantTaxId: string;
-  merchantName: string;
-  itemDescription: string;
-  amount: number;
-  sourceLineKey: string;
 };
 
 type IncomeStatus = "estimated" | "received" | "corrected";
@@ -873,6 +864,9 @@ async function importInvoiceDrafts(
         household_id: references.householdId,
         batch_id: batch.id,
         source_line_key: row.sourceLineKey,
+        invoice_number: row.invoiceNumber,
+        source_order: row.sourceOrder,
+        line_type: row.lineType,
         consumption_date: row.consumptionDate,
         merchant_tax_id: row.merchantTaxId || null,
         merchant_name: row.merchantName || null,
@@ -929,8 +923,7 @@ type ExistingInvoiceDraftIdentityRow = {
 };
 
 type ExistingInvoiceExpenseIdentityRow = {
-  source_row_id: string | null;
-  consumption_date: string;
+  source_line_key: string | null;
   status: string;
 };
 
@@ -939,50 +932,23 @@ async function existingInvoiceImportKeys(
   householdId: string,
   rows: InvoiceDraftInput[]
 ): Promise<ExistingInvoiceImportKeys> {
-  if (rows.length === 0) {
-    return { sourceLineKeys: new Set(), invoiceDateKeys: new Set() };
-  }
-
-  const sourceLineKeys = rows.map((row) => row.sourceLineKey);
-  const quotedSourceLineKeys = sourceLineKeys.map((key) => `"${key.replace(/"/g, '\\"')}"`).join(",");
-  const dates = [...new Set(rows.map((row) => row.consumptionDate).filter(Boolean))];
-  const dateFilter = buildInFilter(dates);
-
-  const [draftRows, invoiceDateDraftRows, expenseRows] = await Promise.all([
+  if (rows.length === 0) return { sourceLineKeys: new Set(), invoiceDateKeys: new Set() };
+  const quotedSourceLineKeys = rows.map((row) => row.sourceLineKey).map((key) => `"${key.replace(/"/g, '\\"')}"`).join(",");
+  const [draftRows, expenseRows] = await Promise.all([
     supabaseRead<ExistingInvoiceDraftIdentityRow>(requestConfig, "invoice_drafts", {
       select: "source_line_key,consumption_date,review_status",
       household_id: `eq.${householdId}`,
       source_line_key: `in.(${quotedSourceLineKeys})`
     }),
-    dates.length > 0
-      ? supabaseRead<ExistingInvoiceDraftIdentityRow>(requestConfig, "invoice_drafts", {
-          select: "source_line_key,consumption_date,review_status",
-          household_id: `eq.${householdId}`,
-          source_system: "eq.finance_ministry_invoice",
-          consumption_date: dateFilter
-        })
-      : Promise.resolve([]),
-    dates.length > 0
-      ? supabaseRead<ExistingInvoiceExpenseIdentityRow>(requestConfig, "expenses", {
-          select: "source_row_id,consumption_date,status",
-          household_id: `eq.${householdId}`,
-          source_system: "eq.finance_ministry_invoice",
-          consumption_date: dateFilter
-        })
-      : Promise.resolve([])
+    supabaseRead<ExistingInvoiceExpenseIdentityRow>(requestConfig, "expenses", {
+      select: "source_line_key,status",
+      household_id: `eq.${householdId}`,
+      source_line_key: `in.(${quotedSourceLineKeys})`
+    })
   ]);
-
   return buildExistingInvoiceImportKeys(
-    [...draftRows, ...invoiceDateDraftRows].map((row) => ({
-      sourceLineKey: row.source_line_key,
-      consumptionDate: row.consumption_date,
-      reviewStatus: row.review_status
-    })),
-    expenseRows.map((row) => ({
-      sourceRecordId: row.source_row_id,
-      consumptionDate: row.consumption_date,
-      status: row.status
-    }))
+    draftRows.map((row) => ({ sourceLineKey: row.source_line_key, consumptionDate: row.consumption_date, reviewStatus: row.review_status })),
+    expenseRows.map((row) => ({ sourceLineKey: row.source_line_key, status: row.status }))
   );
 }
 function findDefaultMealBudgetItem(references: EntryReferences): BudgetItemRow | null {
@@ -991,105 +957,6 @@ function findDefaultMealBudgetItem(references: EntryReferences): BudgetItemRow |
     references.budgetItems.find((item) => item.name.includes("餐費")) ??
     null
   );
-}
-
-function parseInvoiceText(text: string): InvoiceDraftInput[] {
-  const lines = text
-    .split(/\r?\n/)
-    .map((line) => line.trimEnd())
-    .filter((line) => line.trim() !== "");
-
-  if (lines.length < 2) {
-    return [];
-  }
-
-  const delimiter = lines[0].includes("\t") ? "\t" : ",";
-  const headers = splitLine(lines[0], delimiter).map((header) => header.trim());
-  const counts = new Map<string, number>();
-
-  return lines
-    .slice(1)
-    .map((line) => {
-      const cells = splitLine(line, delimiter);
-      const row = Object.fromEntries(headers.map((header, index) => [header, cells[index] ?? ""]));
-      const parsed = normalizeInvoiceRow(row);
-      const baseKey = [
-        parsed.sourceRecordId,
-        parsed.merchantTaxId,
-        parsed.consumptionDate,
-        parsed.itemDescription,
-        parsed.amount
-      ]
-        .map((value) => String(value ?? "").trim())
-        .join("|");
-      const count = (counts.get(baseKey) ?? 0) + 1;
-      counts.set(baseKey, count);
-
-      return {
-        ...parsed,
-        sourceLineKey: `${baseKey}|${count}`
-      };
-    })
-    .filter((row) => row.consumptionDate || row.itemDescription || row.amount > 0);
-}
-
-function splitLine(line: string, delimiter: string): string[] {
-  if (delimiter === "\t") {
-    return line.split("\t");
-  }
-
-  const cells: string[] = [];
-  let current = "";
-  let quoted = false;
-
-  for (let index = 0; index < line.length; index += 1) {
-    const character = line[index];
-
-    if (character === '"') {
-      quoted = !quoted;
-      continue;
-    }
-
-    if (character === "," && !quoted) {
-      cells.push(current);
-      current = "";
-      continue;
-    }
-
-    current += character;
-  }
-
-  cells.push(current);
-  return cells;
-}
-
-function normalizeInvoiceRow(row: Record<string, string>): Omit<InvoiceDraftInput, "sourceLineKey"> {
-  return {
-    sourceRecordId: pickInvoiceField(row, ["發票號碼", "發票字軌號碼", "invoice_number", "source_record_id"]),
-    consumptionDate: normalizeDateInput(
-      pickInvoiceField(row, ["消費日", "交易日期", "發票日期", "發票開立日期", "invoice_date", "consumption_date"])
-    ),
-    merchantTaxId: pickInvoiceField(row, ["統編", "店家統編", "營業人統編", "賣方統編", "賣方統一編號", "merchant_tax_id"]),
-    merchantName: pickInvoiceField(row, ["店家", "店家名稱", "營業人名稱", "賣方名稱", "merchant_name"]),
-    itemDescription: pickInvoiceField(row, ["消費明細_品名", "發票明細_品名", "品項", "品名", "購買品項", "商品名稱", "item_description"]),
-    amount:
-      Number(
-        pickInvoiceField(row, ["消費明細_金額", "發票明細_金額", "發票明細金額", "金額", "消費金額", "發票金額", "amount"]).replace(
-          /[,$\s]/g,
-          ""
-        )
-      ) || 0
-  };
-}
-
-function pickInvoiceField(row: Record<string, string>, names: string[]): string {
-  for (const name of names) {
-    if (Object.prototype.hasOwnProperty.call(row, name)) {
-      return String(row[name] || "").trim();
-    }
-  }
-
-  return "";
 }
 
 function buildInFilter(values: string[]): string {
