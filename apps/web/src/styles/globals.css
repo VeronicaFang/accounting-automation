@@ -1393,3 +1393,37 @@ textarea {
 .invoice-discount-row td {
   color: var(--rose);
 }
+.invoice-expense-summary td {
+  background: var(--sky-bg);
+  border-top: 2px solid var(--sky-border);
+}
+
+.invoice-expense-summary small {
+  display: block;
+  margin-top: 4px;
+}
+
+.invoice-expand-button {
+  width: 28px;
+  height: 28px;
+  margin-right: 8px;
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  background: var(--panel);
+  cursor: pointer;
+}
+
+.invoice-expense-line td,
+.invoice-expense-discount td {
+  background: var(--panel);
+}
+
+.invoice-expense-discount td {
+  color: var(--rose);
+}
+
+.invoice-line-amount {
+  display: grid;
+  gap: 3px;
+  min-width: 120px;
+}

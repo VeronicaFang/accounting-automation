@@ -1,10 +1,11 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { Fragment, useEffect, useMemo, useState } from "react";
 import { useSearchParams } from "next/navigation";
 
 import { PageHeader } from "@/components/page-header";
 import { filterExpenses, getDefaultExpenseMonths, monthKeyFromDateValue } from "@/lib/accounting/dashboard-filters";
+import { buildExpenseDisplayRows } from "@/lib/accounting/invoice-grouping";
 import { isStoredSupabaseSessionValid, readStoredSupabaseSession } from "@/lib/auth/supabase-auth";
 import { fetchSupabaseRows } from "@/lib/data/supabase-rest";
 import { getSupabaseExpenses, getSupabaseInstallmentSchedulesByMonth, type InstallmentScheduleRecord } from "@/lib/data/supabase-repository";
@@ -109,6 +110,7 @@ export function ExpensesClient() {
   const [searchText, setSearchText] = useState(queryText);
   const [activeTag, setActiveTag] = useState(queryTag || queryMerchant);
   const [installmentSchedules, setInstallmentSchedules] = useState<InstallmentScheduleRecord[]>([]);
+  const [expandedInvoices, setExpandedInvoices] = useState<Set<string>>(new Set());
 
   async function loadExpenses(accessToken: string, isCurrent = () => true) {
     const [rows, budgetRows, cardRows] = await Promise.all([
@@ -218,6 +220,16 @@ export function ExpensesClient() {
       query: searchText || undefined
     });
   }, [activeTag, cardCutoffDayByName, defaultMonths, expenses, queryBillMonth, queryBudget, queryCard, searchText, selectedMonth]);
+  const displayRows = useMemo(() => buildExpenseDisplayRows(visibleExpenses), [visibleExpenses]);
+
+  function toggleInvoice(invoiceNumber: string) {
+    setExpandedInvoices((current) => {
+      const next = new Set(current);
+      if (next.has(invoiceNumber)) next.delete(invoiceNumber);
+      else next.add(invoiceNumber);
+      return next;
+    });
+  }
   const activeContext = [
     queryBillMonth ? `帳單月 ${queryBillMonth}` : selectedMonth ? `月份 ${selectedMonth}` : `預設 ${defaultMonths.join("、")}`,
     queryCard ? `信用卡 ${queryCard}` : "",
@@ -324,6 +336,18 @@ export function ExpensesClient() {
     }
   }
 
+  async function deleteInvoiceGroup(invoiceNumber: string, groupExpenses: ExpenseRecord[]) {
+    if (!window.confirm(`確定刪除發票 ${invoiceNumber} 的全部明細嗎？`)) return;
+    setBusyExpenseId(invoiceNumber);
+    try {
+      const result = await submitExpenseAction("deleteExpenses", { expenseIds: groupExpenses.map((expense) => expense.id) });
+      setMessage({ tone: "success", text: `已刪除發票 ${invoiceNumber}，共 ${result?.deletedExpenses ?? groupExpenses.length} 筆明細。` });
+    } catch (caughtError) {
+      setMessage({ tone: "error", text: caughtError instanceof Error ? caughtError.message : "刪除發票失敗。" });
+    } finally {
+      setBusyExpenseId(null);
+    }
+  }
   function resetAddForm() {
     setNewExpense({
       consumptionDate: new Date().toISOString().slice(0, 10),
@@ -601,97 +625,55 @@ export function ExpensesClient() {
               </tr>
             </thead>
             <tbody>
-              {visibleExpenses.map((expense) => {
-                const isBusy = busyExpenseId === expense.id;
-                const itemValue = itemEdits[expense.id] ?? expense.itemDescription;
-                const budgetValue = budgetEdits[expense.id] ?? expense.budgetItemId;
-                const paymentValue = paymentEdits[expense.id] ?? expense.paymentToolType;
-                const cardValue = cardEdits[expense.id] ?? (expense.creditCardName ?? "");
-                const amountValue = amountEdits[expense.id] ?? String(expense.amount);
-                const isChanged =
-                  itemValue.trim() !== expense.itemDescription ||
-                  budgetValue !== expense.budgetItemId ||
-                  paymentValue !== expense.paymentToolType ||
-                  cardValue !== (expense.creditCardName ?? "") ||
-                  Number(amountValue) !== expense.amount;
+              {displayRows.map((row) => {
+                if (row.kind === "manual") {
+                  const expense = row.expense;
+                  const isBusy = busyExpenseId === expense.id;
+                  const itemValue = itemEdits[expense.id] ?? expense.itemDescription;
+                  const budgetValue = budgetEdits[expense.id] ?? expense.budgetItemId;
+                  const paymentValue = paymentEdits[expense.id] ?? expense.paymentToolType;
+                  const cardValue = cardEdits[expense.id] ?? (expense.creditCardName ?? "");
+                  const amountValue = amountEdits[expense.id] ?? String(expense.amount);
+                  const isChanged = itemValue.trim() !== expense.itemDescription || budgetValue !== expense.budgetItemId || paymentValue !== expense.paymentToolType || cardValue !== (expense.creditCardName ?? "") || Number(amountValue) !== expense.amount;
+                  return <tr key={expense.id}>
+                    <td>{expense.consumptionDate}</td><td>{expense.budgetMonth}</td><td>{expense.merchantName || "未填"}</td>
+                    <td><input className="expense-item-input" value={itemValue} onChange={(event) => setItemEdits((current) => ({ ...current, [expense.id]: event.target.value }))} /></td>
+                    <td><select className="expense-budget-select" value={budgetValue} onChange={(event) => setBudgetEdits((current) => ({ ...current, [expense.id]: event.target.value }))}><option value="">請選擇</option>{budgetItems.map((item) => <option key={item.id} value={item.id}>{getBudgetItemLabel(item)}</option>)}</select></td>
+                    <td><div className="expense-payment-cell"><select className="expense-budget-select" value={paymentValue} disabled={isBusy} onChange={(event) => setPaymentEdits((current) => ({ ...current, [expense.id]: event.target.value }))}><option value="cash">現金</option><option value="credit_card">信用卡</option></select>{paymentValue === "credit_card" ? <select className="expense-budget-select" value={cardValue} disabled={isBusy} onChange={(event) => setCardEdits((current) => ({ ...current, [expense.id]: event.target.value }))}><option value="">請選擇</option>{creditCards.map((card) => <option key={card.id} value={card.name}>{card.name}</option>)}</select> : null}</div></td>
+                    <td><input className="expense-amount-input" type="number" min="0" step="1" value={amountValue} disabled={isBusy} onChange={(event) => setAmountEdits((current) => ({ ...current, [expense.id]: event.target.value }))} /></td>
+                    <td><div className="row-actions"><button className="secondary-action" disabled={isBusy || !isChanged} onClick={() => saveExpenseDetails(expense)} type="button">儲存</button><button className="secondary-action danger-action" disabled={isBusy} onClick={() => deleteExpense(expense)} type="button">刪除</button></div></td>
+                  </tr>;
+                }
 
-                return (
-                  <tr key={expense.id}>
-                    <td>{expense.consumptionDate}</td>
-                    <td>{expense.budgetMonth}</td>
-                    <td>{expense.merchantName || "未填"}</td>
-                    <td>
-                      <input
-                        className="expense-item-input"
-                        value={itemValue}
-                        onChange={(event) => setItemEdits((current) => ({ ...current, [expense.id]: event.target.value }))}
-                      />
-                    </td>
-                    <td>
-                      <select
-                        className="expense-budget-select"
-                        value={budgetValue}
-                        onChange={(event) => setBudgetEdits((current) => ({ ...current, [expense.id]: event.target.value }))}
-                      >
-                        <option value="">請選擇</option>
-                        {budgetItems.map((item) => (
-                          <option key={item.id} value={item.id}>
-                            {getBudgetItemLabel(item)}
-                          </option>
-                        ))}
-                      </select>
-                    </td>
-                    <td>
-                      <div className="expense-payment-cell">
-                        <select
-                          className="expense-budget-select"
-                          value={paymentValue}
-                          disabled={isBusy}
-                          onChange={(event) => setPaymentEdits((current) => ({ ...current, [expense.id]: event.target.value }))}
-                        >
-                          <option value="cash">現金</option>
-                          <option value="credit_card">信用卡</option>
-                        </select>
-                        {paymentValue === "credit_card" ? (
-                          <select
-                            className="expense-budget-select"
-                            value={cardValue}
-                            disabled={isBusy}
-                            onChange={(event) => setCardEdits((current) => ({ ...current, [expense.id]: event.target.value }))}
-                          >
-                            <option value="">請選擇</option>
-                            {creditCards.map((card) => (
-                              <option key={card.id} value={card.name}>{card.name}</option>
-                            ))}
-                          </select>
-                        ) : null}
-                      </div>
-                    </td>
-                    <td>
-                      <input
-                        className="expense-amount-input"
-                        type="number"
-                        min="0"
-                        step="1"
-                        value={amountValue}
-                        disabled={isBusy}
-                        onChange={(event) => setAmountEdits((current) => ({ ...current, [expense.id]: event.target.value }))}
-                      />
-                    </td>
-                    <td>
-                      <div className="row-actions">
-                        <button className="secondary-action" disabled={isBusy || !isChanged} onClick={() => saveExpenseDetails(expense)} type="button">
-                          儲存
-                        </button>
-                        <button className="secondary-action danger-action" disabled={isBusy} onClick={() => deleteExpense(expense)} type="button">
-                          刪除
-                        </button>
-                      </div>
-                    </td>
+                const expanded = expandedInvoices.has(row.invoiceNumber);
+                const first = row.expenses[0];
+                const discountTarget = row.expenses.filter((expense) => expense.lineType !== "discount").sort((a, b) => (b.originalAmount ?? b.amount) - (a.originalAmount ?? a.amount))[0];
+                return <Fragment key={row.invoiceNumber}>
+                  <tr className="invoice-expense-summary">
+                    <td>{first?.consumptionDate}</td><td>{first?.budgetMonth}</td>
+                    <td><button className="invoice-expand-button" aria-label={expanded ? `收合發票 ${row.invoiceNumber}` : `展開發票 ${row.invoiceNumber}`} onClick={() => toggleInvoice(row.invoiceNumber)} type="button">{expanded ? "▾" : "▸"}</button><strong>{first?.merchantName || "未填"}</strong><small>{row.invoiceNumber}</small></td>
+                    <td>{row.itemCount} 項{row.discountTotal < 0 ? ` / 折扣 ${formatCurrency(row.discountTotal)}` : ""}</td>
+                    <td><span className="muted">逐項分類</span></td><td>{first ? paymentLabel(first) : ""}</td>
+                    <td className="task-amount">{formatCurrency(row.paidTotal)}</td>
+                    <td><button className="secondary-action danger-action" disabled={busyExpenseId === row.invoiceNumber} onClick={() => deleteInvoiceGroup(row.invoiceNumber, row.expenses)} type="button">刪除整張</button></td>
                   </tr>
-                );
-              })}
-              {state === "ready" && visibleExpenses.length === 0 ? (
+                  {expanded ? row.expenses.map((expense) => {
+                    const isDiscount = expense.lineType === "discount";
+                    const itemValue = itemEdits[expense.id] ?? expense.itemDescription;
+                    const budgetValue = budgetEdits[expense.id] ?? expense.budgetItemId;
+                    const isChanged = itemValue.trim() !== expense.itemDescription || budgetValue !== expense.budgetItemId;
+                    const discountApplied = expense.id === discountTarget?.id ? row.discountTotal : 0;
+                    return <tr key={expense.id} className={isDiscount ? "invoice-expense-discount" : "invoice-expense-line"}>
+                      <td /><td>{expense.consumptionDate}</td><td>{isDiscount ? "折扣" : "品項"}</td>
+                      <td>{isDiscount ? expense.itemDescription : <input className="expense-item-input" value={itemValue} onChange={(event) => setItemEdits((current) => ({ ...current, [expense.id]: event.target.value }))} />}</td>
+                      <td>{isDiscount ? <span>不另計預算</span> : <select className="expense-budget-select" value={budgetValue} onChange={(event) => setBudgetEdits((current) => ({ ...current, [expense.id]: event.target.value }))}><option value="">請選擇</option>{budgetItems.map((item) => <option key={item.id} value={item.id}>{getBudgetItemLabel(item)}</option>)}</select>}</td>
+                      <td><span className="muted">沿用發票付款</span></td>
+                      <td><div className="invoice-line-amount"><span>原始 {formatCurrency(expense.originalAmount ?? expense.amount)}</span>{discountApplied !== 0 ? <span>折扣 {formatCurrency(discountApplied)}</span> : null}{!isDiscount ? <strong>計入 {formatCurrency(expense.amount)}</strong> : null}</div></td>
+                      <td>{!isDiscount ? <button className="secondary-action" disabled={!isChanged || busyExpenseId === expense.id} onClick={() => saveExpenseDetails(expense)} type="button">儲存</button> : null}</td>
+                    </tr>;
+                  }) : null}
+                </Fragment>;
+              })}              {state === "ready" && visibleExpenses.length === 0 ? (
                 <tr>
                   <td colSpan={8}>目前沒有可顯示的消費明細。</td>
                 </tr>
