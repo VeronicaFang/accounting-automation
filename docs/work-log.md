@@ -372,3 +372,83 @@
 - 結果：設定完成後，Supabase Dashboard 後台補寄 magic link 成功，rate limit 問題永久解決。
 
 - Production 部署狀態：Commit `0f4aee3` 已 push，Vercel 部署成功。
+
+---
+
+## 2026-06-24
+
+### 分期消費設定（發票審核頁 + 消費明細快速新增）
+
+- Commit: `b3e3619 feat: installment count on invoice review and quick-add (progressive disclosure)`
+
+#### 需求背景
+使用者希望在特定信用卡消費可以設定分期，但分期不是常態場景，UI 不應在每列顯示分期欄位造成擁擠。
+
+#### 設計原則：漸進式展開（Progressive Disclosure）
+- 預設不顯示分期控制項
+- 選擇「信用卡」付款後，才出現一個小綠色 `[分期]` 膠囊按鈕
+- 點擊後才展開：3/6/12/18/24/30/36 期下拉選單 + `×` 取消鍵
+- 取消或切換回現金：自動清除分期設定（回到 `installmentCount: 1`）
+
+#### 實作範圍
+
+**`invoice-review.ts`（型別層）**
+- `InvoiceDraftConfirmation`：加入 `installmentCount?: number`
+- `InvoiceDraftConfirmationInput`：加入 `installmentCount: number`
+- `buildInvoiceDraftConfirmationInputs`：傳遞 `installmentCount`（`Math.max(1, Math.trunc(Number(...)))`）
+
+**`route.ts`（後端）**
+- `confirmInvoiceDrafts`：原本寫死 `installmentCount: 1`，改為讀取 `input.installmentCount`
+
+**`review-client.tsx`（發票審核頁）**
+- `DraftEdit` 型別：加入 `installmentCount: number` 和 `showInstallment: boolean`
+- `buildDefaultDraftEdit`：初始化兩個新欄位（`installmentCount: 1, showInstallment: false`）
+- 確認時的 `confirmations` mapping：傳遞 `installmentCount`
+- Table row 付款欄：信用卡選完後顯示 `[分期]` 按鈕；點擊展開分期選單；切換回現金自動清除
+
+**`expenses-client.tsx`（消費明細快速新增）**
+- `newExpense` state：加入 `installmentCount: 1, showInstallment: false`
+- `resetAddForm`：同步包含新欄位
+- `addExpense`：解構 `installmentCount`，信用卡付款時傳遞給 `submitExpenseAction`
+- 快速新增表單：信用卡選完後顯示 `[分期]` 按鈕；點擊展開分期選單
+
+**`globals.css`**
+- `.installment-toggle-btn`：teal 色系膠囊按鈕
+- `.installment-inline`：分期選單 + 取消按鈕的橫向排列
+- `.installment-cancel-btn`：`×` 取消按鈕
+
+---
+
+### 帳單信用卡鑽取頁面顯示分期付款明細
+
+- Commit: `8651a91 feat: show installment payment schedules in bill-month expense view`
+
+#### 需求背景
+在帳單中心點信用卡名稱（如國泰/富邦）後進入的消費明細，目前只顯示原始消費記錄。分期消費（第 2 期以後）在後續帳單月看不到，因為 `consumptionDate` 固定指向購買日，`billMonth` 過濾器抓不到後續各期。
+
+#### 根本原因
+分期消費在 DB 的結構：
+- 1 筆 `expenses` 記錄（`is_installment = true`，`consumptionDate` = 購買日）
+- N 筆 `payment_schedules` 記錄（各期分別有 `cash_flow_month`、`payment_amount`、`payment_sequence`）
+
+現有 `billMonth` 過濾只看 `expenses.consumptionDate`，第 2 期以後的 `payment_schedules` 完全不會出現。
+
+#### 修復範圍
+
+**`supabase-repository.ts`**
+- 新增型別 `InstallmentScheduleRecord`（scheduleId, expenseId, merchantName, itemDescription, paymentSequence, installmentCount, scheduleAmount, cashFlowMonth, creditCardId）
+- 新增型別 `RawInstallmentScheduleRow`（含 Supabase 嵌入 join `expenses(merchant_name, item_description, installment_count)`）
+- 新增函式 `getSupabaseInstallmentSchedulesByMonth(cashFlowMonth, creditCardId, accessToken)`：
+  - 查詢 `payment_schedules`，篩選 `cash_flow_month = X`、`credit_card_id = Y`、`payment_sequence > 1`（第 1 期已被一般消費顯示）
+  - 用 PostgREST 嵌入 join 取得商家、品項、總期數
+
+**`expenses-client.tsx`**
+- 加入 `installmentSchedules` state（`InstallmentScheduleRecord[]`）
+- `loadExpenses` 完成後：若 `queryBillMonth` + `queryCard` 同時存在，根據 card name 找到 card ID，呼叫 `getSupabaseInstallmentSchedulesByMonth`，結果寫入 state
+- JSX 尾部：`installmentSchedules.length > 0` 時渲染「分期付款（本月應繳）」區塊，顯示：商家、品項、`第N期/共M期` 標籤、本期金額
+
+#### 顯示效果
+- 一般消費明細：上方 section（不變）
+- 分期付款本月份：下方額外 section，只在 `billMonth + card` 篩選模式下出現，一般瀏覽時隱藏
+- 本地驗證：`npm run typecheck` 通過（0 errors）
+- Production 部署狀態：等待使用者手動執行 `git push origin main`
