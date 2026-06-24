@@ -26,6 +26,7 @@ import {
   type ExistingInvoiceImportKeys
 } from "@/lib/accounting/invoice-import-dedupe";
 import { parseInvoiceText, type InvoiceDraftInput } from "@/lib/accounting/invoice-import";
+import { validateInvoiceGroupConfirmation, type InvoiceGroupConfirmation } from "@/lib/accounting/invoice-confirmation";
 import { createSupabaseRestHeaders, getSupabaseRestConfig } from "@/lib/data/supabase-rest";
 
 export const runtime = "nodejs";
@@ -295,6 +296,23 @@ async function supabaseUpsert(
   }
 }
 
+async function supabaseRpc<T>(
+  requestConfig: SupabaseRequestConfig,
+  functionName: string,
+  body: Record<string, unknown>
+): Promise<T> {
+  const response = await fetch(`${requestConfig.restUrl}/rpc/${functionName}`, {
+    method: "POST",
+    headers: requestConfig.headers,
+    body: JSON.stringify(body)
+  });
+
+  if (!response.ok) {
+    throw new Error(`執行 ${functionName} 失敗：${response.status} ${await response.text()}`);
+  }
+
+  return (await response.json()) as T;
+}
 async function loadReferences(requestConfig: SupabaseRequestConfig, accessToken: string): Promise<EntryReferences> {
   const [households, budgetItems, creditCards] = await Promise.all([
     supabaseRead<HouseholdRow>(requestConfig, "households", {
@@ -1294,6 +1312,40 @@ async function deleteInvoiceDrafts(
   };
 }
 
+async function confirmInvoiceGroups(
+  requestConfig: SupabaseRequestConfig,
+  references: EntryReferences,
+  payload: Record<string, unknown>
+) {
+  const rawGroups = Array.isArray(payload.groups) ? payload.groups : [];
+  const groups = rawGroups.map((group) => validateInvoiceGroupConfirmation(group as InvoiceGroupConfirmation));
+
+  if (groups.length === 0) {
+    throw new Error("請先選擇要確認的發票。");
+  }
+
+  let insertedExpenses = 0;
+  let confirmedDrafts = 0;
+
+  for (const group of groups) {
+    const result = await supabaseRpc<{ insertedExpenses: number }>(requestConfig, "confirm_invoice_group", {
+      p_household_id: references.householdId,
+      p_invoice_number: group.invoiceNumber,
+      p_payment_tool_type: group.paymentToolType,
+      p_credit_card_id: group.creditCardId,
+      p_installment_count: group.installmentCount,
+      p_lines: group.lines.map((line) => ({
+        draft_id: line.draftId,
+        budget_item_id: line.budgetItemId,
+        notes: line.notes
+      }))
+    });
+    insertedExpenses += Number(result.insertedExpenses ?? 0);
+    confirmedDrafts += group.lines.length;
+  }
+
+  return { confirmedGroups: groups.length, confirmedDrafts, insertedExpenses };
+}
 async function confirmInvoiceDrafts(
   requestConfig: SupabaseRequestConfig,
   references: EntryReferences,
@@ -1475,6 +1527,11 @@ export async function POST(request: Request) {
       return NextResponse.json(result);
     }
 
+    if (action === "confirmInvoiceGroups") {
+      const result = await confirmInvoiceGroups(requestConfig, references, payload);
+
+      return NextResponse.json(result);
+    }
     if (action === "confirmInvoiceDrafts") {
       const result = await confirmInvoiceDrafts(requestConfig, references, payload);
 

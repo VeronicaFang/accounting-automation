@@ -7,7 +7,7 @@
     "dev": "next dev --hostname 127.0.0.1 --port 3000",
     "build": "next build",
     "typecheck": "tsc --noEmit",
-    "test": "node --experimental-strip-types src/lib/format.test.ts && node --experimental-strip-types src/lib/bill-calculations.test.ts && node --experimental-strip-types src/lib/data/supabase-rest.test.ts && node --experimental-strip-types src/lib/data/supabase-mappers.test.ts && node --experimental-strip-types src/lib/auth/supabase-auth.test.ts && node --experimental-strip-types src/lib/accounting/entry-utils.test.ts && node --experimental-strip-types src/lib/accounting/dashboard-filters.test.ts && node --experimental-strip-types src/lib/accounting/invoice-import-dedupe.test.ts && node --experimental-strip-types src/lib/accounting/invoice-grouping.test.ts && node --experimental-strip-types src/lib/accounting/invoice-review.test.ts"
+    "test": "node --experimental-strip-types src/lib/format.test.ts && node --experimental-strip-types src/lib/bill-calculations.test.ts && node --experimental-strip-types src/lib/data/supabase-rest.test.ts && node --experimental-strip-types src/lib/data/supabase-mappers.test.ts && node --experimental-strip-types src/lib/auth/supabase-auth.test.ts && node --experimental-strip-types src/lib/accounting/entry-utils.test.ts && node --experimental-strip-types src/lib/accounting/dashboard-filters.test.ts && node --experimental-strip-types src/lib/accounting/invoice-import-dedupe.test.ts && node --experimental-strip-types src/lib/accounting/invoice-grouping.test.ts && node --experimental-strip-types src/lib/accounting/invoice-confirmation.test.ts && node --experimental-strip-types src/lib/accounting/invoice-review.test.ts"
   },
   "dependencies": {
     "next": "^16.0.0",
