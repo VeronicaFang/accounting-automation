@@ -261,3 +261,19 @@ Stores generated monthly cash-flow totals. Credit card payment total should use 
 | `generated_at` | Time the cash-flow row was generated. |
 
 Unique key: `household_id + cash_flow_month`.
+
+## 發票群組消費欄位
+
+財政部發票以 `invoice_number` 群組，但每個品項仍保留一筆 `expenses`：
+
+| 欄位 | 說明 |
+| --- | --- |
+| `invoice_number` | 發票群組鍵，只使用財政部發票號碼。 |
+| `source_line_key` | 明細列去重鍵；同一發票可有多個不同 key。 |
+| `source_order` | `invoice_drafts` 的原始匯入順序，用於同額品項的折扣歸屬。 |
+| `line_type` | `item` 為正數品項，`discount` 為負數折扣。 |
+| `original_amount` | 財政部匯入的原始明細金額。 |
+| `amount` | 折扣分配後計入預算的金額；折扣列為 0。 |
+| `payment_parent_expense_id` | 同張發票負責付款排程的主品項；所有同發票明細指向同一筆。 |
+
+同一發票的負數明細合計歸入原始金額最高的正數品項；同額時使用 `source_order` 最小者。付款排程只由 payment parent 依整張發票實付總額建立一次。

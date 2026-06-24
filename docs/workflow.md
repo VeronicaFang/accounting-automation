@@ -127,3 +127,13 @@
 - 正式消費目前以 `ExpenseRecords.expense_status` 表示 `normal` 或 `cancelled`。
 - 預算報表排除 `cancelled` 消費。
 - 現金流是否同步沖銷付款排程，後續需補 UI 與流程。
+
+### 發票群組確認
+
+1. 匯入時每列保存發票號碼、來源順序、明細類型與 `source_line_key`。
+2. 重複檢查只比對 exact `source_line_key`，不因發票號碼相同而略過其他品項。
+3. 待確認頁以發票號碼群組；付款方式、信用卡與分期為整張發票共用。
+4. 每個正數品項獨立選擇預算項目；負數折扣不另選預算。
+5. 確認透過 `confirm_invoice_group` RPC 在單一 transaction 建立品項、折扣、付款排程與彙總。
+6. 消費明細預設顯示發票摘要，展開後顯示原始品項、折扣與折扣後計入金額。
+7. 手動消費沒有 `invoice_number`，維持單筆顯示。

@@ -470,3 +470,24 @@
   - `npm run typecheck`：通過。
   - `npm run build`：編譯成功，之後在本機 Windows/Codex 已知的 TypeScript child process 階段發生 `spawn EPERM`。
 - Production 狀態：等待使用者執行 `git push origin main`，再由 Codex 確認 Vercel deployment 與正式畫面。
+
+### 發票號碼群組、品項分類與折扣保存
+
+- 日期：2026-06-24。
+- 本機 commits：
+  - `a8dc6fa feat: add invoice grouping calculations`
+  - `9108835 feat: add grouped invoice expense schema`
+  - `3accb50 feat: preserve invoice grouping metadata on import`
+  - `8b51c7b feat: group invoice drafts in review`
+  - `69c867f feat: confirm invoice groups atomically`
+  - `466a089 feat: map grouped invoice expenses`
+  - `6989eac feat: show expandable invoice expense groups`
+- 完成項目：
+  - 發票號碼作為群組鍵，`source_line_key` 保持逐列去重。
+  - 折扣合計歸入最高金額正數品項；同額依匯入順序。
+  - Supabase 新增 invoice metadata、payment parent 與 `confirm_invoice_group` 原子確認 RPC。
+  - 待確認頁依發票群組，共用付款設定，正數品項分別分類，折扣列只讀。
+  - 消費明細顯示一張發票一列，展開後呈現品項、折扣、原始與計入金額。
+- Supabase schema 已套用並驗證：353 筆 draft 回填發票號碼與順序，19 筆辨識為折扣列；RPC 權限 `anon=false`、`authenticated=true`。
+- 本機驗證：`npm test` 與 `npm run typecheck` 通過；`npm run build` 編譯成功後遇到既知 Windows `spawn EPERM`。
+- 待完成：舊 expenses 的安全回填 dry-run、Production Vercel deployment 與實際匯入畫面驗證。Supabase/CLI 操作於 2026-06-24 因平台用量限制暫停，提示下午 2:20 後重試。
