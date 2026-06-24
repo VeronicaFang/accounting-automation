@@ -148,7 +148,7 @@ export async function getSupabaseInvoiceDrafts(accessToken?: string, limit = 100
       "invoice_drafts",
       {
         select:
-          "id,source_line_key,consumption_date,merchant_tax_id,merchant_name,item_description,amount,suggested_payment_tool_type,suggested_credit_card_id,suggested_budget_item_id,legacy_suggested_budget_item,review_status,notes",
+          "id,invoice_number,source_order,line_type,source_line_key,consumption_date,merchant_tax_id,merchant_name,item_description,amount,suggested_payment_tool_type,suggested_credit_card_id,suggested_budget_item_id,legacy_suggested_budget_item,review_status,notes",
         review_status: "eq.needs_review",
         order: "consumption_date.asc,id.asc",
         limit: String(limit)

@@ -1373,3 +1373,23 @@ textarea {
 .feed-empty { padding: 24px 0; text-align: center; }
 
 .recent-feed { min-height: 200px; }
+
+.invoice-review-summary td {
+  background: var(--teal-bg);
+  border-top: 2px solid var(--teal-border);
+}
+
+.invoice-review-summary small,
+.invoice-review-line small {
+  display: block;
+  margin-top: 4px;
+}
+
+.invoice-review-line td {
+  background: var(--panel);
+}
+
+.invoice-discount-row,
+.invoice-discount-row td {
+  color: var(--rose);
+}

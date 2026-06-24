@@ -1,7 +1,12 @@
+import { groupInvoiceLines } from "./invoice-grouping.ts";
+
 export type InvoiceDraftPaymentToolType = "cash" | "credit_card";
 
 export type InvoiceDraftReviewRow = {
   id: string;
+  invoice_number: string | null;
+  source_order: number | null;
+  line_type: "item" | "discount" | null;
   source_line_key: string;
   consumption_date: string;
   merchant_tax_id: string | null;
@@ -53,6 +58,9 @@ export type InvoiceRuleLookups = {
 
 export type InvoiceDraftReviewItem = {
   id: string;
+  invoiceNumber: string;
+  sourceOrder: number;
+  lineType: "item" | "discount";
   sourceLineKey: string;
   consumptionDate: string;
   merchantTaxId: string | null;
@@ -79,6 +87,9 @@ export type InvoiceDraftConfirmation = {
 
 export type InvoiceDraftConfirmationInput = {
   draftId: string;
+  invoiceNumber: string;
+  sourceOrder: number;
+  lineType: "item" | "discount";
   consumptionDate: string;
   merchantTaxId: string | null;
   merchantName: string;
@@ -167,6 +178,9 @@ export function mapInvoiceDraftReviewItems(
 
     return {
       id: row.id,
+      invoiceNumber: row.invoice_number ?? row.source_line_key.split("|")[0] ?? "",
+      sourceOrder: row.source_order ?? 1,
+      lineType: row.line_type ?? (toNumber(row.amount) < 0 ? "discount" : "item"),
       sourceLineKey: row.source_line_key,
       consumptionDate: row.consumption_date,
       merchantTaxId: row.merchant_tax_id,
@@ -184,6 +198,36 @@ export function mapInvoiceDraftReviewItems(
   });
 }
 
+export type InvoiceDraftGroup = {
+  invoiceNumber: string;
+  lines: InvoiceDraftReviewItem[];
+  itemLines: InvoiceDraftReviewItem[];
+  discountLines: InvoiceDraftReviewItem[];
+  paidTotal: number;
+  discountTotal: number;
+  consumptionDate: string;
+  merchantName: string;
+};
+
+export function buildInvoiceDraftGroups(drafts: InvoiceDraftReviewItem[]): InvoiceDraftGroup[] {
+  return groupInvoiceLines(
+    drafts.map((draft) => ({
+      ...draft,
+      originalAmount: draft.amount
+    }))
+  )
+    .map((group) => ({
+      invoiceNumber: group.invoiceNumber,
+      lines: group.lines,
+      itemLines: group.lines.filter((line) => line.lineType === "item"),
+      discountLines: group.lines.filter((line) => line.lineType === "discount"),
+      paidTotal: group.paidTotal,
+      discountTotal: group.discountTotal,
+      consumptionDate: group.lines[0]?.consumptionDate ?? "",
+      merchantName: group.lines[0]?.merchantName ?? ""
+    }))
+    .sort((a, b) => a.consumptionDate.localeCompare(b.consumptionDate) || a.invoiceNumber.localeCompare(b.invoiceNumber));
+}
 export function buildInvoiceDraftConfirmationInputs(
   drafts: InvoiceDraftReviewItem[],
   confirmations: InvoiceDraftConfirmation[]
@@ -207,6 +251,9 @@ export function buildInvoiceDraftConfirmationInputs(
 
     return {
       draftId: draft.id,
+      invoiceNumber: draft.invoiceNumber,
+      sourceOrder: draft.sourceOrder,
+      lineType: draft.lineType,
       consumptionDate: draft.consumptionDate,
       merchantTaxId: draft.merchantTaxId,
       merchantName: draft.merchantName,
