@@ -66,6 +66,11 @@ export type SupabaseExpenseRow = {
   amount: string | number;
   payment_tool_type: "cash" | "credit_card";
   is_installment?: boolean;
+  invoice_number?: string | null;
+  original_amount?: string | number | null;
+  line_type?: "item" | "discount" | null;
+  payment_parent_expense_id?: string | null;
+  source_line_key?: string | null;
   status: string;
 };
 
@@ -149,6 +154,11 @@ export function mapExpenseRows(
           ? creditCardNameById.get(row.credit_card_id) ?? ""
           : undefined,
       isInstallment: row.is_installment ?? false,
+      invoiceNumber: row.invoice_number ?? undefined,
+      originalAmount: row.original_amount == null ? undefined : toNumber(row.original_amount),
+      lineType: row.line_type ?? undefined,
+      paymentParentExpenseId: row.payment_parent_expense_id ?? undefined,
+      sourceLineKey: row.source_line_key ?? undefined,
       status: row.status
     };
   });

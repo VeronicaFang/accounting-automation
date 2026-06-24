@@ -64,5 +64,10 @@ export type ExpenseRecord = {
   paymentToolType: "cash" | "credit_card";
   creditCardName?: string;
   isInstallment?: boolean;
+  invoiceNumber?: string;
+  originalAmount?: number;
+  lineType?: "item" | "discount";
+  paymentParentExpenseId?: string;
+  sourceLineKey?: string;
   status: string;
 };

@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 
-import { allocateInvoiceDiscounts, groupInvoiceLines } from "./invoice-grouping.ts";
+import { allocateInvoiceDiscounts, buildExpenseDisplayRows, groupInvoiceLines } from "./invoice-grouping.ts";
 
 const lines = [
   { id: "1", invoiceNumber: "AW99003017", sourceOrder: 1, itemDescription: "Corn", originalAmount: 55 },
@@ -42,4 +42,29 @@ assert.throws(
   /exceeds/
 );
 
-console.log("invoice grouping: 10 assertions passed");
+
+const displayRows = buildExpenseDisplayRows([
+  {
+    id: "expense-1", consumptionDate: "2026-06-05", budgetMonth: "2026-06", merchantName: "Store",
+    itemDescription: "Corn", budgetItemId: "b1", budgetItemName: "Food", amount: 54,
+    originalAmount: 55, paymentToolType: "cash", status: "active", invoiceNumber: "AW99003017", lineType: "item"
+  },
+  {
+    id: "expense-2", consumptionDate: "2026-06-05", budgetMonth: "2026-06", merchantName: "Store",
+    itemDescription: "Coupon", budgetItemId: "b1", budgetItemName: "Food", amount: 0,
+    originalAmount: -1, paymentToolType: "cash", status: "active", invoiceNumber: "AW99003017", lineType: "discount"
+  },
+  {
+    id: "manual-1", consumptionDate: "2026-06-06", budgetMonth: "2026-06", merchantName: "Cafe",
+    itemDescription: "Coffee", budgetItemId: "b1", budgetItemName: "Food", amount: 100,
+    paymentToolType: "cash", status: "active"
+  }
+]);
+assert.equal(displayRows.length, 2);
+assert.equal(displayRows[0].kind, "invoice");
+if (displayRows[0].kind === "invoice") {
+  assert.equal(displayRows[0].paidTotal, 54);
+  assert.equal(displayRows[0].discountTotal, -1);
+}
+assert.equal(displayRows[1].kind, "manual");
+console.log("invoice grouping: 15 assertions passed");

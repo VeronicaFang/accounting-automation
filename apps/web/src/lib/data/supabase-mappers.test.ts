@@ -65,6 +65,11 @@ const expenses = mapExpenseRows([
     amount: "-50",
     payment_tool_type: "credit_card",
     is_installment: true,
+    invoice_number: "AW99003017",
+    original_amount: "-50",
+    line_type: "discount",
+    payment_parent_expense_id: "expense-parent",
+    source_line_key: "AW99003017|line|1",
     status: "active"
   }
 ], [{ id: "budget-item-1", legacy_name: "24. 餐費", name: "餐費" }], [{ id: "card-2", name: "Cathay" }]);
@@ -73,6 +78,10 @@ assert.equal(expenses[0].amount, -50);
 assert.equal(expenses[0].budgetItemName, "24. 餐費");
 assert.equal(expenses[0].creditCardName, "Cathay");
 assert.equal(expenses[0].isInstallment, true);
+assert.equal(expenses[0].invoiceNumber, "AW99003017");
+assert.equal(expenses[0].originalAmount, -50);
+assert.equal(expenses[0].lineType, "discount");
+assert.equal(expenses[0].paymentParentExpenseId, "expense-parent");
 assert.deepEqual(mapReviewCounts(0, 0), []);
 assert.equal(mapReviewCounts(2, 1).length, 2);
 
@@ -86,4 +95,4 @@ assert.equal(budgetStatuses[0].groupName, "個人");
 assert.equal(budgetStatuses[0].itemName, "24. 餐費");
 assert.equal(budgetStatuses[0].severity, "warning");
 
-console.log("supabase mappers: 15 assertions passed");
+console.log("supabase mappers: 19 assertions passed");

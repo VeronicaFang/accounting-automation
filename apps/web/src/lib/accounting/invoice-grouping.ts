@@ -1,3 +1,5 @@
+import type { ExpenseRecord } from "../types.ts";
+
 export type InvoiceLineInput = {
   id: string;
   invoiceNumber: string;
@@ -68,4 +70,43 @@ export function groupInvoiceLines<T extends InvoiceLineInput>(lines: T[]): Invoi
       .reduce((sum, line) => sum + line.originalAmount, 0),
     paidTotal: groupedLines.reduce((sum, line) => sum + line.originalAmount, 0)
   }));
+}
+export type ExpenseDisplayRow =
+  | { kind: "manual"; expense: ExpenseRecord }
+  | {
+      kind: "invoice";
+      invoiceNumber: string;
+      expenses: ExpenseRecord[];
+      paidTotal: number;
+      discountTotal: number;
+      itemCount: number;
+    };
+
+export function buildExpenseDisplayRows(expenses: ExpenseRecord[]): ExpenseDisplayRow[] {
+  const rows: ExpenseDisplayRow[] = [];
+  const invoiceRowByNumber = new Map<string, Extract<ExpenseDisplayRow, { kind: "invoice" }>>();
+
+  for (const expense of expenses) {
+    const invoiceNumber = String(expense.invoiceNumber ?? "").trim();
+    if (!invoiceNumber) {
+      rows.push({ kind: "manual", expense });
+      continue;
+    }
+
+    let row = invoiceRowByNumber.get(invoiceNumber);
+    if (!row) {
+      row = { kind: "invoice", invoiceNumber, expenses: [], paidTotal: 0, discountTotal: 0, itemCount: 0 };
+      invoiceRowByNumber.set(invoiceNumber, row);
+      rows.push(row);
+    }
+    row.expenses.push(expense);
+    if (expense.lineType === "discount") {
+      row.discountTotal += expense.originalAmount ?? 0;
+    } else {
+      row.itemCount += 1;
+      row.paidTotal += expense.amount;
+    }
+  }
+
+  return rows;
 }
