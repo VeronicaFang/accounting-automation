@@ -65,6 +65,7 @@ export type SupabaseExpenseRow = {
   legacy_budget_item: string | null;
   amount: string | number;
   payment_tool_type: "cash" | "credit_card";
+  is_installment?: boolean;
   status: string;
 };
 
@@ -147,6 +148,7 @@ export function mapExpenseRows(
         row.payment_tool_type === "credit_card" && row.credit_card_id
           ? creditCardNameById.get(row.credit_card_id) ?? ""
           : undefined,
+      isInstallment: row.is_installment ?? false,
       status: row.status
     };
   });

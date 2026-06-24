@@ -5,6 +5,7 @@ import {
   type InvoiceDraftReviewItem,
   type InvoiceDraftReviewRow
 } from "@/lib/accounting/invoice-review";
+import { buildInstallmentScheduleQuery } from "@/lib/accounting/dashboard-filters";
 import type { BudgetStatus, ExpenseRecord, ReviewTask } from "@/lib/types";
 
 import type { AccountingDashboardData } from "./accounting-dashboard";
@@ -195,7 +196,7 @@ export async function getSupabaseExpensesByMonth(month: string, accessToken?: st
       "expenses",
       {
         select:
-          "id,budget_item_id,credit_card_id,consumption_date,budget_month,merchant_name,item_description,legacy_budget_item,amount,payment_tool_type,status",
+          "id,budget_item_id,credit_card_id,consumption_date,budget_month,merchant_name,item_description,legacy_budget_item,amount,payment_tool_type,is_installment,status",
         status: "eq.active",
         budget_month: `eq.${month}`,
         order: "consumption_date.desc,id.desc",
@@ -217,7 +218,7 @@ export async function getSupabaseExpenses(accessToken?: string, limit = 200): Pr
       "expenses",
       {
         select:
-          "id,budget_item_id,credit_card_id,consumption_date,budget_month,merchant_name,item_description,legacy_budget_item,amount,payment_tool_type,status",
+          "id,budget_item_id,credit_card_id,consumption_date,budget_month,merchant_name,item_description,legacy_budget_item,amount,payment_tool_type,is_installment,status",
         status: "eq.active",
         order: "consumption_date.desc,id.desc",
         limit: String(limit)
@@ -272,13 +273,7 @@ export async function getSupabaseInstallmentSchedulesByMonth(
 ): Promise<InstallmentScheduleRecord[]> {
   const rows = await fetchSupabaseRows<RawInstallmentScheduleRow>(
     "payment_schedules",
-    {
-      select: "id,expense_id,payment_sequence,payment_amount,cash_flow_month,credit_card_id,expenses(merchant_name,item_description,installment_count)",
-      cash_flow_month: `eq.${cashFlowMonth}`,
-      credit_card_id: `eq.${creditCardId}`,
-      payment_sequence: "gt.1",
-      order: "payment_sequence.asc"
-    },
+    buildInstallmentScheduleQuery(cashFlowMonth, creditCardId),
     undefined,
     accessToken
   );

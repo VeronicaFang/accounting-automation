@@ -47,6 +47,10 @@ function normalize(value: string | null | undefined): string {
 }
 
 export function expenseMatchesFilters(expense: ExpenseRecord, filters: ExpenseFilters): boolean {
+  if (filters.billMonth && expense.isInstallment) {
+    return false;
+  }
+
   if (filters.billMonth) {
     // Bill month mode: compute which billing cycle this expense belongs to.
     if (filters.creditCardCutoffDay !== undefined && expense.paymentToolType === "credit_card") {
@@ -103,6 +107,14 @@ export function filterExpenses(expenses: ExpenseRecord[], filters: ExpenseFilter
   return expenses.filter((expense) => expenseMatchesFilters(expense, filters));
 }
 
+export function buildInstallmentScheduleQuery(cashFlowMonth: string, creditCardId: string): Record<string, string> {
+  return {
+    select: "id,expense_id,payment_sequence,payment_amount,cash_flow_month,credit_card_id,expenses(merchant_name,item_description,installment_count)",
+    cash_flow_month: `eq.${cashFlowMonth}`,
+    credit_card_id: `eq.${creditCardId}`,
+    order: "payment_sequence.asc"
+  };
+}
 export function buildAnnualDashboardMonths(
   year: number,
   cashFlowMonths: CashFlowMonth[],

@@ -1,5 +1,7 @@
 import assert from "node:assert/strict";
 
+import * as dashboardFilters from "./dashboard-filters.ts";
+
 import {
   addMonths,
   buildAnnualDashboardMonths,
@@ -42,6 +44,34 @@ assert.equal(expenseMatchesFilters(expense, { merchantTag: "shopee" }), true);
 assert.equal(expenseMatchesFilters(expense, { month: "2026-05" }), false);
 assert.equal(expenseMatchesFilters(expense, { budgetItemName: "24. Food" }), false);
 
+const installmentExpense = {
+  ...expense,
+  id: "expense-installment",
+  amount: 13510,
+  isInstallment: true
+};
+
+assert.equal(
+  expenseMatchesFilters(installmentExpense, {
+    billMonth: "2026-06",
+    creditCardCutoffDay: 25,
+    creditCardName: "Union"
+  }),
+  false,
+  "帳單鑽取應由 payment_schedules 顯示分期本期金額，不應顯示原始消費總額"
+);
+
+assert.equal(
+  typeof (dashboardFilters as Record<string, unknown>).buildInstallmentScheduleQuery,
+  "function",
+  "分期帳單查詢需要可測試的查詢條件產生器"
+);
+
+const installmentQuery = dashboardFilters.buildInstallmentScheduleQuery("2026-06", "card-fubon");
+assert.equal(installmentQuery.cash_flow_month, "eq.2026-06");
+assert.equal(installmentQuery.credit_card_id, "eq.card-fubon");
+assert.equal(installmentQuery.payment_sequence, undefined, "帳單鑽取必須包含第 1 期");
+
 const annual = buildAnnualDashboardMonths(
   2026,
   [{ month: "2026-06", income: 1000, cashExpense: 100, estimatedCardPayment: 0, netFlow: 900 }],
@@ -53,4 +83,4 @@ assert.equal(annual[5].estimatedSpend, 400);
 assert.equal(annual[5].income, 1000);
 assert.equal(annual[5].netFlow, 600);
 
-console.log("dashboard filters: 13 assertions passed");
+console.log("dashboard filters: 18 assertions passed");

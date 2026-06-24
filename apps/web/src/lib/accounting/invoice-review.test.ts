@@ -139,7 +139,8 @@ assert.deepEqual(buildInvoiceDraftConfirmationInputs(mapInvoiceDraftReviewItems(
     paymentToolType: "credit_card",
     creditCardId: "card-1",
     notes: "confirmed in review",
-    sourceLineKey: "AA123|2026-06-01|coffee|120|1"
+    sourceLineKey: "AA123|2026-06-01|coffee|120|1",
+    installmentCount: 1
   }
 ]);
 

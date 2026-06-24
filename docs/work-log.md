@@ -452,3 +452,21 @@
 - 分期付款本月份：下方額外 section，只在 `billMonth + card` 篩選模式下出現，一般瀏覽時隱藏
 - 本地驗證：`npm run typecheck` 通過（0 errors）
 - Production 部署狀態：等待使用者手動執行 `git push origin main`
+### 帳單鑽取分期付款明細測試與首期修正
+
+- 測試日期：2026-06-24。
+- 問題確認：原實作只查詢 `payment_sequence > 1`，因此漏掉第 1 期；同時一般消費列表會顯示分期消費的原始總額，而非該月應繳金額。
+- 正式資料案例：
+  - 富邦 2026-06：原始消費 13,510 元，本月第 1 期應繳 2,251 元；舊畫面不會顯示分期區塊，且可能顯示 13,510 元。
+  - 國泰 2026-07：應顯示 4 筆分期排程，合計 4,051.33 元；舊查詢漏掉 2 筆第 1 期，共 2,279.67 元。
+- 修正：
+  - 分期排程查詢改為包含所有期數，不再排除第 1 期。
+  - `ExpenseRecord` 加入 `isInstallment`，Supabase expense 查詢與 mapper 傳遞 `is_installment`。
+  - 帳單月份鑽取模式下，一般消費列表排除分期原始消費；分期金額統一由 `payment_schedules.cash_flow_month + credit_card_id` 顯示。
+  - 新增回歸測試，確認分期原始總額不進入帳單鑽取的一般列表，且查詢條件包含第 1 期。
+  - 補正既有發票確認測試的預設 `installmentCount: 1` 預期值。
+- 本機驗證：
+  - `npm test`：通過。
+  - `npm run typecheck`：通過。
+  - `npm run build`：編譯成功，之後在本機 Windows/Codex 已知的 TypeScript child process 階段發生 `spawn EPERM`。
+- Production 狀態：等待使用者執行 `git push origin main`，再由 Codex 確認 Vercel deployment 與正式畫面。
