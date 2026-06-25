@@ -66,6 +66,7 @@ export type SupabaseExpenseRow = {
   amount: string | number;
   payment_tool_type: "cash" | "credit_card";
   is_installment?: boolean;
+  installment_count?: number;
   invoice_number?: string | null;
   original_amount?: string | number | null;
   line_type?: "item" | "discount" | null;
@@ -149,11 +150,13 @@ export function mapExpenseRows(
       budgetItemName: budgetItem?.legacy_name ?? budgetItem?.name ?? row.legacy_budget_item ?? "",
       amount: toNumber(row.amount),
       paymentToolType: row.payment_tool_type,
+      creditCardId: row.credit_card_id ?? undefined,
       creditCardName:
         row.payment_tool_type === "credit_card" && row.credit_card_id
           ? creditCardNameById.get(row.credit_card_id) ?? ""
           : undefined,
       isInstallment: row.is_installment ?? false,
+      installmentCount: row.installment_count ?? 1,
       invoiceNumber: row.invoice_number ?? undefined,
       originalAmount: row.original_amount == null ? undefined : toNumber(row.original_amount),
       lineType: row.line_type ?? undefined,

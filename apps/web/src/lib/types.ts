@@ -62,8 +62,10 @@ export type ExpenseRecord = {
   budgetItemName: string;
   amount: number;
   paymentToolType: "cash" | "credit_card";
+  creditCardId?: string;
   creditCardName?: string;
   isInstallment?: boolean;
+  installmentCount?: number;
   invoiceNumber?: string;
   originalAmount?: number;
   lineType?: "item" | "discount";

@@ -196,7 +196,7 @@ export async function getSupabaseExpensesByMonth(month: string, accessToken?: st
       "expenses",
       {
         select:
-          "id,budget_item_id,credit_card_id,consumption_date,budget_month,merchant_name,item_description,legacy_budget_item,amount,payment_tool_type,is_installment,invoice_number,original_amount,line_type,payment_parent_expense_id,source_line_key,status",
+          "id,budget_item_id,credit_card_id,consumption_date,budget_month,merchant_name,item_description,legacy_budget_item,amount,payment_tool_type,is_installment,installment_count,invoice_number,original_amount,line_type,payment_parent_expense_id,source_line_key,status",
         status: "eq.active",
         budget_month: `eq.${month}`,
         order: "consumption_date.desc,id.desc",
@@ -218,7 +218,7 @@ export async function getSupabaseExpenses(accessToken?: string, limit = 200): Pr
       "expenses",
       {
         select:
-          "id,budget_item_id,credit_card_id,consumption_date,budget_month,merchant_name,item_description,legacy_budget_item,amount,payment_tool_type,is_installment,invoice_number,original_amount,line_type,payment_parent_expense_id,source_line_key,status",
+          "id,budget_item_id,credit_card_id,consumption_date,budget_month,merchant_name,item_description,legacy_budget_item,amount,payment_tool_type,is_installment,installment_count,invoice_number,original_amount,line_type,payment_parent_expense_id,source_line_key,status",
         status: "eq.active",
         order: "consumption_date.desc,id.desc",
         limit: String(limit)

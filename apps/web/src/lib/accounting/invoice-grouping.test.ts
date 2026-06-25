@@ -47,12 +47,14 @@ const displayRows = buildExpenseDisplayRows([
   {
     id: "expense-1", consumptionDate: "2026-06-05", budgetMonth: "2026-06", merchantName: "Store",
     itemDescription: "Corn", budgetItemId: "b1", budgetItemName: "Food", amount: 54,
-    originalAmount: 55, paymentToolType: "cash", status: "active", invoiceNumber: "AW99003017", lineType: "item"
+    originalAmount: 55, paymentToolType: "credit_card", creditCardId: "card-1", creditCardName: "Cathay",
+    installmentCount: 6, status: "active", invoiceNumber: "AW99003017", lineType: "item"
   },
   {
     id: "expense-2", consumptionDate: "2026-06-05", budgetMonth: "2026-06", merchantName: "Store",
     itemDescription: "Coupon", budgetItemId: "b1", budgetItemName: "Food", amount: 0,
-    originalAmount: -1, paymentToolType: "cash", status: "active", invoiceNumber: "AW99003017", lineType: "discount"
+    originalAmount: -1, paymentToolType: "credit_card", creditCardId: "card-1", creditCardName: "Cathay",
+    installmentCount: 6, status: "active", invoiceNumber: "AW99003017", lineType: "discount"
   },
   {
     id: "manual-1", consumptionDate: "2026-06-06", budgetMonth: "2026-06", merchantName: "Cafe",
@@ -65,6 +67,27 @@ assert.equal(displayRows[0].kind, "invoice");
 if (displayRows[0].kind === "invoice") {
   assert.equal(displayRows[0].paidTotal, 54);
   assert.equal(displayRows[0].discountTotal, -1);
+  assert.equal(displayRows[0].paymentToolType, "credit_card");
+  assert.equal(displayRows[0].creditCardId, "card-1");
+  assert.equal(displayRows[0].creditCardName, "Cathay");
+  assert.equal(displayRows[0].installmentCount, 6);
 }
 assert.equal(displayRows[1].kind, "manual");
-console.log("invoice grouping: 15 assertions passed");
+
+assert.throws(
+  () => buildExpenseDisplayRows([
+    {
+      id: "mixed-1", consumptionDate: "2026-06-05", budgetMonth: "2026-06", merchantName: "Store",
+      itemDescription: "Corn", budgetItemId: "b1", budgetItemName: "Food", amount: 54,
+      paymentToolType: "cash", status: "active", invoiceNumber: "MIXED-1"
+    },
+    {
+      id: "mixed-2", consumptionDate: "2026-06-05", budgetMonth: "2026-06", merchantName: "Store",
+      itemDescription: "Milk", budgetItemId: "b1", budgetItemName: "Food", amount: 27,
+      paymentToolType: "credit_card", creditCardId: "card-1", installmentCount: 1,
+      status: "active", invoiceNumber: "MIXED-1"
+    }
+  ]),
+  /inconsistent payment settings/
+);
+console.log("invoice grouping: 20 assertions passed");

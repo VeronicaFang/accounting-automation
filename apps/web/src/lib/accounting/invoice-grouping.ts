@@ -80,6 +80,10 @@ export type ExpenseDisplayRow =
       paidTotal: number;
       discountTotal: number;
       itemCount: number;
+      paymentToolType: ExpenseRecord["paymentToolType"];
+      creditCardId?: string;
+      creditCardName?: string;
+      installmentCount: number;
     };
 
 export function buildExpenseDisplayRows(expenses: ExpenseRecord[]): ExpenseDisplayRow[] {
@@ -93,11 +97,30 @@ export function buildExpenseDisplayRows(expenses: ExpenseRecord[]): ExpenseDispl
       continue;
     }
 
+    const creditCardId = String(expense.creditCardId ?? "").trim() || undefined;
+    const installmentCount = expense.installmentCount ?? 1;
     let row = invoiceRowByNumber.get(invoiceNumber);
     if (!row) {
-      row = { kind: "invoice", invoiceNumber, expenses: [], paidTotal: 0, discountTotal: 0, itemCount: 0 };
+      row = {
+        kind: "invoice",
+        invoiceNumber,
+        expenses: [],
+        paidTotal: 0,
+        discountTotal: 0,
+        itemCount: 0,
+        paymentToolType: expense.paymentToolType,
+        creditCardId,
+        creditCardName: expense.creditCardName,
+        installmentCount
+      };
       invoiceRowByNumber.set(invoiceNumber, row);
       rows.push(row);
+    } else if (
+      row.paymentToolType !== expense.paymentToolType ||
+      row.creditCardId !== creditCardId ||
+      row.installmentCount !== installmentCount
+    ) {
+      throw new Error(`Invoice ${invoiceNumber} has inconsistent payment settings.`);
     }
     row.expenses.push(expense);
     if (expense.lineType === "discount") {
