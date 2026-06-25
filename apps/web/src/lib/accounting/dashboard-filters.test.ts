@@ -44,6 +44,49 @@ assert.equal(expenseMatchesFilters(expense, { merchantTag: "shopee" }), true);
 assert.equal(expenseMatchesFilters(expense, { month: "2026-05" }), false);
 assert.equal(expenseMatchesFilters(expense, { budgetItemName: "24. Food" }), false);
 
+const invoiceExpense = {
+  ...expense,
+  id: "expense-invoice",
+  invoiceNumber: "AB12345678"
+};
+const manualExpense = {
+  ...expense,
+  id: "expense-manual"
+};
+const blankInvoiceExpense = {
+  ...expense,
+  id: "expense-blank-invoice",
+  invoiceNumber: "   "
+};
+
+assert.equal(expenseMatchesFilters(invoiceExpense, { sourceType: "invoice" }), true);
+assert.equal(expenseMatchesFilters(invoiceExpense, { sourceType: "manual" }), false);
+assert.equal(expenseMatchesFilters(manualExpense, { sourceType: "manual" }), true);
+assert.equal(expenseMatchesFilters(manualExpense, { sourceType: "invoice" }), false);
+assert.equal(expenseMatchesFilters(blankInvoiceExpense, { sourceType: "manual" }), true);
+assert.equal(expenseMatchesFilters(blankInvoiceExpense, { sourceType: "invoice" }), false);
+
+const oldInvoiceExpense = {
+  ...invoiceExpense,
+  id: "expense-old-invoice",
+  consumptionDate: "2024-12-31",
+  budgetMonth: "2024-12",
+  merchantName: "Legacy Bookstore",
+  itemDescription: "Archived receipt"
+};
+
+assert.equal(
+  expenseMatchesFilters(oldInvoiceExpense, { query: "archived", sourceType: "invoice" }),
+  true,
+  "omitting month and months must leave all months available"
+);
+assert.equal(
+  expenseMatchesFilters(oldInvoiceExpense, { query: "archived", sourceType: "manual" }),
+  false,
+  "source filters must remain mutually exclusive across years"
+);
+
+assert.equal(typeof (dashboardFilters as Record<string, unknown>).getExpenseSourceType, "function");
 const installmentExpense = {
   ...expense,
   id: "expense-installment",
@@ -83,4 +126,4 @@ assert.equal(annual[5].estimatedSpend, 400);
 assert.equal(annual[5].income, 1000);
 assert.equal(annual[5].netFlow, 600);
 
-console.log("dashboard filters: 18 assertions passed");
+console.log("dashboard filters: 27 assertions passed");

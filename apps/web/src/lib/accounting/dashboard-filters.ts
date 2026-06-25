@@ -1,5 +1,7 @@
 import type { BillEstimate, CashFlowMonth, ExpenseRecord } from "@/lib/types";
 
+export type ExpenseSourceType = "invoice" | "manual";
+
 export type ExpenseFilters = {
   month?: string;
   months?: string[];
@@ -7,6 +9,7 @@ export type ExpenseFilters = {
   budgetItemName?: string;
   query?: string;
   merchantTag?: string;
+  sourceType?: ExpenseSourceType;
   /** Bill month filter (YYYY-MM). When set, overrides month/months and filters by computed card billing month. */
   billMonth?: string;
   /** Card cutoff day (1–31). Required for billMonth to work correctly. */
@@ -46,6 +49,10 @@ function normalize(value: string | null | undefined): string {
   return String(value ?? "").trim().toLowerCase();
 }
 
+export function getExpenseSourceType(expense: ExpenseRecord): ExpenseSourceType {
+  return normalize(expense.invoiceNumber) ? "invoice" : "manual";
+}
+
 export function expenseMatchesFilters(expense: ExpenseRecord, filters: ExpenseFilters): boolean {
   if (filters.billMonth && expense.isInstallment) {
     return false;
@@ -74,6 +81,10 @@ export function expenseMatchesFilters(expense: ExpenseRecord, filters: ExpenseFi
     if (months && months.length > 0 && !months.includes(expense.budgetMonth)) {
       return false;
     }
+  }
+
+  if (filters.sourceType && getExpenseSourceType(expense) !== filters.sourceType) {
+    return false;
   }
 
   if (filters.creditCardName && normalize(expense.creditCardName) !== normalize(filters.creditCardName)) {
