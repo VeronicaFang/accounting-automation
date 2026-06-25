@@ -65,6 +65,8 @@ assert.equal(expenseMatchesFilters(manualExpense, { sourceType: "manual" }), tru
 assert.equal(expenseMatchesFilters(manualExpense, { sourceType: "invoice" }), false);
 assert.equal(expenseMatchesFilters(blankInvoiceExpense, { sourceType: "manual" }), true);
 assert.equal(expenseMatchesFilters(blankInvoiceExpense, { sourceType: "invoice" }), false);
+assert.equal(expenseMatchesFilters(invoiceExpense, { month: "2026-05", sourceType: "invoice" }), false);
+assert.equal(expenseMatchesFilters(invoiceExpense, { query: "not found", sourceType: "invoice" }), false);
 
 const oldInvoiceExpense = {
   ...invoiceExpense,
@@ -86,7 +88,8 @@ assert.equal(
   "source filters must remain mutually exclusive across years"
 );
 
-assert.equal(typeof (dashboardFilters as Record<string, unknown>).getExpenseSourceType, "function");
+assert.equal(dashboardFilters.getExpenseSourceType(invoiceExpense), "invoice");
+assert.equal(dashboardFilters.getExpenseSourceType(blankInvoiceExpense), "manual");
 const installmentExpense = {
   ...expense,
   id: "expense-installment",
@@ -126,4 +129,4 @@ assert.equal(annual[5].estimatedSpend, 400);
 assert.equal(annual[5].income, 1000);
 assert.equal(annual[5].netFlow, 600);
 
-console.log("dashboard filters: 27 assertions passed");
+console.log("dashboard filters: 30 assertions passed");
