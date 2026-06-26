@@ -27,6 +27,7 @@ import {
 } from "@/lib/accounting/invoice-import-dedupe";
 import { parseInvoiceText, type InvoiceDraftInput } from "@/lib/accounting/invoice-import";
 import { validateInvoiceGroupConfirmation, type InvoiceGroupConfirmation } from "@/lib/accounting/invoice-confirmation";
+import { validateInvoicePaymentUpdate } from "@/lib/accounting/invoice-payment";
 import { createSupabaseRestHeaders, getSupabaseRestConfig } from "@/lib/data/supabase-rest";
 
 export const runtime = "nodejs";
@@ -1312,6 +1313,32 @@ async function deleteInvoiceDrafts(
   };
 }
 
+async function updateInvoicePaymentSettings(
+  requestConfig: SupabaseRequestConfig,
+  references: EntryReferences,
+  payload: Record<string, unknown>
+) {
+  const paymentToolType = String(payload.paymentToolType ?? "");
+
+  if (paymentToolType !== "cash" && paymentToolType !== "credit_card") {
+    throw new Error("Payment tool type is not supported.");
+  }
+
+  const input = validateInvoicePaymentUpdate({
+    invoiceNumber: String(payload.invoiceNumber ?? ""),
+    paymentToolType,
+    creditCardId: String(payload.creditCardId ?? ""),
+    installmentCount: Number(payload.installmentCount ?? 1)
+  });
+
+  return supabaseRpc(requestConfig, "update_invoice_payment_settings", {
+    p_household_id: references.householdId,
+    p_invoice_number: input.invoiceNumber,
+    p_payment_tool_type: input.paymentToolType,
+    p_credit_card_id: input.creditCardId,
+    p_installment_count: input.installmentCount
+  });
+}
 async function confirmInvoiceGroups(
   requestConfig: SupabaseRequestConfig,
   references: EntryReferences,
@@ -1527,6 +1554,11 @@ export async function POST(request: Request) {
       return NextResponse.json(result);
     }
 
+    if (action === "updateInvoicePaymentSettings") {
+      const result = await updateInvoicePaymentSettings(requestConfig, references, payload);
+
+      return NextResponse.json(result);
+    }
     if (action === "confirmInvoiceGroups") {
       const result = await confirmInvoiceGroups(requestConfig, references, payload);
 
