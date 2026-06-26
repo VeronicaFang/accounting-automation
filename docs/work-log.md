@@ -604,3 +604,23 @@ Previous grouped-invoice work completed invoice grouping/backfill and made invoi
    - Whole-invoice payment update works for invoice groups that have `payment_parent_expense_id` and estimated schedules.
 5. Separate follow-up task:
    - Repair the 70 legacy invoice groups missing `payment_parent_expense_id` before expecting whole-invoice payment editing to work on old imported invoices.
+
+### Production Fix: Mixed Payment Invoice Fallback
+
+- Date: 2026-06-26
+- Production symptom: `/expenses` showed `Invoice BQ58428276 has inconsistent payment settings.` and stopped loading expense details.
+- Root cause:
+  - Production data for invoice `BQ58428276` has two item rows under the same invoice number.
+  - One row is `cash` for `3000.00`; the other row is `credit_card` for `1200.00`.
+  - Both are legacy grouped-invoice rows without `payment_parent_expense_id`.
+  - The new grouped invoice display assumed one payment setting per invoice and threw when rows disagreed.
+- Fix:
+  - `buildExpenseDisplayRows` no longer throws for mixed payment settings.
+  - Mixed-payment legacy invoices now fall back to individual expense rows so the page can continue loading and each row can still be inspected/edited.
+  - Consistent invoice groups still render as one invoice summary row with expandable details and whole-invoice payment editing.
+- Verification:
+  - Added regression coverage in `invoice-grouping.test.ts` for mixed-payment invoice fallback.
+  - `npm test`: passed.
+  - `npm run typecheck`: passed.
+- Follow-up:
+  - Data cleanup/backfill is still needed for legacy invoice groups missing `payment_parent_expense_id` before whole-invoice payment editing can work on those old records.

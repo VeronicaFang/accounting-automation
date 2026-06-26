@@ -74,20 +74,20 @@ if (displayRows[0].kind === "invoice") {
 }
 assert.equal(displayRows[1].kind, "manual");
 
-assert.throws(
-  () => buildExpenseDisplayRows([
-    {
-      id: "mixed-1", consumptionDate: "2026-06-05", budgetMonth: "2026-06", merchantName: "Store",
-      itemDescription: "Corn", budgetItemId: "b1", budgetItemName: "Food", amount: 54,
-      paymentToolType: "cash", status: "active", invoiceNumber: "MIXED-1"
-    },
-    {
-      id: "mixed-2", consumptionDate: "2026-06-05", budgetMonth: "2026-06", merchantName: "Store",
-      itemDescription: "Milk", budgetItemId: "b1", budgetItemName: "Food", amount: 27,
-      paymentToolType: "credit_card", creditCardId: "card-1", installmentCount: 1,
-      status: "active", invoiceNumber: "MIXED-1"
-    }
-  ]),
-  /inconsistent payment settings/
-);
-console.log("invoice grouping: 20 assertions passed");
+const mixedPaymentRows = buildExpenseDisplayRows([
+  {
+    id: "mixed-1", consumptionDate: "2026-06-05", budgetMonth: "2026-06", merchantName: "Store",
+    itemDescription: "Corn", budgetItemId: "b1", budgetItemName: "Food", amount: 54,
+    paymentToolType: "cash", status: "active", invoiceNumber: "MIXED-1"
+  },
+  {
+    id: "mixed-2", consumptionDate: "2026-06-05", budgetMonth: "2026-06", merchantName: "Store",
+    itemDescription: "Milk", budgetItemId: "b1", budgetItemName: "Food", amount: 27,
+    paymentToolType: "credit_card", creditCardId: "card-1", installmentCount: 1,
+    status: "active", invoiceNumber: "MIXED-1"
+  }
+]);
+assert.equal(mixedPaymentRows.length, 2);
+assert.equal(mixedPaymentRows[0].kind, "manual");
+assert.equal(mixedPaymentRows[1].kind, "manual");
+console.log("invoice grouping: 22 assertions passed");

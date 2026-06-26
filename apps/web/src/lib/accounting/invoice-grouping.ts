@@ -89,10 +89,16 @@ export type ExpenseDisplayRow =
 export function buildExpenseDisplayRows(expenses: ExpenseRecord[]): ExpenseDisplayRow[] {
   const rows: ExpenseDisplayRow[] = [];
   const invoiceRowByNumber = new Map<string, Extract<ExpenseDisplayRow, { kind: "invoice" }>>();
+  const mixedPaymentInvoiceNumbers = new Set<string>();
 
   for (const expense of expenses) {
     const invoiceNumber = String(expense.invoiceNumber ?? "").trim();
     if (!invoiceNumber) {
+      rows.push({ kind: "manual", expense });
+      continue;
+    }
+
+    if (mixedPaymentInvoiceNumbers.has(invoiceNumber)) {
       rows.push({ kind: "manual", expense });
       continue;
     }
@@ -120,7 +126,14 @@ export function buildExpenseDisplayRows(expenses: ExpenseRecord[]): ExpenseDispl
       row.creditCardId !== creditCardId ||
       row.installmentCount !== installmentCount
     ) {
-      throw new Error(`Invoice ${invoiceNumber} has inconsistent payment settings.`);
+      const rowIndex = rows.indexOf(row);
+      if (rowIndex >= 0) {
+        rows.splice(rowIndex, 1, ...row.expenses.map((groupedExpense) => ({ kind: "manual" as const, expense: groupedExpense })));
+      }
+      invoiceRowByNumber.delete(invoiceNumber);
+      mixedPaymentInvoiceNumbers.add(invoiceNumber);
+      rows.push({ kind: "manual", expense });
+      continue;
     }
     row.expenses.push(expense);
     if (expense.lineType === "discount") {
