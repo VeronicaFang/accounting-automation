@@ -477,6 +477,22 @@ textarea {
 .expense-payment-cell .expense-budget-select {
   min-width: 80px;
 }
+.invoice-payment-editor {
+  align-items: center;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  min-width: 260px;
+}
+
+.invoice-payment-editor .expense-budget-select {
+  min-width: 96px;
+  width: auto;
+}
+
+.invoice-payment-editor .installment-count-select {
+  min-width: 76px;
+}
 
 .expense-amount-input {
   width: 90px;

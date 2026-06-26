@@ -32,6 +32,15 @@ type Message = {
   text: string;
 };
 
+type MonthFilterValue = "" | "all" | string;
+type SourceFilterValue = "" | "invoice" | "manual";
+
+type InvoicePaymentEdit = {
+  paymentToolType: "cash" | "credit_card";
+  creditCardId: string;
+  installmentCount: number;
+};
+
 function paymentLabel(expense: ExpenseRecord): string {
   if (expense.paymentToolType === "credit_card") {
     return `信用卡 ${expense.creditCardName ?? ""}`.trim();
@@ -106,9 +115,11 @@ export function ExpensesClient() {
   const queryMerchant = searchParams.get("merchant") ?? "";
   const queryTag = searchParams.get("tag") ?? "";
   const queryText = searchParams.get("q") ?? "";
-  const [selectedMonth, setSelectedMonth] = useState(queryMonth);
+  const [selectedMonth, setSelectedMonth] = useState<MonthFilterValue>(queryMonth);
+  const [sourceFilter, setSourceFilter] = useState<SourceFilterValue>("");
   const [searchText, setSearchText] = useState(queryText);
   const [activeTag, setActiveTag] = useState(queryTag || queryMerchant);
+  const [invoicePaymentEdits, setInvoicePaymentEdits] = useState<Record<string, InvoicePaymentEdit>>({});
   const [installmentSchedules, setInstallmentSchedules] = useState<InstallmentScheduleRecord[]>([]);
   const [expandedInvoices, setExpandedInvoices] = useState<Set<string>>(new Set());
 
@@ -145,6 +156,18 @@ export function ExpensesClient() {
     setPaymentEdits(Object.fromEntries(rows.map((expense) => [expense.id, expense.paymentToolType])));
     setCardEdits(Object.fromEntries(rows.map((expense) => [expense.id, expense.creditCardName ?? ""])));
     setAmountEdits(Object.fromEntries(rows.map((expense) => [expense.id, String(expense.amount)])));
+    setInvoicePaymentEdits(Object.fromEntries(
+      buildExpenseDisplayRows(rows)
+        .filter((row) => row.kind === "invoice")
+        .map((row) => [
+          row.invoiceNumber,
+          {
+            paymentToolType: row.paymentToolType,
+            creditCardId: row.creditCardId ?? "",
+            installmentCount: row.installmentCount
+          }
+        ])
+    ));
     setState("ready");
 
     if (queryBillMonth && queryCard) {
@@ -212,14 +235,15 @@ export function ExpensesClient() {
     return filterExpenses(expenses, {
       billMonth: activeBillMonth,
       creditCardCutoffDay: cutoffDay,
-      month: activeBillMonth ? undefined : (selectedMonth || undefined),
+      month: activeBillMonth || selectedMonth === "all" ? undefined : (selectedMonth || undefined),
       months: activeBillMonth || selectedMonth ? undefined : defaultMonths,
       creditCardName: queryCard || undefined,
       budgetItemName: queryBudget || undefined,
       merchantTag: activeTag || undefined,
+      sourceType: sourceFilter || undefined,
       query: searchText || undefined
     });
-  }, [activeTag, cardCutoffDayByName, defaultMonths, expenses, queryBillMonth, queryBudget, queryCard, searchText, selectedMonth]);
+  }, [activeTag, cardCutoffDayByName, defaultMonths, expenses, queryBillMonth, queryBudget, queryCard, searchText, selectedMonth, sourceFilter]);
   const displayRows = useMemo(() => buildExpenseDisplayRows(visibleExpenses), [visibleExpenses]);
 
   function toggleInvoice(invoiceNumber: string) {
@@ -231,10 +255,11 @@ export function ExpensesClient() {
     });
   }
   const activeContext = [
-    queryBillMonth ? `帳單月 ${queryBillMonth}` : selectedMonth ? `月份 ${selectedMonth}` : `預設 ${defaultMonths.join("、")}`,
+    queryBillMonth ? `帳單月 ${queryBillMonth}` : selectedMonth === "all" ? "全部月份" : selectedMonth ? `月份 ${selectedMonth}` : `預設 ${defaultMonths.join("、")}`,
     queryCard ? `信用卡 ${queryCard}` : "",
     queryBudget ? `預算 ${queryBudget}` : "",
     activeTag ? `店家 ${activeTag}` : "",
+    sourceFilter === "invoice" ? "發票匯入" : sourceFilter === "manual" ? "手動入帳" : "",
     searchText ? `搜尋 ${searchText}` : ""
   ].filter(Boolean);
   async function submitExpenseAction(action: string, body: Record<string, unknown>) {
@@ -348,6 +373,44 @@ export function ExpensesClient() {
       setBusyExpenseId(null);
     }
   }
+  function updateInvoicePaymentEdit(invoiceNumber: string, patch: Partial<InvoicePaymentEdit>) {
+    setInvoicePaymentEdits((current) => {
+      const existing = current[invoiceNumber] ?? { paymentToolType: "cash", creditCardId: "", installmentCount: 1 };
+      const next = { ...existing, ...patch };
+      if (next.paymentToolType === "cash") {
+        next.creditCardId = "";
+        next.installmentCount = 1;
+      }
+      return { ...current, [invoiceNumber]: next };
+    });
+  }
+
+  async function saveInvoicePayment(invoiceNumber: string) {
+    const edit = invoicePaymentEdits[invoiceNumber];
+    if (!edit) return;
+
+    if (edit.paymentToolType === "credit_card" && !edit.creditCardId) {
+      setMessage({ tone: "error", text: "請選擇信用卡。" });
+      return;
+    }
+
+    setBusyExpenseId(invoiceNumber);
+    setMessage({ tone: "muted", text: "正在更新發票付款設定..." });
+
+    try {
+      await submitExpenseAction("updateInvoicePaymentSettings", {
+        invoiceNumber,
+        paymentToolType: edit.paymentToolType,
+        creditCardId: edit.paymentToolType === "credit_card" ? edit.creditCardId : null,
+        installmentCount: edit.paymentToolType === "credit_card" ? edit.installmentCount : 1
+      });
+      setMessage({ tone: "success", text: `已更新發票 ${invoiceNumber} 的付款設定。` });
+    } catch (caughtError) {
+      setMessage({ tone: "error", text: caughtError instanceof Error ? caughtError.message : "更新發票付款設定失敗。" });
+    } finally {
+      setBusyExpenseId(null);
+    }
+  }
   function resetAddForm() {
     setNewExpense({
       consumptionDate: new Date().toISOString().slice(0, 10),
@@ -450,9 +513,24 @@ export function ExpensesClient() {
               onChange={(event) => setSearchText(event.target.value)}
             />
           </label>
-          <button className="secondary-action" type="button" onClick={() => { setSelectedMonth(""); setSearchText(""); setActiveTag(""); }}>
+          <button className="secondary-action" type="button" onClick={() => { setSelectedMonth(""); setSourceFilter(""); setSearchText(""); setActiveTag(""); }}>
             清除篩選
           </button>
+        </div>
+        <div className="tag-row">
+          {[
+            { label: "手動入帳", value: "manual" as const },
+            { label: "發票匯入", value: "invoice" as const }
+          ].map((filter) => (
+            <button
+              key={filter.value}
+              className={sourceFilter === filter.value ? "tag-button tag-button-active" : "tag-button"}
+              type="button"
+              onClick={() => setSourceFilter((current) => (current === filter.value ? "" : filter.value))}
+            >
+              {filter.label}
+            </button>
+          ))}
         </div>
         <div className="tag-row">
           {merchantTags.map((tag) => (
@@ -648,14 +726,22 @@ export function ExpensesClient() {
                 const expanded = expandedInvoices.has(row.invoiceNumber);
                 const first = row.expenses[0];
                 const discountTarget = row.expenses.filter((expense) => expense.lineType !== "discount").sort((a, b) => (b.originalAmount ?? b.amount) - (a.originalAmount ?? a.amount))[0];
+                const invoicePaymentEdit = invoicePaymentEdits[row.invoiceNumber] ?? {
+                  paymentToolType: row.paymentToolType,
+                  creditCardId: row.creditCardId ?? "",
+                  installmentCount: row.installmentCount
+                };
+                const invoicePaymentChanged = invoicePaymentEdit.paymentToolType !== row.paymentToolType
+                  || invoicePaymentEdit.creditCardId !== (row.creditCardId ?? "")
+                  || invoicePaymentEdit.installmentCount !== row.installmentCount;
                 return <Fragment key={row.invoiceNumber}>
                   <tr className="invoice-expense-summary">
                     <td>{first?.consumptionDate}</td><td>{first?.budgetMonth}</td>
                     <td><button className="invoice-expand-button" aria-label={expanded ? `收合發票 ${row.invoiceNumber}` : `展開發票 ${row.invoiceNumber}`} onClick={() => toggleInvoice(row.invoiceNumber)} type="button">{expanded ? "▾" : "▸"}</button><strong>{first?.merchantName || "未填"}</strong><small>{row.invoiceNumber}</small></td>
                     <td>{row.itemCount} 項{row.discountTotal < 0 ? ` / 折扣 ${formatCurrency(row.discountTotal)}` : ""}</td>
-                    <td><span className="muted">逐項分類</span></td><td>{first ? paymentLabel(first) : ""}</td>
+                    <td><span className="muted">逐項分類</span></td><td><div className="invoice-payment-editor"><select className="expense-budget-select" value={invoicePaymentEdit.paymentToolType} disabled={busyExpenseId === row.invoiceNumber} onChange={(event) => updateInvoicePaymentEdit(row.invoiceNumber, { paymentToolType: event.target.value === "credit_card" ? "credit_card" : "cash" })}><option value="cash">現金</option><option value="credit_card">信用卡</option></select>{invoicePaymentEdit.paymentToolType === "credit_card" ? <><select className="expense-budget-select" value={invoicePaymentEdit.creditCardId} disabled={busyExpenseId === row.invoiceNumber} onChange={(event) => updateInvoicePaymentEdit(row.invoiceNumber, { creditCardId: event.target.value })}><option value="">請選擇</option>{creditCards.map((card) => <option key={card.id} value={card.id}>{card.name}</option>)}</select><select className="expense-budget-select installment-count-select" value={invoicePaymentEdit.installmentCount} disabled={busyExpenseId === row.invoiceNumber} onChange={(event) => updateInvoicePaymentEdit(row.invoiceNumber, { installmentCount: Number(event.target.value) })}>{[1, 3, 6, 12, 18, 24, 30, 36].map((count) => <option key={count} value={count}>{count} 期</option>)}</select></> : null}</div></td>
                     <td className="task-amount">{formatCurrency(row.paidTotal)}</td>
-                    <td><button className="secondary-action danger-action" disabled={busyExpenseId === row.invoiceNumber} onClick={() => deleteInvoiceGroup(row.invoiceNumber, row.expenses)} type="button">刪除整張</button></td>
+                    <td><div className="row-actions"><button className="secondary-action" disabled={busyExpenseId === row.invoiceNumber || !invoicePaymentChanged} onClick={() => saveInvoicePayment(row.invoiceNumber)} type="button">儲存付款</button><button className="secondary-action danger-action" disabled={busyExpenseId === row.invoiceNumber} onClick={() => deleteInvoiceGroup(row.invoiceNumber, row.expenses)} type="button">刪除整張</button></div></td>
                   </tr>
                   {expanded ? row.expenses.map((expense) => {
                     const isDiscount = expense.lineType === "discount";
