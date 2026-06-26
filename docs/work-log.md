@@ -624,3 +624,22 @@ Previous grouped-invoice work completed invoice grouping/backfill and made invoi
   - `npm run typecheck`: passed.
 - Follow-up:
   - Data cleanup/backfill is still needed for legacy invoice groups missing `payment_parent_expense_id` before whole-invoice payment editing can work on those old records.
+
+### Production Fix: Legacy Invoice Payment Update RPC
+
+- Date: 2026-06-26
+- Production symptom: changing an invoice payment method failed with `執行 update_invoice_payment_settings 失敗：400 {"code":"P0001","message":"Invoice group is incomplete"}`.
+- Root cause:
+  - The RPC required every invoice row to share a non-null `payment_parent_expense_id`.
+  - Legacy invoice rows created before grouped-payment support still had per-line estimated payment schedules and no shared payment parent.
+- Fix:
+  - Added migration `20260626083500_repair_legacy_invoice_payment_groups.sql`.
+  - The RPC still uses the original strict path for complete invoice groups.
+  - For legacy groups where all rows have no parent linkage, it now locks all existing invoice-line schedules, verifies they are still `estimated`, verifies their total matches the invoice total, chooses a deterministic payment parent, reverses the old per-line schedules, sets `payment_parent_expense_id`, and rebuilds a single whole-invoice payment schedule set.
+  - Partial parent linkage remains rejected as incomplete.
+- Production verification:
+  - Migration applied successfully to Supabase project `frbqvouttwlgteizwxub`.
+  - Transaction rollback test on legacy invoice `AD13046227` changed it to cash, produced 1 estimated cash schedule totaling `120.00`, then rolled back.
+  - Post-rollback check confirmed the original production data remained unchanged: 2 credit-card schedules totaling `120.00`, parent refs still `0`.
+- Follow-up:
+  - Mixed-payment legacy invoices such as `BQ58428276` still fall back to individual rows in the UI; whole-invoice payment editing is intentionally not offered for those until the data is manually normalized.
