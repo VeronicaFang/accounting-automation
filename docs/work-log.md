@@ -509,3 +509,98 @@
 - Production application deployment:
   - Awaiting user manual push: `git push origin main`.
   - After push, Codex must confirm the Vercel deployment is `READY` and test the grouped invoice display on production.
+
+---
+
+## 2026-06-26
+
+### Invoice Payment Editing And Expense Source Filters
+
+- Branch: `feature/expense-payment-filters`
+- Commits:
+  - `6d79f81 feat: filter expenses by invoice source`
+  - `4bb993e test: cover combined expense source filters`
+  - `04d3fe1 feat: validate invoice payment updates`
+  - `9f97d0d feat: expose invoice payment metadata`
+  - `3a693c3 feat: rebuild invoice payment schedules atomically`
+  - `797074f feat: add invoice payment update action`
+  - `2158290 feat: edit invoice payments and filter expense sources`
+
+#### Compared With Previous Work Log
+
+Previous grouped-invoice work completed invoice grouping/backfill and made invoice expenses display as one summary row with expandable item/discount details. This session adds the next layer on top of that work:
+
+- Whole-invoice payment editing:
+  - One invoice summary row now owns the payment method.
+  - Child item/discount rows no longer expose independent payment controls.
+  - Invoice payment can be changed between cash and credit card, including installment count for credit-card payments.
+- Source filtering in expense details:
+  - Added quick filters for `手動入帳` and `發票匯入`.
+  - `手動入帳` means expenses without `invoice_number`.
+  - `發票匯入` means expenses with `invoice_number`.
+  - Buttons are mutually exclusive and can be clicked again to clear.
+- Month filtering in expense details:
+  - Added `全部月份` option.
+  - When selected, month restriction is removed, so search can cover all stored expense data.
+- Backend support:
+  - Added validation helper for invoice payment updates.
+  - Supabase expense mappers now expose `creditCardId` and `installmentCount` to the frontend.
+  - API action `updateInvoicePaymentSettings` calls Supabase RPC `update_invoice_payment_settings`.
+- Supabase RPC:
+  - Migration `20260626024203 update_invoice_payment_settings` was applied to production Supabase project `frbqvouttwlgteizwxub`.
+  - Function is `security invoker`, not `security definer`.
+  - Execute permission is granted to `authenticated`, revoked from `public` and `anon`.
+  - Function requires household owner because existing delete RLS on `payment_schedules` is owner-only.
+  - Function rejects invoice groups with non-estimated payment schedules before rebuilding, to avoid rewriting paid/reconciled schedules as estimated.
+  - Function locks existing payment schedules before status checks to avoid race conditions.
+
+#### Supabase Verification
+
+- Function existence and permission check:
+  - `update_invoice_payment_settings` exists.
+  - `security_definer = false`.
+  - execute roles include `authenticated`, `postgres`, `service_role`.
+- Rollback test:
+  - Created a temporary invoice group inside a transaction.
+  - Changed it from cash to credit card with 3 installments using the RPC.
+  - Verified 3 estimated credit-card schedules were created.
+  - Verified schedule total remained `90.00`.
+  - Rolled back the transaction.
+  - Verified no `ZZTESTROLLBACK01` test expenses remained.
+- Advisors after migration:
+  - Security advisor only reported existing `auth_leaked_password_protection` warning.
+  - Performance advisor reported existing index warnings; no new function-specific warning was observed.
+
+#### Important Data Finding
+
+- Production Supabase currently has 70 existing invoice groups where `payment_parent_expense_id` is still missing.
+- Because the new RPC intentionally rejects incomplete legacy invoice groups, those old invoice rows cannot yet use whole-invoice payment editing.
+- New invoice groups confirmed through `confirm_invoice_group` should have the required parent linkage.
+- Remaining data task: add a safe backfill/repair migration for old invoice expenses to set `payment_parent_expense_id` and create/reconcile parent payment schedules where possible.
+
+#### Local Verification
+
+- `npm run typecheck` from `apps/web`: passed.
+- `npm test` from `apps/web`: passed.
+- `npm run build` from `apps/web`: Next.js compiled successfully, then ended with known local Windows/Codex `spawn EPERM` during the post-compile TypeScript child process.
+- `git diff --check`: passed.
+
+#### Remaining TODO
+
+1. Merge `feature/expense-payment-filters` back to local `main` after final verification.
+2. User manually pushes production:
+
+   ```powershell
+   cd "C:\Users\AA018507\Documents\Codex\記帳軟體\accounting-automation-github"
+   git push origin main
+   ```
+
+3. Codex checks Vercel production deployment for the latest commit and confirms `READY`.
+4. Production smoke test after deployment:
+   - `/expenses` loads.
+   - `手動入帳` and `發票匯入` filters work and can be cleared.
+   - `全部月份` works with keyword search.
+   - Invoice summary row shows payment editor.
+   - Whole-invoice payment update works for invoice groups that have `payment_parent_expense_id` and estimated schedules.
+5. Separate follow-up task:
+   - Repair the 70 legacy invoice groups missing `payment_parent_expense_id` before expecting whole-invoice payment editing to work on old imported invoices.
