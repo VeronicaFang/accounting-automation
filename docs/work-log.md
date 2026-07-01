@@ -643,3 +643,16 @@ Previous grouped-invoice work completed invoice grouping/backfill and made invoi
   - Post-rollback check confirmed the original production data remained unchanged: 2 credit-card schedules totaling `120.00`, parent refs still `0`.
 - Follow-up:
   - Mixed-payment legacy invoices such as `BQ58428276` still fall back to individual rows in the UI; whole-invoice payment editing is intentionally not offered for those until the data is manually normalized.
+
+### Production Fix: Show All-Month Expense Filter Option
+
+- Date: 2026-07-01
+- Symptom: the expense details page did not show the `全部月份` option in the month selector.
+- Root cause:
+  - Filtering logic already supported `selectedMonth === "all"`.
+  - The UI dropdown only rendered `本月與前月` and concrete months, so users could not activate the all-month mode.
+- Fix:
+  - Added `<option value="all">全部月份</option>` to the `/expenses` month selector.
+- Verification:
+  - `npm run typecheck`: passed.
+  - `npm test`: passed.

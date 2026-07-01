@@ -498,6 +498,7 @@ export function ExpensesClient() {
             月份
             <select value={selectedMonth} onChange={(event) => setSelectedMonth(event.target.value)}>
               <option value="">本月與前月</option>
+              <option value="all">全部月份</option>
               {availableMonths.map((month) => (
                 <option key={month} value={month}>
                   {month}
