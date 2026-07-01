@@ -42,6 +42,9 @@ const expense = {
 assert.equal(expenseMatchesFilters(expense, { month: "2026-06", creditCardName: "Union", query: "usb" }), true);
 assert.equal(expenseMatchesFilters(expense, { merchantTag: "shopee" }), true);
 assert.equal(expenseMatchesFilters(expense, { month: "2026-05" }), false);
+assert.equal(expenseMatchesFilters(expense, { paymentToolType: "credit_card" }), true);
+assert.equal(expenseMatchesFilters(expense, { paymentToolType: "cash" }), false);
+assert.equal(expenseMatchesFilters(expense, { budgetItemName: "10. Daily" }), true);
 assert.equal(expenseMatchesFilters(expense, { budgetItemName: "24. Food" }), false);
 
 const invoiceExpense = {
@@ -129,4 +132,4 @@ assert.equal(annual[5].estimatedSpend, 400);
 assert.equal(annual[5].income, 1000);
 assert.equal(annual[5].netFlow, 600);
 
-console.log("dashboard filters: 30 assertions passed");
+console.log("dashboard filters: 33 assertions passed");

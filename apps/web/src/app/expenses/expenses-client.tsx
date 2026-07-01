@@ -34,6 +34,7 @@ type Message = {
 
 type MonthFilterValue = "" | "all" | string;
 type SourceFilterValue = "" | "invoice" | "manual";
+type PaymentToolFilterValue = "" | "cash" | "credit_card";
 
 type InvoicePaymentEdit = {
   paymentToolType: "cash" | "credit_card";
@@ -117,6 +118,9 @@ export function ExpensesClient() {
   const queryText = searchParams.get("q") ?? "";
   const [selectedMonth, setSelectedMonth] = useState<MonthFilterValue>(queryMonth);
   const [sourceFilter, setSourceFilter] = useState<SourceFilterValue>("");
+  const [paymentToolFilter, setPaymentToolFilter] = useState<PaymentToolFilterValue>(queryCard ? "credit_card" : "");
+  const [selectedCard, setSelectedCard] = useState(queryCard);
+  const [selectedBudget, setSelectedBudget] = useState(queryBudget);
   const [searchText, setSearchText] = useState(queryText);
   const [activeTag, setActiveTag] = useState(queryTag || queryMerchant);
   const [invoicePaymentEdits, setInvoicePaymentEdits] = useState<Record<string, InvoicePaymentEdit>>({});
@@ -225,11 +229,15 @@ export function ExpensesClient() {
     () => new Map(creditCards.map((c) => [c.name.toLowerCase(), c.cutoff_day])),
     [creditCards]
   );
+  const budgetFilterOptions = useMemo(
+    () => budgetItems.map((item) => ({ value: getBudgetItemLabel(item), label: getBudgetItemLabel(item) })).filter((item) => item.value),
+    [budgetItems]
+  );
 
   const visibleExpenses = useMemo(() => {
     const activeBillMonth = queryBillMonth || undefined;
-    const cutoffDay = activeBillMonth && queryCard
-      ? cardCutoffDayByName.get(queryCard.toLowerCase())
+    const cutoffDay = activeBillMonth && selectedCard
+      ? cardCutoffDayByName.get(selectedCard.toLowerCase())
       : undefined;
 
     return filterExpenses(expenses, {
@@ -237,13 +245,14 @@ export function ExpensesClient() {
       creditCardCutoffDay: cutoffDay,
       month: activeBillMonth || selectedMonth === "all" ? undefined : (selectedMonth || undefined),
       months: activeBillMonth || selectedMonth ? undefined : defaultMonths,
-      creditCardName: queryCard || undefined,
-      budgetItemName: queryBudget || undefined,
+      paymentToolType: paymentToolFilter || undefined,
+      creditCardName: selectedCard || undefined,
+      budgetItemName: selectedBudget || undefined,
       merchantTag: activeTag || undefined,
       sourceType: sourceFilter || undefined,
       query: searchText || undefined
     });
-  }, [activeTag, cardCutoffDayByName, defaultMonths, expenses, queryBillMonth, queryBudget, queryCard, searchText, selectedMonth, sourceFilter]);
+  }, [activeTag, cardCutoffDayByName, defaultMonths, expenses, paymentToolFilter, queryBillMonth, searchText, selectedBudget, selectedCard, selectedMonth, sourceFilter]);
   const displayRows = useMemo(() => buildExpenseDisplayRows(visibleExpenses), [visibleExpenses]);
 
   function toggleInvoice(invoiceNumber: string) {
@@ -256,8 +265,9 @@ export function ExpensesClient() {
   }
   const activeContext = [
     queryBillMonth ? `帳單月 ${queryBillMonth}` : selectedMonth === "all" ? "全部月份" : selectedMonth ? `月份 ${selectedMonth}` : `預設 ${defaultMonths.join("、")}`,
-    queryCard ? `信用卡 ${queryCard}` : "",
-    queryBudget ? `預算 ${queryBudget}` : "",
+    paymentToolFilter === "cash" ? "支付 現金" : paymentToolFilter === "credit_card" ? "支付 信用卡" : "",
+    selectedCard ? `信用卡 ${selectedCard}` : "",
+    selectedBudget ? `預算 ${selectedBudget}` : "",
     activeTag ? `店家 ${activeTag}` : "",
     sourceFilter === "invoice" ? "發票匯入" : sourceFilter === "manual" ? "手動入帳" : "",
     searchText ? `搜尋 ${searchText}` : ""
@@ -514,7 +524,39 @@ export function ExpensesClient() {
               onChange={(event) => setSearchText(event.target.value)}
             />
           </label>
-          <button className="secondary-action" type="button" onClick={() => { setSelectedMonth(""); setSourceFilter(""); setSearchText(""); setActiveTag(""); }}>
+          <label>
+            預算項目
+            <select value={selectedBudget} onChange={(event) => setSelectedBudget(event.target.value)}>
+              <option value="">全部預算項目</option>
+              {budgetFilterOptions.map((item) => (
+                <option key={item.value} value={item.value}>
+                  {item.label}
+                </option>
+              ))}
+            </select>
+          </label>
+          <label>
+            支付工具
+            <select value={paymentToolFilter} onChange={(event) => { const next = event.target.value as PaymentToolFilterValue; setPaymentToolFilter(next); if (next !== "credit_card") setSelectedCard(""); }}>
+              <option value="">全部支付工具</option>
+              <option value="cash">現金</option>
+              <option value="credit_card">信用卡</option>
+            </select>
+          </label>
+          {paymentToolFilter === "credit_card" ? (
+            <label>
+              信用卡
+              <select value={selectedCard} onChange={(event) => setSelectedCard(event.target.value)}>
+                <option value="">全部信用卡</option>
+                {creditCards.map((card) => (
+                  <option key={card.id} value={card.name}>
+                    {card.name}
+                  </option>
+                ))}
+              </select>
+            </label>
+          ) : null}
+          <button className="secondary-action" type="button" onClick={() => { setSelectedMonth(""); setSourceFilter(""); setPaymentToolFilter(""); setSelectedCard(""); setSelectedBudget(""); setSearchText(""); setActiveTag(""); }}>
             清除篩選
           </button>
         </div>

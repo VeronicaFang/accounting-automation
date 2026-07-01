@@ -6,6 +6,7 @@ export type ExpenseFilters = {
   month?: string;
   months?: string[];
   creditCardName?: string;
+  paymentToolType?: ExpenseRecord["paymentToolType"];
   budgetItemName?: string;
   query?: string;
   merchantTag?: string;
@@ -84,6 +85,10 @@ export function expenseMatchesFilters(expense: ExpenseRecord, filters: ExpenseFi
   }
 
   if (filters.sourceType && getExpenseSourceType(expense) !== filters.sourceType) {
+    return false;
+  }
+
+  if (filters.paymentToolType && expense.paymentToolType !== filters.paymentToolType) {
     return false;
   }
 

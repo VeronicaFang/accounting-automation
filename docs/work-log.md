@@ -656,3 +656,17 @@ Previous grouped-invoice work completed invoice grouping/backfill and made invoi
 - Verification:
   - `npm run typecheck`: passed.
   - `npm test`: passed.
+
+### Expense Filters: Payment Tool And Budget Item
+
+- Date: 2026-07-01
+- Request: add filters in expense details for payment tool and budget item categories.
+- Changes:
+  - Added `paymentToolType` support to shared expense filtering.
+  - Added regression tests for payment tool and budget item filtering.
+  - Added `/expenses` filter controls for `預算項目`, `支付工具`, and credit-card selection when payment tool is `信用卡`.
+  - Existing URL drilldown `card=` values now initialize the payment tool filter as `信用卡`, so the card selector is visible after navigating from bill views.
+- Verification:
+  - `npm run typecheck`: passed.
+  - `npm test`: passed.
+  - `npm run build`: Next.js compiled successfully, then hit the known local Windows/Codex `spawn EPERM` after compile.
