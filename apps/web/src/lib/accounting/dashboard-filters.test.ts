@@ -6,10 +6,13 @@ import {
   addMonths,
   buildAnnualDashboardMonths,
   expenseMatchesFilters,
+  filterCashFlowMonthsByYear,
   filterFutureBills,
   filterHistoricalBills,
+  getCashFlowAvailableYears,
   getDefaultExpenseMonths,
-  monthKeyFromDateValue
+  monthKeyFromDateValue,
+  summarizeCashFlowMonths
 } from "./dashboard-filters.ts";
 
 assert.equal(monthKeyFromDateValue(new Date("2026-06-23T12:00:00+08:00")), "2026-06");
@@ -132,4 +135,20 @@ assert.equal(annual[5].estimatedSpend, 400);
 assert.equal(annual[5].income, 1000);
 assert.equal(annual[5].netFlow, 600);
 
-console.log("dashboard filters: 33 assertions passed");
+
+const cashFlowMonths = [
+  { month: "2025-12", income: 500, cashExpense: 100, estimatedCardPayment: 50, netFlow: 350, endingBalance: 350 },
+  { month: "2026-01", income: 1000, cashExpense: 200, estimatedCardPayment: 150, netFlow: 650, endingBalance: 1000 },
+  { month: "2026-02", income: 900, cashExpense: 300, estimatedCardPayment: 120, actualCardPayment: 100, netFlow: 500, endingBalance: 1500 }
+];
+
+assert.deepEqual(getCashFlowAvailableYears(cashFlowMonths), ["2026", "2025"]);
+assert.deepEqual(filterCashFlowMonthsByYear(cashFlowMonths, "2026").map((month) => month.month), ["2026-01", "2026-02"]);
+assert.deepEqual(summarizeCashFlowMonths(filterCashFlowMonthsByYear(cashFlowMonths, "2026")), {
+  income: 1900,
+  cashExpense: 500,
+  cardPayment: 250,
+  netFlow: 1150,
+  endingBalance: 1500
+});
+console.log("dashboard filters: 36 assertions passed");

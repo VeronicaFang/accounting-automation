@@ -27,10 +27,8 @@ export function CashFlowTable({ months }: { months: CashFlowMonth[] }) {
                 <td>{formatCurrency(month.income)}</td>
                 <td>{formatCurrency(month.cashExpense)}</td>
                 <td>{formatCurrency(month.actualCardPayment ?? month.estimatedCardPayment)}</td>
-                <td className={month.netFlow < 0 ? "text-danger" : "text-good"}>
-                  {formatCurrency(month.netFlow)}
-                </td>
-                <td>{month.endingBalance === undefined ? "未設定" : formatCurrency(month.endingBalance)}</td>
+                <td className={month.netFlow < 0 ? "text-danger" : "text-good"}>{formatCurrency(month.netFlow)}</td>
+                <td>{month.endingBalance === undefined ? "尚未計算" : formatCurrency(month.endingBalance)}</td>
               </tr>
             ))}
           </tbody>

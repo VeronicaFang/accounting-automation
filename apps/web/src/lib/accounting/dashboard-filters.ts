@@ -24,6 +24,14 @@ export type AnnualDashboardMonth = {
   netFlow: number;
 };
 
+export type CashFlowSummary = {
+  income: number;
+  cashExpense: number;
+  cardPayment: number;
+  netFlow: number;
+  endingBalance?: number;
+};
+
 export function monthKeyFromDateValue(date = new Date()): string {
   return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}`;
 }
@@ -130,6 +138,40 @@ export function buildInstallmentScheduleQuery(cashFlowMonth: string, creditCardI
     credit_card_id: `eq.${creditCardId}`,
     order: "payment_sequence.asc"
   };
+}
+export function getCashFlowAvailableYears(months: CashFlowMonth[]): string[] {
+  return Array.from(new Set(months.map((month) => month.month.slice(0, 4)).filter(Boolean))).sort((a, b) =>
+    b.localeCompare(a)
+  );
+}
+
+export function filterCashFlowMonthsByYear(months: CashFlowMonth[], year: string): CashFlowMonth[] {
+  return months
+    .filter((month) => month.month.startsWith(`${year}-`))
+    .sort((a, b) => a.month.localeCompare(b.month));
+}
+
+export function summarizeCashFlowMonths(months: CashFlowMonth[]): CashFlowSummary {
+  const summary = months.reduce<CashFlowSummary>(
+    (current, month) => ({
+      income: current.income + month.income,
+      cashExpense: current.cashExpense + month.cashExpense,
+      cardPayment: current.cardPayment + (month.actualCardPayment ?? month.estimatedCardPayment),
+      netFlow: current.netFlow + month.netFlow,
+      endingBalance: current.endingBalance
+    }),
+    { income: 0, cashExpense: 0, cardPayment: 0, netFlow: 0 }
+  );
+
+  const latestWithBalance = [...months]
+    .sort((a, b) => b.month.localeCompare(a.month))
+    .find((month) => month.endingBalance !== undefined);
+
+  if (latestWithBalance) {
+    summary.endingBalance = latestWithBalance.endingBalance;
+  }
+
+  return summary;
 }
 export function buildAnnualDashboardMonths(
   year: number,

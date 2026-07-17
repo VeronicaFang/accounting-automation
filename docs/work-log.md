@@ -18,6 +18,31 @@
 - Production domain: `https://accounting-automation-ten.vercel.app`
 - GitHub repo: `VeronicaFang/accounting-automation`
 - Production branch: `main`
+## 2026-07-17
+
+### Cash Flow Page Enhancement
+
+- Commit: `this commit feat: enhance cash flow page`
+- Scope:
+  - Cash Flow page now loads Supabase dashboard data from the browser session, matching the Home dashboard data path instead of relying only on initial mock data.
+  - Added year selector for available cash-flow years.
+  - Added annual summary cards for income, cash expense, credit-card payment, and net cash flow.
+  - Added cash-flow insight tiles for highest inflow month, highest outflow month, and drilldown guidance.
+  - Added a monthly cash-flow detail table with status pills for inflow, outflow, and flat months.
+  - Monthly income links to Income, cash expense links to Expenses with month filter, and card payment links to Bills with month context.
+  - Shared `CashFlowTable` labels were corrected to use readable Traditional Chinese copy.
+  - Added pure helper coverage for cash-flow available years, yearly filtering, and summary totals.
+- Local verification:
+  - `npm run typecheck` from `apps/web`: passed.
+  - `npm test` from `apps/web`: passed.
+  - `npm run build` from `apps/web`: compiled successfully, then failed locally with known Windows/Codex `spawn EPERM` after compile.
+  - `git diff --check`: passed.
+- Production deployment status:
+  - Awaiting local commit and user manual push.
+  - User should run `git push origin main` from the repo folder after Codex commits.
+  - After push, Codex should check Vercel deployments and confirm `READY` before treating production as updated.
+- Follow-up TODO:
+  - If the Bills page should actively filter by `?month=YYYY-MM`, add a visible month filter there; current Cash Flow links pass month context but Bills page does not yet consume it.
 
 ## 2026-06-23
 
