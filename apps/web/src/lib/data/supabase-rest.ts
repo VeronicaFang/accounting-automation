@@ -70,11 +70,21 @@ export function createSupabaseRestHeaders(
   };
 }
 
-export async function fetchSupabaseRows<T>(
+function buildSupabaseRestUrl(config: SupabaseRestConfig, tableName: string, query: Record<string, string>): URL {
+  const url = new URL(`${config.restUrl}/${tableName}`);
+  Object.entries(query).forEach(([key, value]) => {
+    url.searchParams.set(key, value);
+  });
+
+  return url;
+}
+
+async function fetchSupabaseRowsWithHeaders<T>(
   tableName: string,
   query: Record<string, string>,
-  env: SupabaseEnv = getDefaultSupabaseEnv(),
-  accessToken?: string
+  env: SupabaseEnv,
+  accessToken: string | undefined,
+  extraHeaders: Record<string, string> = {}
 ): Promise<T[]> {
   const config = getSupabaseRestConfig(env);
 
@@ -83,14 +93,12 @@ export async function fetchSupabaseRows<T>(
     throw new Error(`Supabase REST is not configured: ${JSON.stringify(diagnostics)}`);
   }
 
-  const url = new URL(`${config.restUrl}/${tableName}`);
-  Object.entries(query).forEach(([key, value]) => {
-    url.searchParams.set(key, value);
-  });
-
-  const response = await fetch(url, {
+  const response = await fetch(buildSupabaseRestUrl(config, tableName, query), {
     cache: "no-store",
-    headers: createSupabaseRestHeaders(config, accessToken)
+    headers: {
+      ...createSupabaseRestHeaders(config, accessToken),
+      ...extraHeaders
+    }
   });
 
   if (!response.ok) {
@@ -99,4 +107,37 @@ export async function fetchSupabaseRows<T>(
   }
 
   return (await response.json()) as T[];
+}
+
+export async function fetchSupabaseRows<T>(
+  tableName: string,
+  query: Record<string, string>,
+  env: SupabaseEnv = getDefaultSupabaseEnv(),
+  accessToken?: string
+): Promise<T[]> {
+  return fetchSupabaseRowsWithHeaders<T>(tableName, query, env, accessToken);
+}
+
+export async function fetchAllSupabaseRows<T>(
+  tableName: string,
+  query: Record<string, string>,
+  env: SupabaseEnv = getDefaultSupabaseEnv(),
+  accessToken?: string,
+  pageSize = 1000
+): Promise<T[]> {
+  const rows: T[] = [];
+  let offset = 0;
+
+  while (true) {
+    const page = await fetchSupabaseRowsWithHeaders<T>(tableName, query, env, accessToken, {
+      Range: `${offset}-${offset + pageSize - 1}`
+    });
+    rows.push(...page);
+
+    if (page.length < pageSize) {
+      return rows;
+    }
+
+    offset += pageSize;
+  }
 }

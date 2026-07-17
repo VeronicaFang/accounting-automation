@@ -25,7 +25,7 @@ import {
   type SupabaseExpenseRow,
   type SupabaseReviewCountRow
 } from "./supabase-mappers";
-import { fetchSupabaseRows, isSupabaseRestConfigured } from "./supabase-rest";
+import { fetchAllSupabaseRows, fetchSupabaseRows, isSupabaseRestConfigured } from "./supabase-rest";
 
 export function isSupabaseDashboardConfigured(): boolean {
   return isSupabaseRestConfigured();
@@ -88,7 +88,8 @@ export async function getSupabaseBillEstimates(accessToken?: string) {
 
 export async function getSupabaseDashboardData(
   fallback: AccountingDashboardData,
-  accessToken?: string
+  accessToken?: string,
+  budgetYear?: string
 ): Promise<Partial<AccountingDashboardData>> {
   const [cashFlowRows, billEstimates, reviewTasks, budgetStatuses] = await Promise.all([
     fetchSupabaseRows<SupabaseCashFlowMonthRow>(
@@ -103,7 +104,7 @@ export async function getSupabaseDashboardData(
     ),
     getSupabaseBillEstimates(accessToken),
     getSupabaseReviewTasks(accessToken),
-    getSupabaseBudgetStatuses(accessToken)
+    getSupabaseBudgetStatuses(accessToken, budgetYear)
   ]);
 
   const cashFlowMonths = mapCashFlowRows(cashFlowRows);
@@ -291,7 +292,7 @@ export async function getSupabaseInstallmentSchedulesByMonth(
   }));
 }
 
-export async function getSupabaseBudgetStatuses(accessToken?: string): Promise<BudgetStatus[]> {
+export async function getSupabaseBudgetStatuses(accessToken?: string, budgetYear?: string): Promise<BudgetStatus[]> {
   const [budgetItems, budgetGroups, expenseRows] = await Promise.all([
     fetchSupabaseRows<SupabaseBudgetItemLookupRow>(
       "budget_items",
@@ -310,16 +311,17 @@ export async function getSupabaseBudgetStatuses(accessToken?: string): Promise<B
       undefined,
       accessToken
     ),
-    fetchSupabaseRows<SupabaseExpenseBudgetRow>(
+    fetchAllSupabaseRows<SupabaseExpenseBudgetRow>(
       "expenses",
       {
-        select: "budget_item_id,amount,status",
-        limit: "2000"
+        select: "budget_item_id,amount,status,budget_month",
+        status: "eq.active",
+        order: "budget_month.asc,id.asc"
       },
       undefined,
       accessToken
     )
   ]);
 
-  return mapBudgetStatuses(budgetItems, budgetGroups, expenseRows);
+  return mapBudgetStatuses(budgetItems, budgetGroups, expenseRows, budgetYear);
 }

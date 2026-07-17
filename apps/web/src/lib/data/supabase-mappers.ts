@@ -52,6 +52,7 @@ export type SupabaseExpenseBudgetRow = {
   budget_item_id: string;
   amount: string | number;
   status: string;
+  budget_month?: string;
 };
 
 export type SupabaseExpenseRow = {
@@ -212,13 +213,15 @@ function severityFromUsage(usageRatio: number): BudgetStatus["severity"] {
 export function mapBudgetStatuses(
   budgetItems: SupabaseBudgetItemLookupRow[],
   budgetGroups: SupabaseBudgetGroupLookupRow[],
-  expenses: SupabaseExpenseBudgetRow[]
+  expenses: SupabaseExpenseBudgetRow[],
+  budgetYear?: string
 ): BudgetStatus[] {
   const groupNameById = new Map(budgetGroups.map((group) => [group.id, group.name]));
   const usedByBudgetItemId = new Map<string, number>();
 
   expenses
     .filter((expense) => expense.status !== "cancelled")
+    .filter((expense) => !budgetYear || String(expense.budget_month ?? "").startsWith(budgetYear + "-"))
     .forEach((expense) => {
       usedByBudgetItemId.set(
         expense.budget_item_id,

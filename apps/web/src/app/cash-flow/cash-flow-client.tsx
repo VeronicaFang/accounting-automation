@@ -196,7 +196,7 @@ export function CashFlowClient({ initialData }: CashFlowClientProps) {
     setState("loading");
     setError(null);
 
-    getSupabaseDashboardData(initialData, session.accessToken)
+    getSupabaseDashboardData(initialData, session.accessToken, selectedYear)
       .then((dashboardData) => {
         if (!isCurrent) {
           return;
@@ -217,7 +217,7 @@ export function CashFlowClient({ initialData }: CashFlowClientProps) {
     return () => {
       isCurrent = false;
     };
-  }, [initialData]);
+  }, [initialData, selectedYear]);
 
   const availableYears = useMemo(() => getCashFlowAvailableYears(data.cashFlowMonths), [data.cashFlowMonths]);
   const effectiveYear = availableYears.includes(selectedYear) ? selectedYear : availableYears[0] ?? currentYear;

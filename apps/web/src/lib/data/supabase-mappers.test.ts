@@ -98,4 +98,17 @@ assert.equal(budgetStatuses[0].groupName, "個人");
 assert.equal(budgetStatuses[0].itemName, "24. 餐費");
 assert.equal(budgetStatuses[0].severity, "warning");
 
-console.log("supabase mappers: 21 assertions passed");
+
+const yearlyBudgetStatuses = mapBudgetStatuses(
+  [{ id: "budget-item-2", budget_group_id: "group-1", legacy_name: "38. 家電", name: "家電", annual_budget: "20000" }],
+  [{ id: "group-1", name: "家庭" }],
+  [
+    { budget_item_id: "budget-item-2", amount: "7690", status: "active", budget_month: "2026-06" },
+    { budget_item_id: "budget-item-2", amount: "5000", status: "active", budget_month: "2027-01" }
+  ],
+  "2026"
+);
+
+assert.equal(yearlyBudgetStatuses[0].usedAmount, 7690);
+assert.equal(yearlyBudgetStatuses[0].remainingAmount, 12310);
+console.log("supabase mappers: 23 assertions passed");
