@@ -1539,6 +1539,168 @@ textarea {
   }
 }
 
+
+.spending-capacity-panel {
+  margin-top: 16px;
+}
+
+.spending-capacity-danger {
+  border-color: rgba(185, 28, 28, 0.26);
+}
+
+.spending-capacity-ok {
+  border-color: rgba(22, 101, 52, 0.24);
+}
+
+.spending-capacity-heading {
+  align-items: flex-start;
+}
+
+.safety-reserve-control {
+  align-items: flex-start;
+  color: var(--muted);
+  display: inline-flex;
+  flex-direction: column;
+  font-size: 12px;
+  font-weight: 800;
+  gap: 6px;
+  min-width: 170px;
+}
+
+.safety-reserve-control input {
+  background: #fffefa;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  color: var(--ink);
+  font: inherit;
+  min-height: 38px;
+  padding: 8px 10px;
+  width: 100%;
+}
+
+.spending-capacity-grid {
+  display: grid;
+  gap: 12px;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  margin-top: 16px;
+}
+
+.spending-capacity-grid > div {
+  background: #fffefa;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  padding: 14px;
+}
+
+.spending-capacity-grid span,
+.spending-capacity-grid strong,
+.spending-capacity-grid small {
+  display: block;
+}
+
+.spending-capacity-grid span,
+.spending-capacity-grid small {
+  color: var(--muted);
+}
+
+.spending-capacity-grid strong {
+  font-size: 28px;
+  line-height: 1.1;
+  margin: 8px 0;
+}
+
+.capacity-shortfall strong {
+  color: var(--danger);
+}
+
+.capacity-surplus strong {
+  color: var(--good);
+}
+
+.capacity-meter {
+  background: #fee2e2;
+  border-radius: 999px;
+  height: 12px;
+  margin-top: 16px;
+  overflow: hidden;
+}
+
+.capacity-meter-fill {
+  background: linear-gradient(90deg, #0891b2 0%, #16a34a 100%);
+  border-radius: inherit;
+  height: 100%;
+  transition: width 180ms ease;
+}
+
+.capacity-meter-labels,
+.capacity-list-title,
+.capacity-item {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.capacity-meter-labels {
+  color: var(--muted);
+  font-size: 12px;
+  font-weight: 800;
+  margin-top: 8px;
+}
+
+.capacity-lists {
+  display: grid;
+  gap: 16px;
+  grid-template-columns: minmax(0, 1.35fr) minmax(0, 1fr);
+  margin-top: 18px;
+}
+
+.capacity-list-title {
+  align-items: center;
+  border-bottom: 1px solid var(--line);
+  color: var(--ink);
+  margin-bottom: 8px;
+  padding-bottom: 8px;
+}
+
+.capacity-list-title span {
+  color: var(--muted);
+  font-weight: 800;
+}
+
+.capacity-item {
+  align-items: center;
+  border-radius: 8px;
+  color: var(--ink);
+  padding: 8px 10px;
+  text-decoration: none;
+}
+
+.capacity-item:hover {
+  background: #f8fafc;
+}
+
+.capacity-item strong {
+  flex-shrink: 0;
+  font-variant-numeric: tabular-nums;
+}
+
+.capacity-item-muted {
+  color: var(--muted);
+}
+
+@media (max-width: 900px) {
+  .spending-capacity-heading,
+  .capacity-meter-labels,
+  .capacity-item {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+
+  .spending-capacity-grid,
+  .capacity-lists {
+    grid-template-columns: 1fr;
+  }
+}
 .budget-alert-panel {
   margin-bottom: 16px;
 }

@@ -13,7 +13,8 @@ import {
   getDefaultExpenseMonths,
   monthKeyFromDateValue,
   summarizeCashFlowMonths,
-  summarizeOverBudgetItems
+  summarizeOverBudgetItems,
+  summarizeSpendingCapacity
 } from "./dashboard-filters.ts";
 
 assert.equal(monthKeyFromDateValue(new Date("2026-06-23T12:00:00+08:00")), "2026-06");
@@ -161,4 +162,23 @@ const overBudgetSummary = summarizeOverBudgetItems([
 
 assert.deepEqual(overBudgetSummary.items.map((item) => item.id), ["over-b", "over-a"]);
 assert.equal(overBudgetSummary.totalOverrun, 700);
-console.log("dashboard filters: 38 assertions passed");
+
+const spendingCapacity = summarizeSpendingCapacity(
+  [
+    { id: "food", groupName: "living", itemName: "24. Food", annualBudget: 1000, usedAmount: 600, remainingAmount: 400, usageRatio: 0.6, severity: "normal" },
+    { id: "tax", groupName: "tax", itemName: "05. Tax", annualBudget: 500, usedAmount: 100, remainingAmount: 400, usageRatio: 0.2, severity: "normal" },
+    { id: "over", groupName: "over", itemName: "99. Over", annualBudget: 100, usedAmount: 120, remainingAmount: -20, usageRatio: 1.2, severity: "over_budget" }
+  ],
+  300,
+  ["05. Tax"],
+  50
+);
+
+assert.deepEqual(spendingCapacity.plannedItems.map((item) => item.id), ["food"]);
+assert.deepEqual(spendingCapacity.closedItems.map((item) => item.id), ["tax"]);
+assert.equal(spendingCapacity.plannedRemaining, 400);
+assert.equal(spendingCapacity.closedRemaining, 400);
+assert.equal(spendingCapacity.spendableCashFlow, 250);
+assert.equal(spendingCapacity.shortfall, 150);
+assert.equal(spendingCapacity.surplus, 0);
+console.log("dashboard filters: 45 assertions passed");

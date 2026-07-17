@@ -8,7 +8,9 @@ import {
   filterCashFlowMonthsByYear,
   getCashFlowAvailableYears,
   monthKeyFromDateValue,
-  summarizeCashFlowMonths
+  summarizeCashFlowMonths,
+  summarizeSpendingCapacity,
+  type SpendingCapacitySummary
 } from "@/lib/accounting/dashboard-filters";
 import { isStoredSupabaseSessionValid, readStoredSupabaseSession } from "@/lib/auth/supabase-auth";
 import type { AccountingDashboardData } from "@/lib/data/accounting-dashboard";
@@ -72,10 +74,108 @@ function MonthLink({ href, children }: { href: string; children: React.ReactNode
   );
 }
 
+const DEFAULT_CLOSED_BUDGET_ITEM_NAMES = [
+  "05. 所得稅",
+  "14. 動動生日派對",
+  "30. 高雄小旅行",
+  "31. 過年住宿+車票",
+  "29. 寵物"
+];
+
+function SpendingCapacityPanel({
+  capacity,
+  safetyReserveInput,
+  onSafetyReserveChange
+}: {
+  capacity: SpendingCapacitySummary;
+  safetyReserveInput: string;
+  onSafetyReserveChange: (value: string) => void;
+}) {
+  const isShort = capacity.shortfall > 0;
+  const progress =
+    capacity.plannedRemaining > 0
+      ? Math.min(100, Math.max(0, (capacity.spendableCashFlow / capacity.plannedRemaining) * 100))
+      : 100;
+
+  return (
+    <section className={`surface section-block spending-capacity-panel ${isShort ? "spending-capacity-danger" : "spending-capacity-ok"}`}>
+      <div className="section-heading spending-capacity-heading">
+        <div>
+          <h2>年度支出承受度</h2>
+          <span>比對尚未用完預算與年度現金流，已排除事件結束不再動支的項目。</span>
+        </div>
+        <label className="safety-reserve-control">
+          安全現金水位
+          <input
+            type="number"
+            min="0"
+            inputMode="numeric"
+            value={safetyReserveInput}
+            onChange={(event) => onSafetyReserveChange(event.target.value)}
+          />
+        </label>
+      </div>
+
+      <div className="spending-capacity-grid">
+        <div>
+          <span>預算預期還會花</span>
+          <strong>{formatCurrency(capacity.plannedRemaining)}</strong>
+          <small>{capacity.plannedItems.length} 個仍可能動支項目</small>
+        </div>
+        <div>
+          <span>現金流可承受</span>
+          <strong>{formatCurrency(capacity.spendableCashFlow)}</strong>
+          <small>年度淨流量 {formatCurrency(capacity.cashFlowCapacity)} - 安全水位 {formatCurrency(capacity.safetyReserve)}</small>
+        </div>
+        <div className={isShort ? "capacity-shortfall" : "capacity-surplus"}>
+          <span>{isShort ? "需調整缺口" : "可用緩衝"}</span>
+          <strong>{formatCurrency(isShort ? capacity.shortfall : capacity.surplus)}</strong>
+          <small>{isShort ? "需要刪減、延後或補收入" : "目前現金流可承受預期支出"}</small>
+        </div>
+      </div>
+
+      <div className="capacity-meter" aria-label="現金流可承受比例">
+        <div className="capacity-meter-fill" style={{ width: `${progress}%` }} />
+      </div>
+      <div className="capacity-meter-labels">
+        <span>可承受 {formatCurrency(capacity.spendableCashFlow)}</span>
+        <span>預期支出 {formatCurrency(capacity.plannedRemaining)}</span>
+      </div>
+
+      <div className="capacity-lists">
+        <div>
+          <div className="capacity-list-title">
+            <strong>仍會動支</strong>
+            <span>{formatCurrency(capacity.plannedRemaining)}</span>
+          </div>
+          {capacity.plannedItems.slice(0, 8).map((item) => (
+            <Link className="capacity-item" href={`/expenses?budget=${encodeURIComponent(item.itemName)}`} key={item.id}>
+              <span>{item.itemName}</span>
+              <strong>{formatCurrency(item.remainingAmount)}</strong>
+            </Link>
+          ))}
+        </div>
+        <div>
+          <div className="capacity-list-title">
+            <strong>已結束不再動支</strong>
+            <span>{formatCurrency(capacity.closedRemaining)}</span>
+          </div>
+          {capacity.closedItems.map((item) => (
+            <Link className="capacity-item capacity-item-muted" href={`/expenses?budget=${encodeURIComponent(item.itemName)}`} key={item.id}>
+              <span>{item.itemName}</span>
+              <strong>{formatCurrency(item.remainingAmount)}</strong>
+            </Link>
+          ))}
+        </div>
+      </div>
+    </section>
+  );
+}
 export function CashFlowClient({ initialData }: CashFlowClientProps) {
   const [data, setData] = useState<AccountingDashboardData>(initialData);
   const [state, setState] = useState<LoadState>("signed-out");
   const [error, setError] = useState<string | null>(null);
+  const [safetyReserveInput, setSafetyReserveInput] = useState("0");
   const currentYear = monthKeyFromDateValue().slice(0, 4);
   const [selectedYear, setSelectedYear] = useState(currentYear);
 
@@ -126,6 +226,11 @@ export function CashFlowClient({ initialData }: CashFlowClientProps) {
     [data.cashFlowMonths, effectiveYear]
   );
   const summary = useMemo(() => summarizeCashFlowMonths(visibleMonths), [visibleMonths]);
+  const safetyReserve = Math.max(0, Number(safetyReserveInput.replace(/,/g, "")) || 0);
+  const spendingCapacity = useMemo(
+    () => summarizeSpendingCapacity(data.budgetStatuses, summary.netFlow, DEFAULT_CLOSED_BUDGET_ITEM_NAMES, safetyReserve),
+    [data.budgetStatuses, safetyReserve, summary.netFlow]
+  );
   const bestMonth = visibleMonths.reduce<CashFlowMonth | null>(
     (best, month) => (!best || month.netFlow > best.netFlow ? month : best),
     null
@@ -171,6 +276,12 @@ export function CashFlowClient({ initialData }: CashFlowClientProps) {
           tone={summary.netFlow < 0 ? "rose" : "violet"}
         />
       </div>
+
+      <SpendingCapacityPanel
+        capacity={spendingCapacity}
+        safetyReserveInput={safetyReserveInput}
+        onSafetyReserveChange={setSafetyReserveInput}
+      />
 
       <section className="surface section-block cash-flow-overview">
         <div className="section-heading">

@@ -36,6 +36,21 @@ export type OverBudgetSummary = {
   items: BudgetStatus[];
   totalOverrun: number;
 };
+export type SpendingCapacityItem = BudgetStatus & {
+  planningStatus: "planned" | "closed";
+};
+
+export type SpendingCapacitySummary = {
+  plannedItems: SpendingCapacityItem[];
+  closedItems: SpendingCapacityItem[];
+  plannedRemaining: number;
+  closedRemaining: number;
+  cashFlowCapacity: number;
+  safetyReserve: number;
+  spendableCashFlow: number;
+  shortfall: number;
+  surplus: number;
+};
 
 export function getBudgetOverrunAmount(item: BudgetStatus): number {
   return Math.max(0, -item.remainingAmount, item.usedAmount - item.annualBudget);
@@ -49,6 +64,40 @@ export function summarizeOverBudgetItems(items: BudgetStatus[]): OverBudgetSumma
   return {
     items: overBudgetItems,
     totalOverrun: overBudgetItems.reduce((total, item) => total + getBudgetOverrunAmount(item), 0)
+  };
+}
+
+export function summarizeSpendingCapacity(
+  items: BudgetStatus[],
+  cashFlowCapacity: number,
+  closedItemNames: string[] = [],
+  safetyReserve = 0
+): SpendingCapacitySummary {
+  const closedNames = new Set(closedItemNames.map((name) => normalize(name)));
+  const remainingItems = items
+    .filter((item) => item.remainingAmount > 0)
+    .map<SpendingCapacityItem>((item) => ({
+      ...item,
+      planningStatus: closedNames.has(normalize(item.itemName)) ? "closed" : "planned"
+    }))
+    .sort((a, b) => b.remainingAmount - a.remainingAmount);
+  const plannedItems = remainingItems.filter((item) => item.planningStatus === "planned");
+  const closedItems = remainingItems.filter((item) => item.planningStatus === "closed");
+  const plannedRemaining = plannedItems.reduce((total, item) => total + item.remainingAmount, 0);
+  const closedRemaining = closedItems.reduce((total, item) => total + item.remainingAmount, 0);
+  const spendableCashFlow = cashFlowCapacity - safetyReserve;
+  const shortfall = Math.max(0, plannedRemaining - spendableCashFlow);
+
+  return {
+    plannedItems,
+    closedItems,
+    plannedRemaining,
+    closedRemaining,
+    cashFlowCapacity,
+    safetyReserve,
+    spendableCashFlow,
+    shortfall,
+    surplus: Math.max(0, spendableCashFlow - plannedRemaining)
   };
 }
 export function monthKeyFromDateValue(date = new Date()): string {
