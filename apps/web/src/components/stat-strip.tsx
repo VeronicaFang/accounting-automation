@@ -9,7 +9,7 @@ type Stat = {
 
 export function StatStrip({ stats }: { stats: Stat[] }) {
   return (
-    <section className="stat-strip" aria-label="本月摘要">
+    <section className="stat-strip" aria-label="本月統計">
       {stats.map((stat) => (
         <div className={`stat-cell tone-${stat.tone ?? "neutral"}`} key={stat.label}>
           <span className="stat-label">{stat.label}</span>

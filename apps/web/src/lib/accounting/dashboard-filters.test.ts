@@ -12,7 +12,8 @@ import {
   getCashFlowAvailableYears,
   getDefaultExpenseMonths,
   monthKeyFromDateValue,
-  summarizeCashFlowMonths
+  summarizeCashFlowMonths,
+  summarizeOverBudgetItems
 } from "./dashboard-filters.ts";
 
 assert.equal(monthKeyFromDateValue(new Date("2026-06-23T12:00:00+08:00")), "2026-06");
@@ -151,4 +152,13 @@ assert.deepEqual(summarizeCashFlowMonths(filterCashFlowMonthsByYear(cashFlowMont
   netFlow: 1150,
   endingBalance: 1500
 });
-console.log("dashboard filters: 36 assertions passed");
+
+const overBudgetSummary = summarizeOverBudgetItems([
+  { id: "ok", groupName: "living", itemName: "daily goods", annualBudget: 1000, usedAmount: 900, remainingAmount: 100, usageRatio: 0.9, severity: "normal" },
+  { id: "over-a", groupName: "entertainment", itemName: "subscription", annualBudget: 1000, usedAmount: 1300, remainingAmount: -300, usageRatio: 1.3, severity: "over_budget" },
+  { id: "over-b", groupName: "transport", itemName: "taxi", annualBudget: 500, usedAmount: 900, remainingAmount: -400, usageRatio: 1.8, severity: "over_budget" }
+]);
+
+assert.deepEqual(overBudgetSummary.items.map((item) => item.id), ["over-b", "over-a"]);
+assert.equal(overBudgetSummary.totalOverrun, 700);
+console.log("dashboard filters: 38 assertions passed");

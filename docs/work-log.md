@@ -44,6 +44,25 @@
 - Follow-up TODO:
   - If the Bills page should actively filter by `?month=YYYY-MM`, add a visible month filter there; current Cash Flow links pass month context but Bills page does not yet consume it.
 
+### Home Budget Overrun Summary
+
+- Commit: `this commit feat: highlight over-budget items on home`
+- Scope:
+  - Home page now highlights over-budget budget items immediately below the monthly stat cards.
+  - Added total overrun amount and over-budget item count.
+  - Lists the top over-budget items, sorted by overrun amount, with links into Expense Details filtered by budget item.
+  - Cleaned visible Home page labels, stat labels, annual dashboard labels, and shared budget status list labels to readable Traditional Chinese.
+  - Added shared helper functions for budget overrun amount and over-budget summary sorting.
+  - Added test coverage for over-budget summary total and ordering.
+- Local verification:
+  - `npm run typecheck` from `apps/web`: passed.
+  - `npm test` from `apps/web`: passed.
+  - `npm run build` from `apps/web`: compiled successfully, then failed locally with known Windows/Codex `spawn EPERM` after compile.
+  - `git diff --check`: passed.
+- Production deployment status:
+  - Awaiting local commit and user manual push.
+  - User should run `git push origin main` from the repo folder after Codex commits.
+  - After push, Codex should check Vercel deployments and confirm `READY` before treating production as updated.
 ## 2026-06-23
 
 ### Dashboard Drilldowns And Filters

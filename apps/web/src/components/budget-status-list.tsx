@@ -34,7 +34,6 @@ export function BudgetStatusList({
         {items.map((item) => {
           const isEditing = editingId === item.id;
           const isSaving = savingId === item.id;
-
           const fillPct = Math.min(item.usageRatio * 100, 100);
 
           return (
@@ -59,20 +58,10 @@ export function BudgetStatusList({
                       onChange={(e) => onEditChange?.(item.id, e.target.value)}
                       disabled={isSaving}
                     />
-                    <button
-                      className="secondary-action"
-                      type="button"
-                      disabled={isSaving}
-                      onClick={() => onEditSave?.(item)}
-                    >
-                      {isSaving ? "儲存中…" : "儲存"}
+                    <button className="secondary-action" type="button" disabled={isSaving} onClick={() => onEditSave?.(item)}>
+                      {isSaving ? "儲存中" : "儲存"}
                     </button>
-                    <button
-                      className="secondary-action"
-                      type="button"
-                      disabled={isSaving}
-                      onClick={() => onEditCancel?.()}
-                    >
+                    <button className="secondary-action" type="button" disabled={isSaving} onClick={() => onEditCancel?.()}>
                       取消
                     </button>
                   </div>
@@ -80,7 +69,7 @@ export function BudgetStatusList({
                   <>
                     <span>{formatPercent(item.usageRatio)}</span>
                     <small>
-                      年度 {formatCurrency(item.annualBudget)}　剩餘 {formatCurrency(item.remainingAmount)}
+                      年預算 {formatCurrency(item.annualBudget)}，剩餘 {formatCurrency(item.remainingAmount)}
                       {onEditStart ? (
                         <button
                           className="budget-edit-btn"

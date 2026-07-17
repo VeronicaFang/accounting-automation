@@ -1,4 +1,4 @@
-import type { BillEstimate, CashFlowMonth, ExpenseRecord } from "@/lib/types";
+import type { BillEstimate, BudgetStatus, CashFlowMonth, ExpenseRecord } from "@/lib/types";
 
 export type ExpenseSourceType = "invoice" | "manual";
 
@@ -32,6 +32,25 @@ export type CashFlowSummary = {
   endingBalance?: number;
 };
 
+export type OverBudgetSummary = {
+  items: BudgetStatus[];
+  totalOverrun: number;
+};
+
+export function getBudgetOverrunAmount(item: BudgetStatus): number {
+  return Math.max(0, -item.remainingAmount, item.usedAmount - item.annualBudget);
+}
+
+export function summarizeOverBudgetItems(items: BudgetStatus[]): OverBudgetSummary {
+  const overBudgetItems = items
+    .filter((item) => getBudgetOverrunAmount(item) > 0)
+    .sort((a, b) => getBudgetOverrunAmount(b) - getBudgetOverrunAmount(a));
+
+  return {
+    items: overBudgetItems,
+    totalOverrun: overBudgetItems.reduce((total, item) => total + getBudgetOverrunAmount(item), 0)
+  };
+}
 export function monthKeyFromDateValue(date = new Date()): string {
   return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}`;
 }
