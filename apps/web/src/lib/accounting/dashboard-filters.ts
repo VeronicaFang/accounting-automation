@@ -20,6 +20,7 @@ export type ExpenseFilters = {
 export type AnnualDashboardMonth = {
   month: string;
   estimatedSpend: number;
+  cardPayment: number;
   income: number;
   netFlow: number;
 };
@@ -257,11 +258,13 @@ export function buildAnnualDashboardMonths(
     const month = `${year}-${String(index + 1).padStart(2, "0")}`;
     const cashFlow = cashFlowByMonth.get(month);
     const income = cashFlow?.income ?? 0;
-    const estimatedSpend = (cashFlow?.cashExpense ?? 0) + (billSpendByMonth.get(month) ?? 0);
+    const cardPayment = billSpendByMonth.get(month) ?? 0;
+    const estimatedSpend = (cashFlow?.cashExpense ?? 0) + cardPayment;
 
     return {
       month,
       estimatedSpend,
+      cardPayment,
       income,
       netFlow: income - estimatedSpend
     };

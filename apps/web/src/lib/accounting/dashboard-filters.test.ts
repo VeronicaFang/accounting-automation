@@ -134,6 +134,7 @@ const annual = buildAnnualDashboardMonths(
 
 assert.equal(annual[5].month, "2026-06");
 assert.equal(annual[5].estimatedSpend, 350);
+assert.equal(annual[5].cardPayment, 250);
 assert.equal(annual[5].income, 1000);
 assert.equal(annual[5].netFlow, 650);
 
@@ -181,4 +182,4 @@ assert.equal(spendingCapacity.closedRemaining, 400);
 assert.equal(spendingCapacity.spendableCashFlow, 250);
 assert.equal(spendingCapacity.shortfall, 150);
 assert.equal(spendingCapacity.surplus, 0);
-console.log("dashboard filters: 45 assertions passed");
+console.log("dashboard filters: 46 assertions passed");

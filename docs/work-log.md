@@ -876,3 +876,23 @@ Previous grouped-invoice work completed invoice grouping/backfill and made invoi
   - `git diff --check`: passed.
 - Follow-up:
   - After production deploy, verify the home page first viewport communicates annual guardrails before monthly operational detail.
+
+### Cash Flow Annual Net Flow Uses Bill Projection
+
+- Date: 2026-07-20
+- Problem reported:
+  - Cash Flow showed `年度淨流量` and `現金流可承受` as different numbers even when safety reserve was 0.
+  - The difference came from two credit-card payment sources: `cash_flow_months.net_cash_flow` used stored monthly net flow, while spending capacity used statement-aware credit-card bills.
+- Expected rule:
+  - Annual net flow should use the same source as annual spending capacity: annual income minus cash expenses minus credit-card actual statements when available, otherwise bill estimates.
+- Changes:
+  - `AnnualDashboardMonth` now exposes `cardPayment`, based on `credit_card_bill_estimates` with `credit_card_statements` overriding estimates through the existing bill mapper.
+  - Cash Flow page top `信用卡付款` card now displays the annual actual/estimated credit-card bill total instead of stored `cash_flow_months.credit_card_payment_total`.
+  - Cash Flow page top `年度淨流量` card now displays the projected annual net flow from `buildAnnualDashboardMonths` instead of summing stored `cash_flow_months.net_cash_flow`.
+  - Monthly detail table still displays stored monthly cash-flow rows, so stale monthly summaries remain visible for reconciliation if needed.
+- Local verification:
+  - `npm run typecheck` from `apps/web`: passed.
+  - `npm test` from `apps/web`: passed.
+  - `git diff --check`: passed.
+- Follow-up:
+  - After production deploy, verify Cash Flow top `信用卡付款` matches the credit-card actual/estimated bill total, and `年度淨流量` equals `現金流可承受` when safety reserve is 0.

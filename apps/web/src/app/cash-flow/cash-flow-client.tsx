@@ -228,6 +228,7 @@ export function CashFlowClient({ initialData }: CashFlowClientProps) {
   );
   const summary = useMemo(() => summarizeCashFlowMonths(visibleMonths), [visibleMonths]);
   const annualRows = useMemo(() => buildAnnualDashboardMonths(Number(effectiveYear), visibleMonths, data.billEstimates), [data.billEstimates, effectiveYear, visibleMonths]);
+  const annualProjectedCardPayment = useMemo(() => annualRows.reduce((total, month) => total + month.cardPayment, 0), [annualRows]);
   const annualProjectedNetFlow = useMemo(() => annualRows.reduce((total, month) => total + month.netFlow, 0), [annualRows]);
   const safetyReserve = Math.max(0, Number(safetyReserveInput.replace(/,/g, "")) || 0);
   const spendingCapacity = useMemo(
@@ -271,12 +272,12 @@ export function CashFlowClient({ initialData }: CashFlowClientProps) {
       <div className="stat-strip cash-flow-stat-strip">
         <StatCard label="年度收入" value={summary.income} subtitle={`${effectiveYear} 已入帳與預估收入`} tone="teal" />
         <StatCard label="現金支出" value={summary.cashExpense} subtitle="直接由現金支付的支出" tone="sky" />
-        <StatCard label="信用卡付款" value={summary.cardPayment} subtitle="真實帳單優先，否則用預估" tone="orange" />
+        <StatCard label="信用卡付款" value={annualProjectedCardPayment} subtitle="年度信用卡實際/預估帳單合計" tone="orange" />
         <StatCard
           label="年度淨流量"
-          value={summary.netFlow}
-          subtitle={summary.endingBalance === undefined ? "月底餘額尚未完整計算" : `最近月底餘額 ${formatCurrency(summary.endingBalance)}`}
-          tone={summary.netFlow < 0 ? "rose" : "violet"}
+          value={annualProjectedNetFlow}
+          subtitle="收入扣除現金支出與信用卡實際/預估帳單"
+          tone={annualProjectedNetFlow < 0 ? "rose" : "violet"}
         />
       </div>
 
