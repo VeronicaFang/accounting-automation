@@ -103,7 +103,7 @@ function SpendingCapacityPanel({
       <div className="section-heading spending-capacity-heading">
         <div>
           <h2>年度支出承受度</h2>
-          <span>比對尚未用完預算與年度現金流，已排除事件結束不再動支的項目。</span>
+          <span>比對尚未實現預算與年度可用現金流，已排除事件結束不再動支的項目。</span>
         </div>
         <label className="safety-reserve-control">
           安全現金水位
@@ -119,9 +119,9 @@ function SpendingCapacityPanel({
 
       <div className="spending-capacity-grid">
         <div>
-          <span>預算預期還會花</span>
+          <span>尚未實現預算</span>
           <strong>{formatCurrency(capacity.plannedRemaining)}</strong>
-          <small>{capacity.plannedItems.length} 個仍可能動支項目</small>
+          <small>{capacity.plannedItems.length} 個尚未實現項目</small>
         </div>
         <div>
           <span>現金流可承受</span>
@@ -131,7 +131,7 @@ function SpendingCapacityPanel({
         <div className={isShort ? "capacity-shortfall" : "capacity-surplus"}>
           <span>{isShort ? "需調整缺口" : "可用緩衝"}</span>
           <strong>{formatCurrency(isShort ? capacity.shortfall : capacity.surplus)}</strong>
-          <small>{isShort ? "需要刪減、延後或補收入" : "目前現金流可承受預期支出"}</small>
+          <small>{isShort ? "需要刪減、延後或補收入" : "目前現金流可承受尚未實現預算"}</small>
         </div>
       </div>
 
@@ -140,13 +140,13 @@ function SpendingCapacityPanel({
       </div>
       <div className="capacity-meter-labels">
         <span>可承受 {formatCurrency(capacity.spendableCashFlow)}</span>
-        <span>預期支出 {formatCurrency(capacity.plannedRemaining)}</span>
+        <span>尚未實現預算 {formatCurrency(capacity.plannedRemaining)}</span>
       </div>
 
       <div className="capacity-lists">
         <div>
           <div className="capacity-list-title">
-            <strong>仍會動支</strong>
+            <strong>尚未實現預算</strong>
             <span>{formatCurrency(capacity.plannedRemaining)}</span>
           </div>
           {capacity.plannedItems.slice(0, 8).map((item) => (

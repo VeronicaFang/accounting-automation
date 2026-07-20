@@ -779,3 +779,18 @@ Previous grouped-invoice work completed invoice grouping/backfill and made invoi
 - Follow-up:
   - Commit locally, then user should manually push `main` to trigger Vercel GitHub integration.
   - After user confirms push, Codex should verify production and the user should re-check the `年度支出承受度` number against actual/estimated bill totals.
+
+### Cash Flow Capacity Label Rename
+
+- Date: 2026-07-20
+- Compared with previous log entry:
+  - Previous work changed the annual capacity formula to use statement-aware projected bills.
+  - This work only updates the display wording so the budget side is described as `尚未實現預算` instead of future spending.
+- Changes:
+  - Cash Flow page `年度支出承受度` text now uses `尚未實現預算` for the remaining budget bucket.
+  - Clarifies that the amount is budget not yet realized after active expenses have already consumed budget, avoiding confusion with scheduled card bills already included in cash-flow capacity.
+- Local verification:
+  - `npm run typecheck` from `apps/web`: passed.
+  - `git diff --check`: passed.
+- Follow-up:
+  - Commit locally, then user should manually push `main` to trigger Vercel GitHub integration.
