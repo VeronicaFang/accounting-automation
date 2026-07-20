@@ -23,7 +23,7 @@ assert.deepEqual(getDefaultExpenseMonths("2026-06"), ["2026-06", "2026-05"]);
 
 const bills = [
   { id: "jan", month: "2026-01", creditCardId: "card-1", creditCardName: "CTBC", estimatedAmount: 100, paymentDate: "2026-01-17", cutoffLabel: "", status: "estimated" as const, scheduleCount: 1 },
-  { id: "jun", month: "2026-06", creditCardId: "card-2", creditCardName: "Union", estimatedAmount: 300, paymentDate: "2026-06-17", cutoffLabel: "", status: "estimated" as const, scheduleCount: 2 },
+  { id: "jun", month: "2026-06", creditCardId: "card-2", creditCardName: "Union", estimatedAmount: 300, statementAmount: 250, paymentDate: "2026-06-17", cutoffLabel: "", status: "statement_received" as const, scheduleCount: 2 },
   { id: "jul", month: "2026-07", creditCardId: "card-3", creditCardName: "Cathay", estimatedAmount: 500, paymentDate: "2026-07-17", cutoffLabel: "", status: "estimated" as const, scheduleCount: 3 }
 ];
 
@@ -133,9 +133,9 @@ const annual = buildAnnualDashboardMonths(
 );
 
 assert.equal(annual[5].month, "2026-06");
-assert.equal(annual[5].estimatedSpend, 400);
+assert.equal(annual[5].estimatedSpend, 350);
 assert.equal(annual[5].income, 1000);
-assert.equal(annual[5].netFlow, 600);
+assert.equal(annual[5].netFlow, 650);
 
 
 const cashFlowMonths = [

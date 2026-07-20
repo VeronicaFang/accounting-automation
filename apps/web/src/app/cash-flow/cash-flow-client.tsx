@@ -5,6 +5,7 @@ import { useEffect, useMemo, useState } from "react";
 
 import { PageHeader } from "@/components/page-header";
 import {
+  buildAnnualDashboardMonths,
   filterCashFlowMonthsByYear,
   getCashFlowAvailableYears,
   monthKeyFromDateValue,
@@ -226,10 +227,12 @@ export function CashFlowClient({ initialData }: CashFlowClientProps) {
     [data.cashFlowMonths, effectiveYear]
   );
   const summary = useMemo(() => summarizeCashFlowMonths(visibleMonths), [visibleMonths]);
+  const annualRows = useMemo(() => buildAnnualDashboardMonths(Number(effectiveYear), visibleMonths, data.billEstimates), [data.billEstimates, effectiveYear, visibleMonths]);
+  const annualProjectedNetFlow = useMemo(() => annualRows.reduce((total, month) => total + month.netFlow, 0), [annualRows]);
   const safetyReserve = Math.max(0, Number(safetyReserveInput.replace(/,/g, "")) || 0);
   const spendingCapacity = useMemo(
-    () => summarizeSpendingCapacity(data.budgetStatuses, summary.netFlow, DEFAULT_CLOSED_BUDGET_ITEM_NAMES, safetyReserve),
-    [data.budgetStatuses, safetyReserve, summary.netFlow]
+    () => summarizeSpendingCapacity(data.budgetStatuses, annualProjectedNetFlow, DEFAULT_CLOSED_BUDGET_ITEM_NAMES, safetyReserve),
+    [annualProjectedNetFlow, data.budgetStatuses, safetyReserve]
   );
   const bestMonth = visibleMonths.reduce<CashFlowMonth | null>(
     (best, month) => (!best || month.netFlow > best.netFlow ? month : best),

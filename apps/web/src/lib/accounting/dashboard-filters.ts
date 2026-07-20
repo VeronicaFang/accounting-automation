@@ -250,7 +250,7 @@ export function buildAnnualDashboardMonths(
   const billSpendByMonth = new Map<string, number>();
 
   for (const bill of billEstimates) {
-    billSpendByMonth.set(bill.month, (billSpendByMonth.get(bill.month) ?? 0) + bill.estimatedAmount);
+    billSpendByMonth.set(bill.month, (billSpendByMonth.get(bill.month) ?? 0) + (bill.statementAmount ?? bill.estimatedAmount));
   }
 
   return Array.from({ length: 12 }, (_, index) => {

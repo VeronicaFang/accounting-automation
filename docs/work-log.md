@@ -758,3 +758,24 @@ Previous grouped-invoice work completed invoice grouping/backfill and made invoi
 - Follow-up:
   - Commit locally, then user should manually push `main` to trigger Vercel GitHub integration.
   - After user confirms push, Codex should verify the latest production deployment is `READY` and ask the user to test batch deletion on production.
+
+### Cash Flow Capacity Uses Statement-Aware Annual Projection
+
+- Date: 2026-07-20
+- Compared with previous log entry:
+  - Previous work added batch deletion in Expense Details and confirmed deletion reuses cash-flow and bill-estimate rollback logic.
+  - This work corrects the Cash Flow page's annual spending capacity calculation so it reflects actual/estimated credit-card bills consistently.
+- Changes:
+  - `buildAnnualDashboardMonths` now uses `statementAmount` when a credit-card statement exists, otherwise falls back to `estimatedAmount`.
+  - Cash Flow page's `年度支出承受度` no longer uses raw `cash_flow_months.net_cash_flow` directly.
+  - Annual capacity now sums the 12 projected annual rows: income minus cash expense minus statement-aware credit-card bill amount.
+  - This aligns the Cash Flow page with the user's rule: actual statements for occurred months, estimated bills for future/unconfirmed months.
+- Local verification:
+  - `npm run typecheck` from `apps/web`: passed.
+  - `npm test` from `apps/web`: passed.
+  - `node --experimental-strip-types src/lib/accounting/dashboard-filters.test.ts`: passed.
+  - `git diff --check`: passed.
+  - `npm run build` from `apps/web`: Next.js compiled successfully, then failed locally with the known Windows/Codex `spawn EPERM` after compile.
+- Follow-up:
+  - Commit locally, then user should manually push `main` to trigger Vercel GitHub integration.
+  - After user confirms push, Codex should verify production and the user should re-check the `年度支出承受度` number against actual/estimated bill totals.
