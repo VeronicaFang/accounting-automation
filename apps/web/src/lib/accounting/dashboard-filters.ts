@@ -59,6 +59,7 @@ export type AnnualFinancialSummary = {
   annualNetRemaining: number;
   annualBudget: number;
   realizedBudget: number;
+  cashFlowBudgetDifference: number;
   unrealizedBudget: number;
   budgetUsageRatio: number;
   consumptionWaterRatio: number | null;
@@ -125,6 +126,7 @@ export function summarizeAnnualFinancialOverview(
   const annualNetRemaining = annualIncome - annualSpend;
   const annualBudget = items.reduce((total, item) => total + item.annualBudget, 0);
   const realizedBudget = items.reduce((total, item) => total + item.usedAmount, 0);
+  const cashFlowBudgetDifference = annualSpend - realizedBudget;
   const unrealizedBudget = annualBudget - realizedBudget;
   const budgetUsageRatio = annualBudget > 0 ? 1 - unrealizedBudget / annualBudget : 0;
   const consumptionWaterRatio = annualNetRemaining > 0 ? unrealizedBudget / annualNetRemaining : null;
@@ -140,6 +142,7 @@ export function summarizeAnnualFinancialOverview(
     annualNetRemaining,
     annualBudget,
     realizedBudget,
+    cashFlowBudgetDifference,
     unrealizedBudget,
     budgetUsageRatio,
     consumptionWaterRatio,

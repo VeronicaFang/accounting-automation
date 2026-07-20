@@ -191,7 +191,7 @@ function AnnualFinancialOverview({ rows, items }: { rows: ReturnType<typeof buil
         <div className="annual-decision-card">
           <span>已發生預算</span>
           <strong>{formatCurrency(summary.realizedBudget)}</strong>
-          <small>包含已發生消費與預期消費。</small>
+          <small>以消費明細與預算項目分類加總。</small>
         </div>
         <div className={summary.unrealizedBudget < 0 ? "annual-decision-card annual-decision-danger" : "annual-decision-card"}>
           <span>尚未實現的預算金額</span>
@@ -203,6 +203,16 @@ function AnnualFinancialOverview({ rows, items }: { rows: ReturnType<typeof buil
           <strong>{formatPercent(summary.budgetUsageRatio)}</strong>
           <small>1 - 尚未實現預算 / 年度預算金額。</small>
         </div>
+      </div>
+
+      <div className="annual-definition-note">
+        <strong>年度消費總額與已發生預算的差異：{formatCurrency(summary.cashFlowBudgetDifference)}</strong>
+        <p>
+          年度消費總額是現金流口徑，使用現金支出加上信用卡真實帳單，尚未出帳月份才使用預估帳單。已發生預算是預算口徑，使用消費明細依預算項目加總。
+        </p>
+        <p>
+          兩者不一致時，通常代表信用卡真實帳單金額與系統內消費明細或 payment schedules 排程金額不同；可能是帳單上有未記錄消費、退款折抵、手續費、分期入帳月份差異，或帳單調整。
+        </p>
       </div>
 
       <div className="annual-budget-lists">

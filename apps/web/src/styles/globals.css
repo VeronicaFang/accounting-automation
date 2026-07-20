@@ -1204,6 +1204,26 @@ textarea {
   grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
   margin-top: 12px;
 }
+.annual-definition-note {
+  background: #f8fafc;
+  border: 1px solid var(--line);
+  border-left: 4px solid var(--sky);
+  border-radius: 10px;
+  margin-top: 12px;
+  padding: 14px 16px;
+}
+
+.annual-definition-note strong {
+  display: block;
+  font-size: 15px;
+  margin-bottom: 8px;
+}
+
+.annual-definition-note p {
+  color: var(--muted);
+  line-height: 1.7;
+  margin: 6px 0 0;
+}
 
 .annual-decision-list {
   display: grid;

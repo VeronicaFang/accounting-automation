@@ -918,3 +918,20 @@ Previous grouped-invoice work completed invoice grouping/backfill and made invoi
   - `git diff --check`: passed.
 - Follow-up:
   - After production deploy, verify Home shows `年度收支檢視` and that `消費水位警戒` becomes warning when unrealized budget is over 90% of annual net remaining.
+### Home Annual Spending vs Budget Definition Note
+
+- Date: 2026-07-20
+- Goal:
+  - Make the Home page explain why `年度消費總額` and `已發生預算` can differ.
+- Findings documented in UI:
+  - `年度消費總額` is cash-flow / bank-payment view: cash spending plus credit-card actual statements, with estimated bills only for months without statements.
+  - `已發生預算` is budget / expense-detail view: active expenses summed by budget item.
+  - A difference usually means credit-card statement totals and expense/payment schedule totals differ, for example missing recorded expenses, refunds, fee adjustments, installment timing, or statement adjustments.
+- Changes:
+  - Added `cashFlowBudgetDifference = annualSpend - realizedBudget` to the annual financial summary helper.
+  - Added a Home page definition note under the annual budget metrics showing the current difference and explaining both calculation views.
+  - Added CSS for the definition note.
+- Local verification:
+  - `npm run typecheck` from `apps/web`: passed.
+  - `npm test` from `apps/web`: passed; dashboard filter coverage now asserts the cash-flow-vs-budget difference field.
+  - `git diff --check`: passed.
