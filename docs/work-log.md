@@ -794,3 +794,22 @@ Previous grouped-invoice work completed invoice grouping/backfill and made invoi
   - `git diff --check`: passed.
 - Follow-up:
   - Commit locally, then user should manually push `main` to trigger Vercel GitHub integration.
+
+### Spending Capacity Non-Duplication Wording
+
+- Date: 2026-07-20
+- Compared with previous log entry:
+  - Previous work renamed the remaining-budget bucket to `尚未實現預算`.
+  - This work clarifies the intended calculation boundary in the Cash Flow page wording.
+- Logic confirmed:
+  - Scheduled expenses are deducted inside annual available cash flow through cash expenses and statement-aware credit-card bills.
+  - Unrealized budget is represented only by budget remaining after active expenses have consumed budget.
+  - The two buckets are intentionally separate and should not duplicate the same spending commitment.
+- Changes:
+  - Updated the `年度支出承受度` subtitle to state the non-duplication rule directly.
+  - Updated card helper text for `尚未實現預算` and `現金流可承受` to describe each side's source.
+- Local verification:
+  - `npm run typecheck` from `apps/web`: passed.
+  - `git diff --check`: passed.
+- Follow-up:
+  - Commit locally, then user should manually push `main` to trigger Vercel GitHub integration.

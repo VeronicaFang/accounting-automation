@@ -103,7 +103,7 @@ function SpendingCapacityPanel({
       <div className="section-heading spending-capacity-heading">
         <div>
           <h2>年度支出承受度</h2>
-          <span>比對尚未實現預算與年度可用現金流，已排除事件結束不再動支的項目。</span>
+          <span>已排程支出已在年度可用現金流扣除；尚未實現預算只呈現預算剩餘，兩者不重複。</span>
         </div>
         <label className="safety-reserve-control">
           安全現金水位
@@ -121,12 +121,12 @@ function SpendingCapacityPanel({
         <div>
           <span>尚未實現預算</span>
           <strong>{formatCurrency(capacity.plannedRemaining)}</strong>
-          <small>{capacity.plannedItems.length} 個尚未實現項目</small>
+          <small>{capacity.plannedItems.length} 個預算剩餘項目，已扣除已入帳或已排程消費</small>
         </div>
         <div>
           <span>現金流可承受</span>
           <strong>{formatCurrency(capacity.spendableCashFlow)}</strong>
-          <small>年度淨流量 {formatCurrency(capacity.cashFlowCapacity)} - 安全水位 {formatCurrency(capacity.safetyReserve)}</small>
+          <small>收入扣除現金支出與信用卡實際/預估帳單後，再扣安全水位 {formatCurrency(capacity.safetyReserve)}</small>
         </div>
         <div className={isShort ? "capacity-shortfall" : "capacity-surplus"}>
           <span>{isShort ? "需調整缺口" : "可用緩衝"}</span>
