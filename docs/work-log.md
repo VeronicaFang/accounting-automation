@@ -714,3 +714,24 @@ Previous grouped-invoice work completed invoice grouping/backfill and made invoi
   - `npm run typecheck`: passed.
   - `npm test`: passed.
   - `npm run build`: Next.js compiled successfully, then hit the known local Windows/Codex `spawn EPERM` after compile.
+
+### Budget Overview Risk-First Table
+
+- Commit: `this commit feat: improve budget overview clarity`
+- Scope:
+  - Budget page now uses a risk-first desktop table instead of the older mixed visual list.
+  - Added summary cards for over-budget count and total overrun, warning count, annual budget total, used amount, and total remaining amount.
+  - Added filter buttons: Needs Attention, Over Budget, Near Limit, Normal, and All.
+  - Budget rows are sorted by overrun amount first, then usage ratio, so the most serious items appear first.
+  - Each row shows status, budget item, used / annual budget, remaining or overrun amount, usage ratio, and actions.
+  - Kept existing annual budget editing and Expense Details drilldown by budget item.
+  - Added compact row status styling and lighter progress indicators for desktop scanning.
+- Local verification:
+  - `npm run typecheck` from `apps/web`: passed.
+  - `npm test` from `apps/web`: passed.
+  - `npm run build` from `apps/web`: compiled successfully, then failed locally with known Windows/Codex `spawn EPERM` after compile.
+  - `git diff --check`: passed.
+- Production deployment status:
+  - Awaiting local commit and user manual push.
+  - User should run `git push origin main` from the repo folder after Codex commits.
+  - After push, Codex should check Vercel deployments and confirm `READY` before treating production as updated.

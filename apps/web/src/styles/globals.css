@@ -1792,3 +1792,194 @@ textarea {
     grid-template-columns: 1fr;
   }
 }
+
+.budget-overview-summary {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 12px;
+  margin: 16px 0;
+}
+
+.budget-summary-card {
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  background: var(--panel);
+  padding: 16px;
+}
+
+.budget-summary-card span,
+.budget-summary-card strong,
+.budget-summary-card small {
+  display: block;
+}
+
+.budget-summary-card span {
+  color: var(--muted);
+  font-size: 12px;
+  font-weight: 800;
+}
+
+.budget-summary-card strong {
+  margin-top: 8px;
+  font-size: 26px;
+  line-height: 1;
+}
+
+.budget-summary-card small {
+  margin-top: 8px;
+  color: var(--muted);
+}
+
+.budget-summary-danger {
+  border-left: 4px solid var(--danger);
+  background: #fff7f7;
+}
+.budget-summary-danger strong { color: var(--danger); }
+
+.budget-summary-warning {
+  border-left: 4px solid var(--orange);
+  background: var(--orange-bg);
+}
+.budget-summary-warning strong { color: var(--orange); }
+
+.budget-summary-good {
+  border-left: 4px solid var(--good);
+  background: #f0fdf4;
+}
+.budget-summary-good strong { color: var(--good); }
+
+.budget-summary-neutral {
+  border-left: 4px solid var(--sky);
+}
+
+.budget-overview-panel {
+  margin-top: 16px;
+}
+
+.budget-filter-bar {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-bottom: 14px;
+}
+
+.budget-filter-button {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  background: var(--panel);
+  color: var(--ink);
+  cursor: pointer;
+  font-weight: 800;
+  min-height: 36px;
+  padding: 7px 12px;
+}
+
+.budget-filter-button span {
+  display: inline-grid;
+  min-width: 24px;
+  height: 22px;
+  place-items: center;
+  border-radius: 999px;
+  background: #f1f5f9;
+  color: var(--muted);
+  font-size: 12px;
+}
+
+.budget-filter-active {
+  border-color: var(--accent);
+  background: #ecfdf5;
+  color: var(--accent);
+}
+
+.budget-filter-active span {
+  background: var(--accent);
+  color: #fffefa;
+}
+
+.budget-overview-table th:nth-child(3),
+.budget-overview-table th:nth-child(4),
+.budget-overview-table th:nth-child(5),
+.budget-overview-table td:nth-child(3),
+.budget-overview-table td:nth-child(4),
+.budget-overview-table td:nth-child(5) {
+  text-align: right;
+}
+
+.budget-overview-table tbody tr.budget-risk-over { background: #fff7f7; }
+.budget-overview-table tbody tr.budget-risk-warning { background: #fffbeb; }
+
+.budget-risk-pill {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 68px;
+  border-radius: 999px;
+  padding: 4px 9px;
+  font-size: 12px;
+  font-weight: 900;
+}
+
+.budget-risk-pill.budget-risk-over { background: #fee2e2; color: #b91c1c; }
+.budget-risk-pill.budget-risk-warning { background: #ffedd5; color: #c2410c; }
+.budget-risk-pill.budget-risk-reminder { background: #e0f2fe; color: #0369a1; }
+.budget-risk-pill.budget-risk-normal { background: #dcfce7; color: #166534; }
+
+.budget-table-group,
+.budget-table-name { display: block; }
+.budget-table-group { color: var(--muted); font-size: 12px; }
+.budget-table-name { margin-top: 3px; font-weight: 900; }
+
+.budget-overrun-cell { color: var(--danger); font-weight: 900; }
+.budget-remaining-cell { color: var(--muted); font-weight: 800; }
+
+.budget-table-progress {
+  display: grid;
+  justify-items: end;
+  gap: 6px;
+}
+.budget-table-progress span { font-weight: 900; }
+
+.budget-mini-track {
+  width: 120px;
+  height: 4px;
+  overflow: hidden;
+  border-radius: 999px;
+  background: var(--line);
+}
+.budget-mini-track > div {
+  height: 100%;
+  max-width: 100%;
+  border-radius: inherit;
+  background: var(--accent);
+}
+.budget-risk-over .budget-mini-track > div { background: var(--danger); }
+.budget-risk-warning .budget-mini-track > div { background: var(--orange); }
+
+.budget-inline-edit,
+.budget-table-actions {
+  display: inline-flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 8px;
+}
+
+.budget-table-actions .secondary-action {
+  text-decoration: none;
+  white-space: nowrap;
+}
+
+@media (max-width: 1100px) {
+  .budget-overview-summary { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+}
+
+@media (max-width: 720px) {
+  .budget-overview-summary { grid-template-columns: 1fr; }
+  .budget-inline-edit,
+  .budget-table-actions {
+    align-items: stretch;
+    flex-direction: column;
+  }
+}
