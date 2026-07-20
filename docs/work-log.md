@@ -839,3 +839,21 @@ Previous grouped-invoice work completed invoice grouping/backfill and made invoi
   - `git diff --check`: passed.
 - Follow-up:
   - After production deploy, re-check `01. 老公家用` by clicking Budget Management -> 查看消費. The Expense Details total with `month=all` should match the Budget Management used amount for active 2026 expenses.
+
+### Budget Overview Decision Metrics
+
+- Date: 2026-07-20
+- Goal:
+  - Help the budget owner decide which budget items are over expected spending and how to respond.
+  - Over-budget items should be covered by remaining budget from other items, or by increasing total budget only after checking annual income and cash-flow capacity.
+- Changes:
+  - Budget Overview now shows a full over-budget item list with each overrun amount and the total overrun amount.
+  - Added `未超標項目剩餘預算`, calculated only from items that are not over budget and still have positive remaining budget.
+  - Added `補足超標後` decision text showing whether remaining non-over-budget funds still cover all overruns or leave a deficit.
+  - Added helper text reminding that increasing total budget should be checked against annual income and cash-flow capacity.
+- Local verification:
+  - `npm run typecheck` from `apps/web`: passed.
+  - `npm test` from `apps/web`: passed.
+  - `git diff --check`: passed.
+- Follow-up:
+  - After production deploy, verify Budget Overview exposes both the over-budget list and the non-over-budget remaining amount clearly on desktop.

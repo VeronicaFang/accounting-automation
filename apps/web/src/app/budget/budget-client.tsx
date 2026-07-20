@@ -118,6 +118,9 @@ function BudgetSummary({ items }: { items: BudgetStatus[] }) {
   const totalBudget = items.reduce((total, item) => total + item.annualBudget, 0);
   const totalUsed = items.reduce((total, item) => total + item.usedAmount, 0);
   const remaining = totalBudget - totalUsed;
+  const nonOverBudgetRemaining = items
+    .filter((item) => getBudgetOverrunAmount(item) === 0 && item.remainingAmount > 0)
+    .reduce((total, item) => total + item.remainingAmount, 0);
 
   return (
     <section className="budget-overview-summary">
@@ -140,6 +143,27 @@ function BudgetSummary({ items }: { items: BudgetStatus[] }) {
         <span>年度剩餘</span>
         <strong>{formatCurrency(remaining)}</strong>
         <small>{remaining < 0 ? "總額已超出年度預算" : "全部項目加總後剩餘"}</small>
+      </div>
+      <div className="budget-summary-card budget-summary-wide budget-summary-danger">
+        <span>超標項目與總額</span>
+        <strong>{formatCurrency(overBudget.totalOverrun)}</strong>
+        {overBudget.items.length > 0 ? (
+          <ul className="budget-summary-list">
+            {overBudget.items.map((item) => (
+              <li key={item.id}>
+                <Link href={`/expenses?month=all&budget=${encodeURIComponent(item.itemName)}`}>{item.itemName}</Link>
+                <strong>{formatCurrency(getBudgetOverrunAmount(item))}</strong>
+              </li>
+            ))}
+          </ul>
+        ) : (
+          <small>目前沒有超標項目</small>
+        )}
+      </div>
+      <div className="budget-summary-card budget-summary-wide budget-summary-good">
+        <span>未超標項目剩餘預算</span>
+        <strong>{formatCurrency(nonOverBudgetRemaining)}</strong>
+        <small>只加總尚未超標且仍有剩餘的預算項目，不扣抵已超標項目。</small>
       </div>
     </section>
   );

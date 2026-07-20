@@ -1880,6 +1880,47 @@ textarea {
   border-left: 4px solid var(--sky);
 }
 
+.budget-summary-wide {
+  grid-column: span 2;
+}
+
+.budget-summary-list {
+  display: grid;
+  gap: 8px;
+  list-style: none;
+  margin: 12px 0 0;
+  padding: 0;
+}
+
+.budget-summary-list li {
+  align-items: center;
+  border-top: 1px solid var(--line);
+  display: flex;
+  gap: 12px;
+  justify-content: space-between;
+  padding-top: 8px;
+}
+
+.budget-summary-list a {
+  color: var(--teal);
+  font-weight: 800;
+  text-decoration: none;
+}
+
+.budget-summary-list strong {
+  color: var(--danger);
+  font-size: 14px;
+  margin: 0;
+}
+
+.budget-summary-decision {
+  color: var(--muted);
+  font-size: 13px;
+  font-weight: 700;
+  line-height: 1.5;
+  margin: 10px 0 0;
+}
+
 .budget-overview-panel {
   margin-top: 16px;
 }
