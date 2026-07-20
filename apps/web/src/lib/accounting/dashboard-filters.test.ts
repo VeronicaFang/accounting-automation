@@ -9,6 +9,8 @@ import {
   filterCashFlowMonthsByYear,
   filterFutureBills,
   filterHistoricalBills,
+  filterStatementBills,
+  filterEstimatedBills,
   getCashFlowAvailableYears,
   getDefaultExpenseMonths,
   monthKeyFromDateValue,
@@ -30,6 +32,8 @@ const bills = [
 
 assert.deepEqual(filterFutureBills(bills, "2026-06").map((bill) => bill.id), ["jun", "jul"]);
 assert.deepEqual(filterHistoricalBills(bills, "2026-06").map((bill) => bill.id), ["jan"]);
+assert.deepEqual(filterStatementBills(bills).map((bill) => bill.id), ["jun"]);
+assert.deepEqual(filterEstimatedBills(bills).map((bill) => bill.id), ["jan", "jul"]);
 
 const expense = {
   id: "expense-1",
@@ -215,4 +219,4 @@ assert.equal(spendingCapacity.closedRemaining, 400);
 assert.equal(spendingCapacity.spendableCashFlow, 250);
 assert.equal(spendingCapacity.shortfall, 150);
 assert.equal(spendingCapacity.surplus, 0);
-console.log("dashboard filters: 62 assertions passed");
+console.log("dashboard filters: 64 assertions passed");

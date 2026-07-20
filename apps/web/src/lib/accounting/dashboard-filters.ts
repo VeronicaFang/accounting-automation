@@ -173,6 +173,17 @@ export function filterFutureBills(bills: BillEstimate[], currentMonth: string): 
 export function filterHistoricalBills(bills: BillEstimate[], currentMonth: string): BillEstimate[] {
   return bills.filter((bill) => bill.month < currentMonth);
 }
+export function filterStatementBills(bills: BillEstimate[]): BillEstimate[] {
+  return bills
+    .filter((bill) => bill.statementAmount !== undefined)
+    .sort((a, b) => b.month.localeCompare(a.month) || a.creditCardName.localeCompare(b.creditCardName));
+}
+
+export function filterEstimatedBills(bills: BillEstimate[]): BillEstimate[] {
+  return bills
+    .filter((bill) => bill.statementAmount === undefined)
+    .sort((a, b) => a.month.localeCompare(b.month) || a.creditCardName.localeCompare(b.creditCardName));
+}
 
 function normalize(value: string | null | undefined): string {
   return String(value ?? "").trim().toLowerCase();

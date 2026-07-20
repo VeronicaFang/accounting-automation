@@ -950,3 +950,16 @@ Previous grouped-invoice work completed invoice grouping/backfill and made invoi
   - Home page copy now explicitly states that annual decisions should not rely only on `已發生預算金額`.
 - Local verification:
   - Pending after this entry.
+### Bills Page Statement vs Estimated Split
+
+- Date: 2026-07-20
+- Goal:
+  - Split the Bills page into actual statement bills and estimated bills so past real statements can be reconciled quickly against expense details.
+- Changes:
+  - Added `filterStatementBills` and `filterEstimatedBills` helpers.
+  - Bills page now shows `已發生帳單` for rows with `statementAmount` and `預估帳單` for rows without a real statement amount.
+  - Updated Bills page title and drawer copy to explain that actual statements are used for reconciliation, while estimated bills are still payment forecasts.
+- Local verification:
+  - `npm run typecheck` from `apps/web`: passed.
+  - `npm test` from `apps/web`: passed; dashboard filter coverage now checks statement-vs-estimated bill splitting.
+  - `git diff --check`: passed.

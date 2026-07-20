@@ -4,7 +4,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 
 import { BillEstimateTable } from "@/components/bill-estimate-table";
 import type { BillStatementEditProps } from "@/components/bill-estimate-table";
-import { filterFutureBills, filterHistoricalBills, monthKeyFromDateValue } from "@/lib/accounting/dashboard-filters";
+import { filterEstimatedBills, filterStatementBills } from "@/lib/accounting/dashboard-filters";
 import { DetailDrawer } from "@/components/detail-drawer";
 import { PageHeader } from "@/components/page-header";
 import { isStoredSupabaseSessionValid, readStoredSupabaseSession } from "@/lib/auth/supabase-auth";
@@ -15,7 +15,7 @@ type LoadState = "signed-out" | "expired" | "loading" | "ready" | "error";
 
 function getStateText(state: LoadState, count: number): string {
   if (state === "ready") {
-    return `已連線 Supabase，顯示 ${count} 筆帳單預估`;
+    return `已連線 Supabase，顯示 ${count} 筆帳單`;
   }
 
   if (state === "loading") {
@@ -157,30 +157,29 @@ export function BillsClient() {
     onCancel: handleCancel
   };
 
-  const currentMonth = monthKeyFromDateValue();
-  const futureBills = filterFutureBills(bills, currentMonth);
-  const historicalBills = filterHistoricalBills(bills, currentMonth).slice().reverse();
+  const statementBills = filterStatementBills(bills);
+  const estimatedBills = filterEstimatedBills(bills);
 
   return (
     <>
       <PageHeader
         eyebrow="帳單中心"
-        title="每月信用卡帳單預估"
-        description="本月以後的帳單用來檢查接下來的付款；過往月份保留在歷史帳單中查核。"
+        title="信用卡帳單中心"
+        description="已發生帳單用真實帳單金額核對消費明細；預估帳單用來檢查接下來的付款。"
       />
       <div className={`data-source-pill data-source-${state}`}>{getStateText(state, bills.length)}</div>
       {error ? <p className="error-text">{error}</p> : null}
       {saveMessage ? <p className="save-message">{saveMessage}</p> : null}
       <div className="grid-two">
         <div>
-          <BillEstimateTable bills={futureBills} title="本月以後帳單" statementEdit={statementEdit} />
-          <BillEstimateTable bills={historicalBills} title="歷史帳單" statementEdit={statementEdit} />
+          <BillEstimateTable bills={statementBills} title="已發生帳單" statementEdit={statementEdit} />
+          <BillEstimateTable bills={estimatedBills} title="預估帳單" statementEdit={statementEdit} />
         </div>
-        <DetailDrawer title="帳單預估邏輯">
+        <DetailDrawer title="帳單核對邏輯">
           <p className="muted">
-            點擊信用卡名稱可查看該月份、該信用卡連結到的消費明細，用來對照是否有消費漏記或帳單差異。
+            已發生帳單代表已有真實信用卡帳單金額，可點擊信用卡名稱查看該月份、該信用卡連結到的消費明細，用來核對是否有消費漏記或帳單差異。
           </p>
-          <p className="muted">點擊「輸入」可填入信用卡寄來的真實帳單金額，系統會用真實金額取代預估金額計算現金流。</p>
+          <p className="muted">預估帳單代表尚未輸入真實帳單，目前用 payment schedules 估算；點擊「輸入」可填入信用卡寄來的真實帳單金額，系統會用真實金額取代預估金額計算現金流。</p>
         </DetailDrawer>
       </div>
     </>
