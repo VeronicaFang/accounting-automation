@@ -65,16 +65,16 @@ export function normalizeDateInput(value: string): string {
     return `${compact[1]}-${compact[2]}-${compact[3]}`;
   }
 
-  const monthOnly = text.match(/^(\d{4})[./-](\d{1,2})$/);
-
-  if (monthOnly) {
-    return `${monthOnly[1]}-${monthOnly[2].padStart(2, "0")}-01`;
-  }
-
   const full = text.match(/^(\d{4})[./-](\d{1,2})[./-](\d{1,2})/);
 
   if (full) {
     return `${full[1]}-${full[2].padStart(2, "0")}-${full[3].padStart(2, "0")}`;
+  }
+
+  const monthOnly = text.match(/^(\d{4})[./-](\d{1,2})$/);
+
+  if (monthOnly) {
+    return `${monthOnly[1]}-${monthOnly[2].padStart(2, "0")}-01`;
   }
 
   return text.slice(0, 10);
@@ -200,13 +200,18 @@ export function parseManualExpenseText(text: string): ParsedManualExpenseRow[] {
 
   const delimiter = lines[0].includes("\t") ? "\t" : ",";
   const firstRow = parseDelimitedLine(lines[0], delimiter).map((cell) => cell.trim());
-  const hasHeader = firstRow.some((cell) => defaultManualHeaders.includes(cell));
+  const hasHeader = isManualHeaderRow(firstRow);
   const headers = hasHeader ? firstRow : defaultManualHeaders.slice(0, Math.max(firstRow.length, 1));
   const dataLines = hasHeader ? lines.slice(1) : lines;
 
   return dataLines
     .map((line) => {
       const cells = parseDelimitedLine(line, delimiter);
+
+      if (!hasHeader) {
+        return normalizeManualCells(cells);
+      }
+
       const row = Object.fromEntries(headers.map((header, index) => [header, cells[index] ?? ""]));
 
       return normalizeManualRow(row);
@@ -214,22 +219,77 @@ export function parseManualExpenseText(text: string): ParsedManualExpenseRow[] {
     .filter((row) => row.consumptionDate || row.itemDescription || row.amount > 0);
 }
 
+function normalizeManualCells(cells: string[]): ParsedManualExpenseRow {
+  return normalizeManualValues({
+    consumptionDate: cells[0] ?? "",
+    itemDescription: cells[1] ?? "",
+    amount: cells[2] ?? "",
+    merchantName: cells[3] ?? "",
+    budgetItemName: cells[4] ?? "",
+    paymentToolType: cells[5] ?? "",
+    creditCardName: cells[6] ?? "",
+    notes: cells[7] ?? ""
+  });
+}
+function normalizeHeaderName(value: string): string {
+  return String(value || "")
+    .replace(/^\uFEFF/, "")
+    .replace(/\s+/g, "")
+    .toLowerCase();
+}
+
+function looksLikeDateValue(value: string): boolean {
+  const text = String(value || "").trim();
+
+  return /^(\d{4})(\d{2})(\d{2})$/.test(text) || /^(\d{4})[./-](\d{1,2})([./-](\d{1,2}))?/.test(text);
+}
+
+function isManualHeaderRow(cells: string[]): boolean {
+  const knownHeaders = new Set(
+    [...defaultManualHeaders, ...Object.values(headerAliases).flat()].map(normalizeHeaderName)
+  );
+  if (looksLikeDateValue(cells[0] ?? "")) {
+    return false;
+  }
+
+  const normalizedCells = cells.map(normalizeHeaderName).filter(Boolean);
+  const knownHeaderCount = normalizedCells.filter((cell) => knownHeaders.has(cell)).length;
+
+  if (knownHeaderCount >= 2 || (normalizedCells[0] && knownHeaders.has(normalizedCells[0]))) {
+    return true;
+  }
+
+  return normalizedCells.length > 0;
+}
 function normalizeManualRow(row: Record<string, string>): ParsedManualExpenseRow {
-  const paymentText = pickField(row, headerAliases.paymentToolType);
+  return normalizeManualValues({
+    consumptionDate: pickField(row, headerAliases.consumptionDate),
+    itemDescription: pickField(row, headerAliases.itemDescription),
+    amount: pickField(row, headerAliases.amount),
+    merchantName: pickField(row, headerAliases.merchantName),
+    budgetItemName: pickField(row, headerAliases.budgetItemName),
+    paymentToolType: pickField(row, headerAliases.paymentToolType),
+    creditCardName: pickField(row, headerAliases.creditCardName),
+    notes: pickField(row, headerAliases.notes)
+  });
+}
+
+function normalizeManualValues(values: Record<keyof ParsedManualExpenseRow, string>): ParsedManualExpenseRow {
+  const paymentText = values.paymentToolType;
   const paymentToolType: PaymentToolType =
     paymentText === "credit_card" || paymentText.toLowerCase() === "card" || paymentText.includes("信用卡")
       ? "credit_card"
       : "cash";
 
   return {
-    consumptionDate: normalizeDateInput(pickField(row, headerAliases.consumptionDate)),
-    itemDescription: pickField(row, headerAliases.itemDescription),
-    amount: parseAmount(pickField(row, headerAliases.amount)),
-    merchantName: pickField(row, headerAliases.merchantName),
-    budgetItemName: pickField(row, headerAliases.budgetItemName),
+    consumptionDate: normalizeDateInput(values.consumptionDate),
+    itemDescription: values.itemDescription.trim(),
+    amount: parseAmount(values.amount),
+    merchantName: values.merchantName.trim(),
+    budgetItemName: values.budgetItemName.trim(),
     paymentToolType,
-    creditCardName: paymentToolType === "credit_card" ? pickField(row, headerAliases.creditCardName) : "",
-    notes: pickField(row, headerAliases.notes)
+    creditCardName: paymentToolType === "credit_card" ? values.creditCardName.trim() : "",
+    notes: values.notes.trim()
   };
 }
 
@@ -237,6 +297,14 @@ function pickField(row: Record<string, string>, names: string[]): string {
   for (const name of names) {
     if (Object.prototype.hasOwnProperty.call(row, name)) {
       return String(row[name] || "").trim();
+    }
+  }
+
+  const normalizedNames = new Set(names.map(normalizeHeaderName));
+
+  for (const [key, value] of Object.entries(row)) {
+    if (normalizedNames.has(normalizeHeaderName(key))) {
+      return String(value || "").trim();
     }
   }
 

@@ -982,3 +982,23 @@ Previous grouped-invoice work completed invoice grouping/backfill and made invoi
   - `git diff --check`: passed.
 - Follow-up:
   - After production deploy, test the Amazon / Owala row by changing `2026-04-01` to `2026-04-23`; verify the expense keeps the new date, the budget month remains `2026-04`, and the credit-card bill estimate moves according to the 中信 cutoff/payment rule.
+
+### Manual Batch Expense Date Parsing Fix
+
+- Date: 2026-07-20
+- Goal:
+  - Fix a bug where manually batch-imported expense rows could land on the first day of the month instead of preserving the pasted `YYYY/M/D` consumption date.
+- Finding:
+  - The batch parser relied on header-name detection and default header labels. A data row containing values like `credit_card` could be misclassified as a header row, and header handling was too fragile for pasted table data.
+- Changes:
+  - `normalizeDateInput` now checks full dates like `2026/4/7` before month-only values like `2026/4`.
+  - Batch parsing now treats rows whose first cell is date-like as data rows, not headers.
+  - No-header batch rows now parse by fixed column position instead of relying on localized header strings.
+  - Header lookup now normalizes header names before matching aliases.
+- Local verification:
+  - Added a regression test using the user's Taobao rows with `2026/4/7`, `2026/4/10`, and `2026/4/17`; parsed dates remain `2026-04-07`, `2026-04-10`, and `2026-04-17`.
+  - `npm test` from `apps/web`: passed.
+  - `npm run typecheck` from `apps/web`: passed.
+  - `git diff --check`: passed.
+- Scope note:
+  - Existing incorrect database rows were not changed; the user will adjust current data manually.

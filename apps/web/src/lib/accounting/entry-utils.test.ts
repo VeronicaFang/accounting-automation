@@ -17,6 +17,7 @@ const unionCard: EntryCreditCard = {
 };
 
 assert.equal(normalizeDateInput("2026/01"), "2026-01-01");
+assert.equal(normalizeDateInput("2026/4/7"), "2026-04-07");
 
 assert.deepEqual(
   parseManualExpenseText(
@@ -46,6 +47,21 @@ assert.deepEqual(
     }
   ]
 );
+const taobaoRows = parseManualExpenseText(
+  "消費日\t購買品項\t消費金額\t消費通路\t預算項目\t支付方式\t信用卡\t備註\n" +
+    "2026/4/7\t飛利浦檯燈+迷宮書\t1407\t淘寶\t15. 動動個人成長\t信用卡\tCTBC\t\n" +
+    "2026/4/10\t動動生日派對氣球布置用品\t1617\t淘寶\t14. 動動生日派對\t信用卡\tCTBC\t\n" +
+    "2026/4/17\t空氣清淨機濾芯\t573\t淘寶\t10. 日常用品\t信用卡\tCTBC\t"
+);
+
+assert.equal(taobaoRows.length, 3);
+assert.deepEqual(
+  taobaoRows.map((row) => row.consumptionDate),
+  ["2026-04-07", "2026-04-10", "2026-04-17"]
+);
+assert.equal(taobaoRows[0].paymentToolType, "credit_card");
+assert.equal(taobaoRows[0].creditCardName, "CTBC");
+assert.equal(taobaoRows[0].merchantName, "淘寶");
 
 assert.deepEqual(
   buildPaymentPlans({
@@ -71,4 +87,4 @@ assert.deepEqual(splitInstallments(100, 3), [
   { sequence: 3, amount: 33.33 }
 ]);
 
-console.log("entry utils: 4 assertions passed");
+console.log("entry utils: 11 assertions passed");
