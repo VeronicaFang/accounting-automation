@@ -813,3 +813,29 @@ Previous grouped-invoice work completed invoice grouping/backfill and made invoi
   - `git diff --check`: passed.
 - Follow-up:
   - Commit locally, then user should manually push `main` to trigger Vercel GitHub integration.
+
+### Budget Used Amount Alignment With Expense Details
+
+- Date: 2026-07-20
+- Problem reported:
+  - Budget Management showed `01. 老公家用` used amount as 286,490, while Expense Details filtered by the same budget item summed to 230,000.
+  - The user confirmed there were no non-2026 expense dates for that budget item, so cross-year data was not the only explanation.
+- Expected rule:
+  - Budget Management used amount should equal the sum of active Expense Details for the same year and budget item across cash and credit-card payments.
+  - Cancelled/deleted expenses must not be counted.
+- Findings:
+  - Budget Management already reads `expenses` with `status=eq.active`, and mapper also excludes `cancelled`, so deleted expenses should not be included.
+  - Budget Management was changed to pass the current year into `getSupabaseBudgetStatuses`, so budget usage is explicitly year-scoped.
+  - Expense Details previously loaded only the latest 1000 active expenses. Budget Management uses paged `fetchAllSupabaseRows`, so the two pages could disagree when older active rows are outside the 1000-row window.
+- Changes:
+  - Budget Management now loads budget statuses for the current year.
+  - Budget drilldown links now open Expense Details with `month=all` so the page is not limited to this month and previous month.
+  - Expense Details now calls `getSupabaseExpenses(accessToken)` without a limit, and the repository fetches all active expense rows with paging.
+  - Added mapper test coverage showing cancelled expenses are ignored even when their budget month is in the selected year.
+- Local verification:
+  - `npm run typecheck` from `apps/web`: passed.
+  - `npm test` from `apps/web`: passed.
+  - `node --experimental-strip-types src/lib/data/supabase-mappers.test.ts`: passed.
+  - `git diff --check`: passed.
+- Follow-up:
+  - After production deploy, re-check `01. 老公家用` by clicking Budget Management -> 查看消費. The Expense Details total with `month=all` should match the Budget Management used amount for active 2026 expenses.

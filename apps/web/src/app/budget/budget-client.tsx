@@ -1,4 +1,4 @@
-﻿"use client";
+"use client";
 
 import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
@@ -6,6 +6,7 @@ import { useEffect, useMemo, useState } from "react";
 import { PageHeader } from "@/components/page-header";
 import {
   getBudgetOverrunAmount,
+  monthKeyFromDateValue,
   summarizeOverBudgetItems
 } from "@/lib/accounting/dashboard-filters";
 import { isStoredSupabaseSessionValid, readStoredSupabaseSession } from "@/lib/auth/supabase-auth";
@@ -153,6 +154,7 @@ export function BudgetClient() {
   const [saveMessage, setSaveMessage] = useState<string | null>(null);
   const [savingId, setSavingId] = useState<string | null>(null);
   const [activeFilter, setActiveFilter] = useState<BudgetViewFilter>("risk");
+  const currentYear = monthKeyFromDateValue().slice(0, 4);
 
   const counts = useMemo(() => ({
     risk: filterBudgetItems(items, "risk").length,
@@ -167,7 +169,7 @@ export function BudgetClient() {
     setState("loading");
     setError(null);
 
-    return getSupabaseBudgetStatuses(accessToken)
+    return getSupabaseBudgetStatuses(accessToken, currentYear)
       .then((rows) => {
         if (!isCurrent()) return;
         setItems(rows);
@@ -260,7 +262,7 @@ export function BudgetClient() {
       <PageHeader
         eyebrow="預算"
         title="預算總覽"
-        description="優先檢視已超標與接近超標項目，確認每個預算項目的使用率、剩餘金額與相關消費。"
+        description={`${currentYear} 年度資料。優先檢視已超標與接近超標項目，確認每個預算項目的使用率、剩餘金額與相關消費。`}
       />
       <div className={`data-source-pill data-source-${state}`}>{getStateText(state, items.length)}</div>
       {error ? <p className="error-text">{error}</p> : null}
@@ -313,7 +315,7 @@ export function BudgetClient() {
                     <td><span className={`budget-risk-pill ${statusClass}`}>{getBudgetStatusLabel(item)}</span></td>
                     <td>
                       <span className="budget-table-group">{item.groupName}</span>
-                      <Link className="table-link budget-table-name" href={`/expenses?budget=${encodeURIComponent(item.itemName)}`}>
+                      <Link className="table-link budget-table-name" href={`/expenses?month=all&budget=${encodeURIComponent(item.itemName)}`}>
                         {item.itemName}
                       </Link>
                     </td>
@@ -350,7 +352,7 @@ export function BudgetClient() {
                     </td>
                     <td>
                       <div className="budget-table-actions">
-                        <Link className="secondary-action" href={`/expenses?budget=${encodeURIComponent(item.itemName)}`}>查看消費</Link>
+                        <Link className="secondary-action" href={`/expenses?month=all&budget=${encodeURIComponent(item.itemName)}`}>查看消費</Link>
                         <button className="secondary-action" type="button" onClick={() => { setEditingId(item.id); setSaveMessage(null); }}>
                           編輯預算
                         </button>

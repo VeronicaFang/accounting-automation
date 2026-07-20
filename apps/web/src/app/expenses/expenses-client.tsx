@@ -130,7 +130,7 @@ export function ExpensesClient() {
 
   async function loadExpenses(accessToken: string, isCurrent = () => true) {
     const [rows, budgetRows, cardRows] = await Promise.all([
-      getSupabaseExpenses(accessToken, 1000),
+      getSupabaseExpenses(accessToken),
       fetchSupabaseRows<BudgetItemLookup>(
         "budget_items",
         {

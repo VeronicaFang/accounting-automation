@@ -213,20 +213,26 @@ export async function getSupabaseExpensesByMonth(month: string, accessToken?: st
   return mapExpenseRows(rows, budgetItems, creditCards);
 }
 
-export async function getSupabaseExpenses(accessToken?: string, limit = 200): Promise<ExpenseRecord[]> {
+export async function getSupabaseExpenses(accessToken?: string, limit?: number): Promise<ExpenseRecord[]> {
+  const expenseQuery = {
+    select:
+      "id,budget_item_id,credit_card_id,consumption_date,budget_month,merchant_name,item_description,legacy_budget_item,amount,payment_tool_type,is_installment,installment_count,invoice_number,original_amount,line_type,payment_parent_expense_id,source_line_key,status",
+    status: "eq.active",
+    order: "consumption_date.desc,id.desc"
+  };
+
   const [rows, budgetItems, creditCards] = await Promise.all([
-    fetchSupabaseRows<SupabaseExpenseRow>(
-      "expenses",
-      {
-        select:
-          "id,budget_item_id,credit_card_id,consumption_date,budget_month,merchant_name,item_description,legacy_budget_item,amount,payment_tool_type,is_installment,installment_count,invoice_number,original_amount,line_type,payment_parent_expense_id,source_line_key,status",
-        status: "eq.active",
-        order: "consumption_date.desc,id.desc",
-        limit: String(limit)
-      },
-      undefined,
-      accessToken
-    ),
+    typeof limit === "number"
+      ? fetchSupabaseRows<SupabaseExpenseRow>(
+          "expenses",
+          {
+            ...expenseQuery,
+            limit: String(limit)
+          },
+          undefined,
+          accessToken
+        )
+      : fetchAllSupabaseRows<SupabaseExpenseRow>("expenses", expenseQuery, undefined, accessToken),
     fetchSupabaseRows<SupabaseBudgetItemLookupRow>(
       "budget_items",
       {
@@ -240,7 +246,6 @@ export async function getSupabaseExpenses(accessToken?: string, limit = 200): Pr
 
   return mapExpenseRows(rows, budgetItems, creditCards);
 }
-
 export type InstallmentScheduleRecord = {
   scheduleId: string;
   expenseId: string;

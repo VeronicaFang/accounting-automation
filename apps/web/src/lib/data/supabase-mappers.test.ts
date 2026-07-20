@@ -104,7 +104,8 @@ const yearlyBudgetStatuses = mapBudgetStatuses(
   [{ id: "group-1", name: "家庭" }],
   [
     { budget_item_id: "budget-item-2", amount: "7690", status: "active", budget_month: "2026-06" },
-    { budget_item_id: "budget-item-2", amount: "5000", status: "active", budget_month: "2027-01" }
+    { budget_item_id: "budget-item-2", amount: "5000", status: "active", budget_month: "2027-01" },
+    { budget_item_id: "budget-item-2", amount: "9000", status: "cancelled", budget_month: "2026-06" }
   ],
   "2026"
 );
