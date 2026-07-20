@@ -935,3 +935,18 @@ Previous grouped-invoice work completed invoice grouping/backfill and made invoi
   - `npm run typecheck` from `apps/web`: passed.
   - `npm test` from `apps/web`: passed; dashboard filter coverage now asserts the cash-flow-vs-budget difference field.
   - `git diff --check`: passed.
+### Home Unrecorded Credit Card Spend Wording
+
+- Date: 2026-07-20
+- Goal:
+  - Refine the Home page definition so annual spending is treated as the true annual consumption amount.
+- Updated definition:
+  - `年度消費總額 = 已發生預算金額 + 未記錄信用卡帳單消費明細`.
+  - `年度消費總額` is the true annual spending amount because it uses actual bank credit-card statements when available.
+  - `已發生預算金額` only represents expenses already recorded into expense details and budget categories, so it can understate real spending when card statement items are not fully recorded.
+- Changes:
+  - Renamed the annual summary field from `cashFlowBudgetDifference` to `unrecordedCreditCardSpend`.
+  - Home page note now labels the difference as `未記錄信用卡帳單消費明細`.
+  - Home page copy now explicitly states that annual decisions should not rely only on `已發生預算金額`.
+- Local verification:
+  - Pending after this entry.

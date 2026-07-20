@@ -182,7 +182,7 @@ assert.equal(annualFinancialSummary.annualSpend, 1150);
 assert.equal(annualFinancialSummary.annualNetRemaining, 750);
 assert.equal(annualFinancialSummary.annualBudget, 1600);
 assert.equal(annualFinancialSummary.realizedBudget, 1280);
-assert.equal(annualFinancialSummary.cashFlowBudgetDifference, -130);
+assert.equal(annualFinancialSummary.unrecordedCreditCardSpend, -130);
 assert.equal(annualFinancialSummary.unrealizedBudget, 320);
 assert.equal(annualFinancialSummary.budgetUsageRatio, 0.8);
 assert.equal(annualFinancialSummary.consumptionWaterRatio, 320 / 750);
