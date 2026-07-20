@@ -53,6 +53,21 @@ export type SpendingCapacitySummary = {
   surplus: number;
 };
 
+export type AnnualFinancialSummary = {
+  annualIncome: number;
+  annualSpend: number;
+  annualNetRemaining: number;
+  annualBudget: number;
+  realizedBudget: number;
+  unrealizedBudget: number;
+  budgetUsageRatio: number;
+  consumptionWaterRatio: number | null;
+  isConsumptionWaterWarning: boolean;
+  movableItems: BudgetStatus[];
+  movableTotal: number;
+  overBudget: OverBudgetSummary;
+};
+
 export function getBudgetOverrunAmount(item: BudgetStatus): number {
   return Math.max(0, -item.remainingAmount, item.usedAmount - item.annualBudget);
 }
@@ -99,6 +114,39 @@ export function summarizeSpendingCapacity(
     spendableCashFlow,
     shortfall,
     surplus: Math.max(0, spendableCashFlow - plannedRemaining)
+  };
+}
+export function summarizeAnnualFinancialOverview(
+  rows: AnnualDashboardMonth[],
+  items: BudgetStatus[]
+): AnnualFinancialSummary {
+  const annualIncome = rows.reduce((total, row) => total + row.income, 0);
+  const annualSpend = rows.reduce((total, row) => total + row.estimatedSpend, 0);
+  const annualNetRemaining = annualIncome - annualSpend;
+  const annualBudget = items.reduce((total, item) => total + item.annualBudget, 0);
+  const realizedBudget = items.reduce((total, item) => total + item.usedAmount, 0);
+  const unrealizedBudget = annualBudget - realizedBudget;
+  const budgetUsageRatio = annualBudget > 0 ? 1 - unrealizedBudget / annualBudget : 0;
+  const consumptionWaterRatio = annualNetRemaining > 0 ? unrealizedBudget / annualNetRemaining : null;
+  const movableItems = items
+    .filter((item) => getBudgetOverrunAmount(item) === 0 && item.remainingAmount > 0)
+    .sort((a, b) => b.remainingAmount - a.remainingAmount);
+  const movableTotal = movableItems.reduce((total, item) => total + item.remainingAmount, 0);
+  const overBudget = summarizeOverBudgetItems(items);
+
+  return {
+    annualIncome,
+    annualSpend,
+    annualNetRemaining,
+    annualBudget,
+    realizedBudget,
+    unrealizedBudget,
+    budgetUsageRatio,
+    consumptionWaterRatio,
+    isConsumptionWaterWarning: consumptionWaterRatio === null || consumptionWaterRatio > 0.9,
+    movableItems,
+    movableTotal,
+    overBudget
   };
 }
 export function monthKeyFromDateValue(date = new Date()): string {

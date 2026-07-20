@@ -1189,12 +1189,21 @@ textarea {
 .annual-control-spend { border-left: 4px solid var(--orange); }
 .annual-control-good,
 .annual-decision-good { border-left: 4px solid var(--good); }
+.annual-decision-warning { border-left: 4px solid var(--orange); background: #fffbeb; }
 .annual-control-danger,
 .annual-decision-danger { border-left: 4px solid var(--danger); background: #fff7f7; }
 .annual-control-good strong,
 .annual-decision-good > strong { color: var(--good); }
+.annual-decision-warning > strong { color: var(--orange); }
 .annual-control-danger strong,
 .annual-decision-danger > strong { color: var(--danger); }
+
+.annual-budget-lists {
+  display: grid;
+  gap: 12px;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  margin-top: 12px;
+}
 
 .annual-decision-list {
   display: grid;
@@ -1223,6 +1232,10 @@ textarea {
   color: var(--danger);
   font-size: 13px;
   margin: 0;
+}
+
+.annual-decision-good .annual-decision-list strong {
+  color: var(--good);
 }
 .annual-dashboard {
   margin-bottom: 16px;
@@ -2144,12 +2157,14 @@ textarea {
 @media (max-width: 1100px) {
   .annual-control-grid,
   .annual-decision-grid,
+  .annual-budget-lists,
   .budget-overview-summary { grid-template-columns: repeat(2, minmax(0, 1fr)); }
 }
 
 @media (max-width: 720px) {
   .annual-control-grid,
   .annual-decision-grid,
+  .annual-budget-lists,
   .budget-overview-summary { grid-template-columns: 1fr; }
   .budget-inline-edit,
   .budget-table-actions {

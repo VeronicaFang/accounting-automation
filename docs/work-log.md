@@ -896,3 +896,25 @@ Previous grouped-invoice work completed invoice grouping/backfill and made invoi
   - `git diff --check`: passed.
 - Follow-up:
   - After production deploy, verify Cash Flow top `信用卡付款` matches the credit-card actual/estimated bill total, and `年度淨流量` equals `現金流可承受` when safety reserve is 0.
+### Home Annual Financial Overview Formula Alignment
+
+- Date: 2026-07-20
+- Goal:
+  - Adjust the Home page annual financial overview to match the user's decision model for annual income, annual spending, budget realization, and consumption water-level warning.
+- Expected rules implemented:
+  - `年度淨剩餘金額 = 年度收入 - 年度消費總額`.
+  - `年度消費總額` includes cash spending and credit-card actual/estimated bills.
+  - `尚未實現的預算金額 = 年度預算金額 - 已發生預算`.
+  - `年度預算使用狀態 = 1 - 尚未實現的預算金額 / 年度預算金額`.
+  - `消費水位警戒百分比 = 尚未實現的預算金額 / 年度淨剩餘金額`; values over 90% are warning.
+- Changes:
+  - Added `summarizeAnnualFinancialOverview` helper to centralize the annual overview formulas.
+  - Home page `年度控管` panel was changed to `年度收支檢視`.
+  - Replaced the older additional-budget-cap view with annual income, annual spend, annual net remaining, consumption water warning, annual budget, realized budget, unrealized budget, and budget usage ratio.
+  - Added lists for over-budget items and non-over-budget items with remaining budget; the latter is labeled as movable budget.
+- Local verification:
+  - `npm run typecheck` from `apps/web`: passed.
+  - `npm test` from `apps/web`: passed; dashboard filter coverage now includes the annual financial overview formulas and warning threshold.
+  - `git diff --check`: passed.
+- Follow-up:
+  - After production deploy, verify Home shows `年度收支檢視` and that `消費水位警戒` becomes warning when unrealized budget is over 90% of annual net remaining.

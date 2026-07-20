@@ -15,7 +15,7 @@ import {
   filterFutureBills,
   getBudgetOverrunAmount,
   monthKeyFromDateValue,
-  summarizeOverBudgetItems
+  summarizeAnnualFinancialOverview
 } from "@/lib/accounting/dashboard-filters";
 import { formatCurrency } from "@/lib/format";
 import {
@@ -131,68 +131,84 @@ function AnnualDashboardTable({ rows }: { rows: ReturnType<typeof buildAnnualDas
   );
 }
 
+function formatPercent(value: number | null): string {
+  if (value === null || !Number.isFinite(value)) {
+    return "無法判斷";
+  }
+
+  return `${(value * 100).toFixed(1)}%`;
+}
+
 function AnnualFinancialOverview({ rows, items }: { rows: ReturnType<typeof buildAnnualDashboardMonths>; items: BudgetStatus[] }) {
-  const annualTotals = rows.reduce(
-    (current, row) => ({
-      estimatedSpend: current.estimatedSpend + row.estimatedSpend,
-      income: current.income + row.income,
-      netFlow: current.netFlow + row.netFlow
-    }),
-    { estimatedSpend: 0, income: 0, netFlow: 0 }
-  );
-  const overBudget = summarizeOverBudgetItems(items);
-  const topOverBudgetItems = overBudget.items.slice(0, 6);
-  const totalBudget = items.reduce((total, item) => total + item.annualBudget, 0);
-  const totalUsed = items.reduce((total, item) => total + item.usedAmount, 0);
-  const nonOverBudgetRemaining = items
-    .filter((item) => getBudgetOverrunAmount(item) === 0 && item.remainingAmount > 0)
-    .reduce((total, item) => total + item.remainingAmount, 0);
-  const remainingAfterCoveringOverrun = nonOverBudgetRemaining - overBudget.totalOverrun;
-  const incomeBudgetRoom = annualTotals.income - totalBudget;
-  const additionalBudgetCap = Math.max(0, Math.min(incomeBudgetRoom, annualTotals.netFlow));
-  const capReason = incomeBudgetRoom <= 0
-    ? "年度預算已達或超過年度收入"
-    : annualTotals.netFlow <= 0
-      ? "年度淨流量已無追加空間"
-      : "以收入上限與年度淨流量取較保守值";
+  const summary = summarizeAnnualFinancialOverview(rows, items);
+  const topOverBudgetItems = summary.overBudget.items.slice(0, 6);
+  const movableItems = summary.movableItems.slice(0, 8);
+  const waterSubtitle = summary.consumptionWaterRatio === null
+    ? "年度淨剩餘金額不足，應先降支出或補收入。"
+    : summary.isConsumptionWaterWarning
+      ? "超過 90%，代表尚未實現預算接近年度剩餘金額。"
+      : "低於 90%，尚未實現預算仍在年度剩餘金額可承受範圍內。";
 
   return (
     <section className="surface section-block annual-control-panel">
       <div className="section-heading annual-control-heading">
         <div>
-          <h2>年度控管</h2>
-          <span>現金流是最後防線；預算管理用來判斷超標、挪移與追加上限。</span>
+          <h2>年度收支檢視</h2>
+          <span>年度收入扣除年度消費總額後，檢查尚未實現預算是否仍在年度剩餘金額可承受範圍內。</span>
         </div>
         <Link className="secondary-action" href="/cash-flow">查看月度現金流</Link>
       </div>
 
-      <div className="annual-control-grid">
+      <div className="annual-control-grid annual-financial-grid">
         <div className="annual-control-card annual-control-income">
-          <span>年度收入上限</span>
-          <strong>{formatCurrency(annualTotals.income)}</strong>
-          <small>今年花費上限不可超過年度收入總額。</small>
+          <span>年度收入</span>
+          <strong>{formatCurrency(summary.annualIncome)}</strong>
+          <small>全年已入帳與預估收入。</small>
         </div>
         <div className="annual-control-card annual-control-spend">
-          <span>已排程支出</span>
-          <strong>{formatCurrency(annualTotals.estimatedSpend)}</strong>
-          <small>現金支出 + 信用卡實際/預估帳單，已在現金流扣除。</small>
+          <span>年度消費總額</span>
+          <strong>{formatCurrency(summary.annualSpend)}</strong>
+          <small>現金 + 信用卡，包含已發生帳單與預期帳單。</small>
         </div>
-        <div className={`annual-control-card ${annualTotals.netFlow < 0 ? "annual-control-danger" : "annual-control-good"}`}>
-          <span>年度淨流量</span>
-          <strong>{formatCurrency(annualTotals.netFlow)}</strong>
-          <small>最後防線：若為負數，應先降支出或補收入。</small>
+        <div className={`annual-control-card ${summary.annualNetRemaining < 0 ? "annual-control-danger" : "annual-control-good"}`}>
+          <span>年度淨剩餘金額</span>
+          <strong>{formatCurrency(summary.annualNetRemaining)}</strong>
+          <small>年度收入 - 年度消費總額。</small>
         </div>
-        <div className={`annual-control-card ${additionalBudgetCap <= 0 ? "annual-control-danger" : "annual-control-good"}`}>
-          <span>可追加預算上限</span>
-          <strong>{formatCurrency(additionalBudgetCap)}</strong>
-          <small>{capReason}</small>
+        <div className={`annual-control-card ${summary.isConsumptionWaterWarning ? "annual-control-danger" : "annual-control-good"}`}>
+          <span>消費水位警戒</span>
+          <strong>{formatPercent(summary.consumptionWaterRatio)}</strong>
+          <small>{waterSubtitle}</small>
         </div>
       </div>
 
       <div className="annual-decision-grid">
+        <div className="annual-decision-card">
+          <span>年度預算金額</span>
+          <strong>{formatCurrency(summary.annualBudget)}</strong>
+          <small>全年設定的預算總額。</small>
+        </div>
+        <div className="annual-decision-card">
+          <span>已發生預算</span>
+          <strong>{formatCurrency(summary.realizedBudget)}</strong>
+          <small>包含已發生消費與預期消費。</small>
+        </div>
+        <div className={summary.unrealizedBudget < 0 ? "annual-decision-card annual-decision-danger" : "annual-decision-card"}>
+          <span>尚未實現的預算金額</span>
+          <strong>{formatCurrency(summary.unrealizedBudget)}</strong>
+          <small>年度預算金額 - 已發生預算。</small>
+        </div>
+        <div className={`annual-decision-card ${summary.budgetUsageRatio >= 1 ? "annual-decision-danger" : summary.budgetUsageRatio >= 0.9 ? "annual-decision-warning" : "annual-decision-good"}`}>
+          <span>年度預算使用狀態</span>
+          <strong>{formatPercent(summary.budgetUsageRatio)}</strong>
+          <small>1 - 尚未實現預算 / 年度預算金額。</small>
+        </div>
+      </div>
+
+      <div className="annual-budget-lists">
         <div className="annual-decision-card annual-decision-danger">
-          <span>已超標項目</span>
-          <strong>{overBudget.items.length} 項 / {formatCurrency(overBudget.totalOverrun)}</strong>
+          <span>已超支預算項目</span>
+          <strong>{summary.overBudget.items.length} 項 / {formatCurrency(summary.overBudget.totalOverrun)}</strong>
           {topOverBudgetItems.length > 0 ? (
             <ul className="annual-decision-list">
               {topOverBudgetItems.map((item) => (
@@ -203,23 +219,23 @@ function AnnualFinancialOverview({ rows, items }: { rows: ReturnType<typeof buil
               ))}
             </ul>
           ) : (
-            <small>目前沒有超標項目。</small>
+            <small>目前沒有超支項目。</small>
           )}
         </div>
-        <div className="annual-decision-card">
-          <span>可挪移剩餘預算</span>
-          <strong>{formatCurrency(nonOverBudgetRemaining)}</strong>
-          <small>只加總未超標且仍有剩餘的預算項目。</small>
-        </div>
-        <div className={`annual-decision-card ${remainingAfterCoveringOverrun < 0 ? "annual-decision-danger" : "annual-decision-good"}`}>
-          <span>挪移後結果</span>
-          <strong>{remainingAfterCoveringOverrun >= 0 ? `仍剩 ${formatCurrency(remainingAfterCoveringOverrun)}` : `仍缺 ${formatCurrency(Math.abs(remainingAfterCoveringOverrun))}`}</strong>
-          <small>若仍缺，才評估追加預算；追加後仍不可超過年度收入與淨流量防線。</small>
-        </div>
-        <div className="annual-decision-card">
-          <span>年度預算使用</span>
-          <strong>{formatCurrency(totalUsed)} / {formatCurrency(totalBudget)}</strong>
-          <small>所有 active 消費明細加總後的年度預算使用狀態。</small>
+        <div className="annual-decision-card annual-decision-good">
+          <span>尚未超支的預算項目</span>
+          <strong>{formatCurrency(summary.movableTotal)}</strong>
+          <small>可進行預算挪移的項目。</small>
+          {movableItems.length > 0 ? (
+            <ul className="annual-decision-list">
+              {movableItems.map((item) => (
+                <li key={item.id}>
+                  <Link href={`/expenses?month=all&budget=${encodeURIComponent(item.itemName)}`}>{item.itemName}</Link>
+                  <strong>{formatCurrency(item.remainingAmount)}</strong>
+                </li>
+              ))}
+            </ul>
+          ) : null}
         </div>
       </div>
     </section>
