@@ -126,6 +126,7 @@ export function ExpensesClient() {
   const [invoicePaymentEdits, setInvoicePaymentEdits] = useState<Record<string, InvoicePaymentEdit>>({});
   const [installmentSchedules, setInstallmentSchedules] = useState<InstallmentScheduleRecord[]>([]);
   const [expandedInvoices, setExpandedInvoices] = useState<Set<string>>(new Set());
+  const [selectedExpenseIds, setSelectedExpenseIds] = useState<Set<string>>(new Set());
 
   async function loadExpenses(accessToken: string, isCurrent = () => true) {
     const [rows, budgetRows, cardRows] = await Promise.all([
@@ -254,6 +255,66 @@ export function ExpensesClient() {
     });
   }, [activeTag, cardCutoffDayByName, defaultMonths, expenses, paymentToolFilter, queryBillMonth, searchText, selectedBudget, selectedCard, selectedMonth, sourceFilter]);
   const displayRows = useMemo(() => buildExpenseDisplayRows(visibleExpenses), [visibleExpenses]);
+  const visibleExpenseIds = useMemo(() => Array.from(new Set(displayRows.flatMap((row) => row.kind === "manual" ? [row.expense.id] : row.expenses.map((expense) => expense.id)))), [displayRows]);
+  const selectedVisibleExpenseIds = useMemo(() => visibleExpenseIds.filter((id) => selectedExpenseIds.has(id)), [selectedExpenseIds, visibleExpenseIds]);
+  const allVisibleSelected = visibleExpenseIds.length > 0 && selectedVisibleExpenseIds.length === visibleExpenseIds.length;
+  const someVisibleSelected = selectedVisibleExpenseIds.length > 0 && !allVisibleSelected;
+
+  useEffect(() => {
+    setSelectedExpenseIds((current) => {
+      const visible = new Set(visibleExpenseIds);
+      const next = new Set(Array.from(current).filter((id) => visible.has(id)));
+      return next.size === current.size ? current : next;
+    });
+  }, [visibleExpenseIds]);
+
+  function setRowSelected(expenseIds: string[], checked: boolean) {
+    setSelectedExpenseIds((current) => {
+      const next = new Set(current);
+      expenseIds.forEach((id) => {
+        if (checked) next.add(id);
+        else next.delete(id);
+      });
+      return next;
+    });
+  }
+
+  function setAllVisibleSelected(checked: boolean) {
+    setSelectedExpenseIds((current) => {
+      const next = new Set(current);
+      visibleExpenseIds.forEach((id) => {
+        if (checked) next.add(id);
+        else next.delete(id);
+      });
+      return next;
+    });
+  }
+
+  async function deleteSelectedExpenses() {
+    const expenseIds = Array.from(selectedExpenseIds);
+
+    if (expenseIds.length === 0) {
+      setMessage({ tone: "error", text: "請先勾選要刪除的消費。" });
+      return;
+    }
+
+    if (!window.confirm(`確定刪除已選 ${expenseIds.length} 筆消費明細嗎？\n刪除後會同步更新現金流與信用卡帳單預估。`)) {
+      return;
+    }
+
+    setBusyExpenseId("bulk-delete");
+    setMessage({ tone: "muted", text: "正在批次刪除消費並更新現金流..." });
+
+    try {
+      const result = await submitExpenseAction("deleteExpenses", { expenseIds });
+      setSelectedExpenseIds(new Set());
+      setMessage({ tone: "success", text: `已批次刪除 ${result?.deletedExpenses ?? expenseIds.length} 筆消費。` });
+    } catch (caughtError) {
+      setMessage({ tone: "error", text: caughtError instanceof Error ? caughtError.message : "批次刪除消費失敗。" });
+    } finally {
+      setBusyExpenseId(null);
+    }
+  }
 
   function toggleInvoice(invoiceNumber: string) {
     setExpandedInvoices((current) => {
@@ -731,10 +792,32 @@ export function ExpensesClient() {
           <h2>消費列表</h2>
           <span>{visibleExpenses.length} 筆</span>
         </div>
+        <div className="bulk-delete-toolbar">
+          <label className="bulk-select-all">
+            <input
+              type="checkbox"
+              checked={allVisibleSelected}
+              ref={(input) => { if (input) input.indeterminate = someVisibleSelected; }}
+              onChange={(event) => setAllVisibleSelected(event.target.checked)}
+              disabled={visibleExpenseIds.length === 0 || busyExpenseId === "bulk-delete"}
+            />
+            <span>全選目前列表</span>
+          </label>
+          <span className="muted">已選 {selectedVisibleExpenseIds.length} 筆明細</span>
+          <button
+            className="secondary-action danger-action"
+            type="button"
+            disabled={selectedVisibleExpenseIds.length === 0 || busyExpenseId === "bulk-delete"}
+            onClick={deleteSelectedExpenses}
+          >
+            {busyExpenseId === "bulk-delete" ? "刪除中" : "批次刪除"}
+          </button>
+        </div>
         <div className="table-scroll">
           <table className="data-table expenses-table">
             <thead>
               <tr>
+                <th>選取</th>
                 <th>消費日</th>
                 <th>預算月</th>
                 <th>店家</th>
@@ -757,6 +840,7 @@ export function ExpensesClient() {
                   const amountValue = amountEdits[expense.id] ?? String(expense.amount);
                   const isChanged = itemValue.trim() !== expense.itemDescription || budgetValue !== expense.budgetItemId || paymentValue !== expense.paymentToolType || cardValue !== (expense.creditCardName ?? "") || Number(amountValue) !== expense.amount;
                   return <tr key={expense.id}>
+                    <td><input className="bulk-row-checkbox" type="checkbox" aria-label={`選取 ${expense.merchantName || "未填"} ${expense.itemDescription || "消費"}`} checked={selectedExpenseIds.has(expense.id)} disabled={isBusy || busyExpenseId === "bulk-delete"} onChange={(event) => setRowSelected([expense.id], event.target.checked)} /></td>
                     <td>{expense.consumptionDate}</td><td>{expense.budgetMonth}</td><td>{expense.merchantName || "未填"}</td>
                     <td><input className="expense-item-input" value={itemValue} onChange={(event) => setItemEdits((current) => ({ ...current, [expense.id]: event.target.value }))} /></td>
                     <td><select className="expense-budget-select" value={budgetValue} onChange={(event) => setBudgetEdits((current) => ({ ...current, [expense.id]: event.target.value }))}><option value="">請選擇</option>{budgetItems.map((item) => <option key={item.id} value={item.id}>{getBudgetItemLabel(item)}</option>)}</select></td>
@@ -777,8 +861,12 @@ export function ExpensesClient() {
                 const invoicePaymentChanged = invoicePaymentEdit.paymentToolType !== row.paymentToolType
                   || invoicePaymentEdit.creditCardId !== (row.creditCardId ?? "")
                   || invoicePaymentEdit.installmentCount !== row.installmentCount;
+                const invoiceExpenseIds = row.expenses.map((expense) => expense.id);
+                const invoiceSelected = invoiceExpenseIds.length > 0 && invoiceExpenseIds.every((id) => selectedExpenseIds.has(id));
+                const invoicePartiallySelected = invoiceExpenseIds.some((id) => selectedExpenseIds.has(id)) && !invoiceSelected;
                 return <Fragment key={row.invoiceNumber}>
                   <tr className="invoice-expense-summary">
+                    <td><input className="bulk-row-checkbox" type="checkbox" aria-label={`選取發票 ${row.invoiceNumber}`} checked={invoiceSelected} ref={(input) => { if (input) input.indeterminate = invoicePartiallySelected; }} disabled={busyExpenseId === row.invoiceNumber || busyExpenseId === "bulk-delete"} onChange={(event) => setRowSelected(invoiceExpenseIds, event.target.checked)} /></td>
                     <td>{first?.consumptionDate}</td><td>{first?.budgetMonth}</td>
                     <td><button className="invoice-expand-button" aria-label={expanded ? `收合發票 ${row.invoiceNumber}` : `展開發票 ${row.invoiceNumber}`} onClick={() => toggleInvoice(row.invoiceNumber)} type="button">{expanded ? "▾" : "▸"}</button><strong>{first?.merchantName || "未填"}</strong><small>{row.invoiceNumber}</small></td>
                     <td>{row.itemCount} 項{row.discountTotal < 0 ? ` / 折扣 ${formatCurrency(row.discountTotal)}` : ""}</td>
@@ -793,7 +881,7 @@ export function ExpensesClient() {
                     const isChanged = itemValue.trim() !== expense.itemDescription || budgetValue !== expense.budgetItemId;
                     const discountApplied = expense.id === discountTarget?.id ? row.discountTotal : 0;
                     return <tr key={expense.id} className={isDiscount ? "invoice-expense-discount" : "invoice-expense-line"}>
-                      <td /><td>{expense.consumptionDate}</td><td>{isDiscount ? "折扣" : "品項"}</td>
+                      <td /><td /><td>{expense.consumptionDate}</td><td>{isDiscount ? "折扣" : "品項"}</td>
                       <td>{isDiscount ? expense.itemDescription : <input className="expense-item-input" value={itemValue} onChange={(event) => setItemEdits((current) => ({ ...current, [expense.id]: event.target.value }))} />}</td>
                       <td>{isDiscount ? <span>不另計預算</span> : <select className="expense-budget-select" value={budgetValue} onChange={(event) => setBudgetEdits((current) => ({ ...current, [expense.id]: event.target.value }))}><option value="">請選擇</option>{budgetItems.map((item) => <option key={item.id} value={item.id}>{getBudgetItemLabel(item)}</option>)}</select>}</td>
                       <td><span className="muted">沿用發票付款</span></td>
@@ -802,9 +890,10 @@ export function ExpensesClient() {
                     </tr>;
                   }) : null}
                 </Fragment>;
-              })}              {state === "ready" && visibleExpenses.length === 0 ? (
+              })}
+              {state === "ready" && visibleExpenses.length === 0 ? (
                 <tr>
-                  <td colSpan={8}>目前沒有可顯示的消費明細。</td>
+                  <td colSpan={9}>目前沒有可顯示的消費明細。</td>
                 </tr>
               ) : null}
             </tbody>

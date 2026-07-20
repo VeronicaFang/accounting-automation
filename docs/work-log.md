@@ -735,3 +735,26 @@ Previous grouped-invoice work completed invoice grouping/backfill and made invoi
   - Awaiting local commit and user manual push.
   - User should run `git push origin main` from the repo folder after Codex commits.
   - After push, Codex should check Vercel deployments and confirm `READY` before treating production as updated.
+
+### Expense Details Batch Delete
+
+- Date: 2026-07-20
+- Compared with previous log entry:
+  - Previous work focused on making the Budget Overview easier to scan and preserving budget drilldown.
+  - This work adds a new operational cleanup flow on Expense Details so duplicate or incorrect rows can be selected and deleted in one action.
+- Changes:
+  - Added selection state to `/expenses` for currently visible expense rows.
+  - Added `全選目前列表`, selected-count display, and `批次刪除` action above the expense table.
+  - Manual expense rows can be selected individually.
+  - Grouped invoice rows can be selected as a whole invoice; the action sends all underlying invoice expense ids to the existing delete API.
+  - Expanded invoice item rows remain aligned with the new selection column.
+  - The existing `deleteExpenses` backend action is reused, so batch deletion also updates cash flow months and credit-card bill estimates through the existing rollback logic.
+  - Updated table CSS so the new selection column is narrow and the item column remains readable.
+- Local verification:
+  - `npm run typecheck` from `apps/web`: passed.
+  - `npm test` from `apps/web`: passed.
+  - `git diff --check`: passed.
+  - `npm run build` from `apps/web`: Next.js compiled successfully, then failed locally with the known Windows/Codex `spawn EPERM` after compile.
+- Follow-up:
+  - Commit locally, then user should manually push `main` to trigger Vercel GitHub integration.
+  - After user confirms push, Codex should verify the latest production deployment is `READY` and ask the user to test batch deletion on production.

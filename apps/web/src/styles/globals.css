@@ -452,10 +452,38 @@ textarea {
 }
 
 
-.expenses-table td:nth-child(4) {
+.expenses-table td:nth-child(5) {
   min-width: 260px;
 }
 
+
+.expenses-table th:first-child,
+.expenses-table td:first-child {
+  text-align: center;
+  width: 52px;
+}
+
+.bulk-delete-toolbar {
+  align-items: center;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px 14px;
+  margin-bottom: 12px;
+}
+
+.bulk-select-all {
+  align-items: center;
+  display: inline-flex;
+  gap: 8px;
+  font-weight: 700;
+}
+
+.bulk-row-checkbox,
+.bulk-select-all input {
+  accent-color: var(--accent);
+  height: 16px;
+  width: 16px;
+}
 .expense-budget-select,
 .expense-item-input {
   width: 100%;
