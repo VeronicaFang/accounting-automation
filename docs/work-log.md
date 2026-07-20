@@ -857,3 +857,22 @@ Previous grouped-invoice work completed invoice grouping/backfill and made invoi
   - `git diff --check`: passed.
 - Follow-up:
   - After production deploy, verify Budget Overview exposes both the over-budget list and the non-over-budget remaining amount clearly on desktop.
+
+### Home Page Annual Financial Overview
+
+- Date: 2026-07-20
+- Goal:
+  - Make the home page the annual financial overview instead of a month-first status page.
+  - Treat cash flow as the final guardrail and budget management as the risk-control dashboard for overrun, reallocation, and budget-increase decisions.
+- Changes:
+  - Home page title changed to `年度財務總覽`.
+  - Added `年度控管` panel with annual income limit, scheduled spend, annual net flow, and conservative additional budget cap.
+  - Added decision metrics for over-budget items, movable remaining budget, result after covering overruns, and annual budget usage.
+  - Additional budget cap uses the more conservative value between remaining income-vs-budget room and annual net flow.
+  - Kept monthly status cards below the annual overview so monthly cash flow is still visible after the annual decision context.
+- Local verification:
+  - `npm run typecheck` from `apps/web`: passed.
+  - `npm test` from `apps/web`: passed.
+  - `git diff --check`: passed.
+- Follow-up:
+  - After production deploy, verify the home page first viewport communicates annual guardrails before monthly operational detail.

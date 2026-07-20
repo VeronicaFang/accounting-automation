@@ -1123,6 +1123,107 @@ textarea {
   text-decoration: underline;
 }
 
+.annual-control-panel {
+  border-left: 4px solid var(--teal);
+  margin-top: 18px;
+}
+
+.annual-control-heading {
+  align-items: center;
+}
+
+.annual-control-grid,
+.annual-decision-grid {
+  display: grid;
+  gap: 12px;
+}
+
+.annual-control-grid {
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  margin-top: 14px;
+}
+
+.annual-decision-grid {
+  grid-template-columns: 1.5fr 1fr 1fr 1fr;
+  margin-top: 12px;
+}
+
+.annual-control-card,
+.annual-decision-card {
+  background: #fffefa;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  padding: 14px;
+}
+
+.annual-control-card span,
+.annual-control-card strong,
+.annual-control-card small,
+.annual-decision-card span,
+.annual-decision-card strong,
+.annual-decision-card small {
+  display: block;
+}
+
+.annual-control-card span,
+.annual-decision-card span {
+  color: var(--muted);
+  font-size: 12px;
+  font-weight: 900;
+}
+
+.annual-control-card strong,
+.annual-decision-card > strong {
+  font-size: 24px;
+  line-height: 1.1;
+  margin-top: 8px;
+}
+
+.annual-control-card small,
+.annual-decision-card small {
+  color: var(--muted);
+  margin-top: 8px;
+}
+
+.annual-control-income { border-left: 4px solid var(--teal); }
+.annual-control-spend { border-left: 4px solid var(--orange); }
+.annual-control-good,
+.annual-decision-good { border-left: 4px solid var(--good); }
+.annual-control-danger,
+.annual-decision-danger { border-left: 4px solid var(--danger); background: #fff7f7; }
+.annual-control-good strong,
+.annual-decision-good > strong { color: var(--good); }
+.annual-control-danger strong,
+.annual-decision-danger > strong { color: var(--danger); }
+
+.annual-decision-list {
+  display: grid;
+  gap: 8px;
+  list-style: none;
+  margin: 12px 0 0;
+  padding: 0;
+}
+
+.annual-decision-list li {
+  align-items: center;
+  border-top: 1px solid var(--line);
+  display: flex;
+  gap: 10px;
+  justify-content: space-between;
+  padding-top: 8px;
+}
+
+.annual-decision-list a {
+  color: var(--teal);
+  font-weight: 900;
+  text-decoration: none;
+}
+
+.annual-decision-list strong {
+  color: var(--danger);
+  font-size: 13px;
+  margin: 0;
+}
 .annual-dashboard {
   margin-bottom: 16px;
 }
@@ -2041,10 +2142,14 @@ textarea {
 }
 
 @media (max-width: 1100px) {
+  .annual-control-grid,
+  .annual-decision-grid,
   .budget-overview-summary { grid-template-columns: repeat(2, minmax(0, 1fr)); }
 }
 
 @media (max-width: 720px) {
+  .annual-control-grid,
+  .annual-decision-grid,
   .budget-overview-summary { grid-template-columns: 1fr; }
   .budget-inline-edit,
   .budget-table-actions {

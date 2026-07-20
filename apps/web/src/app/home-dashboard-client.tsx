@@ -131,48 +131,100 @@ function AnnualDashboardTable({ rows }: { rows: ReturnType<typeof buildAnnualDas
   );
 }
 
-function OverBudgetPanel({ items }: { items: BudgetStatus[] }) {
-  const summary = summarizeOverBudgetItems(items);
-  const topItems = summary.items.slice(0, 5);
-  const hiddenCount = Math.max(0, summary.items.length - topItems.length);
+function AnnualFinancialOverview({ rows, items }: { rows: ReturnType<typeof buildAnnualDashboardMonths>; items: BudgetStatus[] }) {
+  const annualTotals = rows.reduce(
+    (current, row) => ({
+      estimatedSpend: current.estimatedSpend + row.estimatedSpend,
+      income: current.income + row.income,
+      netFlow: current.netFlow + row.netFlow
+    }),
+    { estimatedSpend: 0, income: 0, netFlow: 0 }
+  );
+  const overBudget = summarizeOverBudgetItems(items);
+  const topOverBudgetItems = overBudget.items.slice(0, 6);
+  const totalBudget = items.reduce((total, item) => total + item.annualBudget, 0);
+  const totalUsed = items.reduce((total, item) => total + item.usedAmount, 0);
+  const nonOverBudgetRemaining = items
+    .filter((item) => getBudgetOverrunAmount(item) === 0 && item.remainingAmount > 0)
+    .reduce((total, item) => total + item.remainingAmount, 0);
+  const remainingAfterCoveringOverrun = nonOverBudgetRemaining - overBudget.totalOverrun;
+  const incomeBudgetRoom = annualTotals.income - totalBudget;
+  const additionalBudgetCap = Math.max(0, Math.min(incomeBudgetRoom, annualTotals.netFlow));
+  const capReason = incomeBudgetRoom <= 0
+    ? "年度預算已達或超過年度收入"
+    : annualTotals.netFlow <= 0
+      ? "年度淨流量已無追加空間"
+      : "以收入上限與年度淨流量取較保守值";
 
   return (
-    <section className={`surface section-block budget-alert-panel ${summary.totalOverrun > 0 ? "budget-alert-danger" : "budget-alert-ok"}`}>
-      <div className="budget-alert-header">
+    <section className="surface section-block annual-control-panel">
+      <div className="section-heading annual-control-heading">
         <div>
-          <span className="eyebrow">預算現況</span>
-          <h2>{summary.totalOverrun > 0 ? "已有預算項目超標" : "目前沒有預算超標"}</h2>
-          <p>
-            {summary.totalOverrun > 0
-              ? `${summary.items.length} 個項目超標，合計超標 ${formatCurrency(summary.totalOverrun)} 元。`
-              : "目前所有預算項目仍在年度預算內。"}
-          </p>
+          <h2>年度控管</h2>
+          <span>現金流是最後防線；預算管理用來判斷超標、挪移與追加上限。</span>
         </div>
-        <strong>{formatCurrency(summary.totalOverrun)}</strong>
+        <Link className="secondary-action" href="/cash-flow">查看月度現金流</Link>
       </div>
 
-      {topItems.length > 0 ? (
-        <div className="budget-alert-list">
-          {topItems.map((item) => {
-            const overrun = getBudgetOverrunAmount(item);
-
-            return (
-              <Link className="budget-alert-item" href={`/expenses?budget=${encodeURIComponent(item.itemName)}`} key={item.id}>
-                <span>
-                  <small>{item.groupName}</small>
-                  <strong>{item.itemName}</strong>
-                </span>
-                <span className="budget-alert-amount">超標 {formatCurrency(overrun)}</span>
-              </Link>
-            );
-          })}
-          {hiddenCount > 0 ? <p className="muted">另有 {hiddenCount} 個超標項目，請到預算管理查看完整清單。</p> : null}
+      <div className="annual-control-grid">
+        <div className="annual-control-card annual-control-income">
+          <span>年度收入上限</span>
+          <strong>{formatCurrency(annualTotals.income)}</strong>
+          <small>今年花費上限不可超過年度收入總額。</small>
         </div>
-      ) : null}
+        <div className="annual-control-card annual-control-spend">
+          <span>已排程支出</span>
+          <strong>{formatCurrency(annualTotals.estimatedSpend)}</strong>
+          <small>現金支出 + 信用卡實際/預估帳單，已在現金流扣除。</small>
+        </div>
+        <div className={`annual-control-card ${annualTotals.netFlow < 0 ? "annual-control-danger" : "annual-control-good"}`}>
+          <span>年度淨流量</span>
+          <strong>{formatCurrency(annualTotals.netFlow)}</strong>
+          <small>最後防線：若為負數，應先降支出或補收入。</small>
+        </div>
+        <div className={`annual-control-card ${additionalBudgetCap <= 0 ? "annual-control-danger" : "annual-control-good"}`}>
+          <span>可追加預算上限</span>
+          <strong>{formatCurrency(additionalBudgetCap)}</strong>
+          <small>{capReason}</small>
+        </div>
+      </div>
+
+      <div className="annual-decision-grid">
+        <div className="annual-decision-card annual-decision-danger">
+          <span>已超標項目</span>
+          <strong>{overBudget.items.length} 項 / {formatCurrency(overBudget.totalOverrun)}</strong>
+          {topOverBudgetItems.length > 0 ? (
+            <ul className="annual-decision-list">
+              {topOverBudgetItems.map((item) => (
+                <li key={item.id}>
+                  <Link href={`/expenses?month=all&budget=${encodeURIComponent(item.itemName)}`}>{item.itemName}</Link>
+                  <strong>{formatCurrency(getBudgetOverrunAmount(item))}</strong>
+                </li>
+              ))}
+            </ul>
+          ) : (
+            <small>目前沒有超標項目。</small>
+          )}
+        </div>
+        <div className="annual-decision-card">
+          <span>可挪移剩餘預算</span>
+          <strong>{formatCurrency(nonOverBudgetRemaining)}</strong>
+          <small>只加總未超標且仍有剩餘的預算項目。</small>
+        </div>
+        <div className={`annual-decision-card ${remainingAfterCoveringOverrun < 0 ? "annual-decision-danger" : "annual-decision-good"}`}>
+          <span>挪移後結果</span>
+          <strong>{remainingAfterCoveringOverrun >= 0 ? `仍剩 ${formatCurrency(remainingAfterCoveringOverrun)}` : `仍缺 ${formatCurrency(Math.abs(remainingAfterCoveringOverrun))}`}</strong>
+          <small>若仍缺，才評估追加預算；追加後仍不可超過年度收入與淨流量防線。</small>
+        </div>
+        <div className="annual-decision-card">
+          <span>年度預算使用</span>
+          <strong>{formatCurrency(totalUsed)} / {formatCurrency(totalBudget)}</strong>
+          <small>所有 active 消費明細加總後的年度預算使用狀態。</small>
+        </div>
+      </div>
     </section>
   );
 }
-
 export function HomeDashboardClient({ initialData }: { initialData: AccountingDashboardData }) {
   const emptyDashboard = useMemo(() => getEmptyDashboard(initialData), [initialData]);
   const [dashboardData, setDashboardData] = useState<AccountingDashboardData>(emptyDashboard);
@@ -275,12 +327,14 @@ export function HomeDashboardClient({ initialData }: { initialData: AccountingDa
     <>
       <PageHeader
         eyebrow="首頁"
-        title={`${displayMonth} 本月狀態與待辦`}
-        description="顯示目前帳號可讀取的 household 資料，並優先提醒本月現金流與預算超標狀況。"
+        title="年度財務總覽"
+        description={`${displayMonth} 更新。先檢視全年收入、防線、預算超標與可挪移空間，再回頭處理本月現金流與待辦。`}
       />
       <div className={`data-source-pill data-source-${status}`}>{statusText(status, dashboardData, sessionUser, households)}</div>
       {sessionUser ? <p className="muted">Supabase user id: {sessionUser.userId}</p> : null}
       {error ? <p className="error-text">{error}</p> : null}
+
+      <AnnualFinancialOverview rows={annualRows} items={budgetStatuses} />
 
       <StatStrip
         stats={[
@@ -300,8 +354,6 @@ export function HomeDashboardClient({ initialData }: { initialData: AccountingDa
           }
         ]}
       />
-
-      <OverBudgetPanel items={budgetStatuses} />
 
       <div className="grid-two">
         <RecentExpensesFeed accessToken={accessToken} />
