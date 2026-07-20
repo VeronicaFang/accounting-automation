@@ -83,6 +83,7 @@ export function ExpensesClient() {
   const [expenses, setExpenses] = useState<ExpenseRecord[]>([]);
   const [budgetItems, setBudgetItems] = useState<BudgetItemLookup[]>([]);
   const [creditCards, setCreditCards] = useState<CreditCardLookup[]>([]);
+  const [dateEdits, setDateEdits] = useState<Record<string, string>>({});
   const [itemEdits, setItemEdits] = useState<Record<string, string>>({});
   const [budgetEdits, setBudgetEdits] = useState<Record<string, string>>({});
   const [paymentEdits, setPaymentEdits] = useState<Record<string, string>>({});
@@ -360,12 +361,18 @@ export function ExpensesClient() {
   }
 
   async function saveExpenseDetails(expense: ExpenseRecord) {
+    const consumptionDate = String(dateEdits[expense.id] ?? expense.consumptionDate).trim();
     const itemDescription = String(itemEdits[expense.id] ?? "").trim();
     const budgetItemId = String(budgetEdits[expense.id] ?? "").trim();
     const paymentToolType = String(paymentEdits[expense.id] ?? expense.paymentToolType);
     const creditCardName = String(cardEdits[expense.id] ?? expense.creditCardName ?? "").trim();
     const amountRaw = String(amountEdits[expense.id] ?? expense.amount).replace(/,/g, "");
     const newAmount = Number(amountRaw);
+
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(consumptionDate)) {
+      setMessage({ tone: "error", text: "請輸入有效的消費日期。" });
+      return;
+    }
 
     if (!itemDescription) {
       setMessage({ tone: "error", text: "品項不可空白。" });
@@ -387,6 +394,7 @@ export function ExpensesClient() {
       return;
     }
 
+    const dateChanged = consumptionDate !== expense.consumptionDate;
     const amountChanged = newAmount !== expense.amount;
     const paymentChanged = paymentToolType !== expense.paymentToolType || creditCardName !== (expense.creditCardName ?? "");
 
@@ -395,6 +403,10 @@ export function ExpensesClient() {
 
     try {
       const body: Record<string, unknown> = { expenseId: expense.id, itemDescription, budgetItemId };
+
+      if (dateChanged) {
+        body.consumptionDate = consumptionDate;
+      }
 
       if (amountChanged || paymentChanged) {
         body.amount = newAmount;
@@ -833,15 +845,16 @@ export function ExpensesClient() {
                 if (row.kind === "manual") {
                   const expense = row.expense;
                   const isBusy = busyExpenseId === expense.id;
+                  const dateValue = dateEdits[expense.id] ?? expense.consumptionDate;
                   const itemValue = itemEdits[expense.id] ?? expense.itemDescription;
                   const budgetValue = budgetEdits[expense.id] ?? expense.budgetItemId;
                   const paymentValue = paymentEdits[expense.id] ?? expense.paymentToolType;
                   const cardValue = cardEdits[expense.id] ?? (expense.creditCardName ?? "");
                   const amountValue = amountEdits[expense.id] ?? String(expense.amount);
-                  const isChanged = itemValue.trim() !== expense.itemDescription || budgetValue !== expense.budgetItemId || paymentValue !== expense.paymentToolType || cardValue !== (expense.creditCardName ?? "") || Number(amountValue) !== expense.amount;
+                  const isChanged = dateValue !== expense.consumptionDate || itemValue.trim() !== expense.itemDescription || budgetValue !== expense.budgetItemId || paymentValue !== expense.paymentToolType || cardValue !== (expense.creditCardName ?? "") || Number(amountValue) !== expense.amount;
                   return <tr key={expense.id}>
                     <td><input className="bulk-row-checkbox" type="checkbox" aria-label={`選取 ${expense.merchantName || "未填"} ${expense.itemDescription || "消費"}`} checked={selectedExpenseIds.has(expense.id)} disabled={isBusy || busyExpenseId === "bulk-delete"} onChange={(event) => setRowSelected([expense.id], event.target.checked)} /></td>
-                    <td>{expense.consumptionDate}</td><td>{expense.budgetMonth}</td><td>{expense.merchantName || "未填"}</td>
+                    <td><input className="expense-date-input" type="date" value={dateValue} disabled={isBusy} onChange={(event) => setDateEdits((current) => ({ ...current, [expense.id]: event.target.value }))} /></td><td>{expense.budgetMonth}</td><td>{expense.merchantName || "未填"}</td>
                     <td><input className="expense-item-input" value={itemValue} onChange={(event) => setItemEdits((current) => ({ ...current, [expense.id]: event.target.value }))} /></td>
                     <td><select className="expense-budget-select" value={budgetValue} onChange={(event) => setBudgetEdits((current) => ({ ...current, [expense.id]: event.target.value }))}><option value="">請選擇</option>{budgetItems.map((item) => <option key={item.id} value={item.id}>{getBudgetItemLabel(item)}</option>)}</select></td>
                     <td><div className="expense-payment-cell"><select className="expense-budget-select" value={paymentValue} disabled={isBusy} onChange={(event) => setPaymentEdits((current) => ({ ...current, [expense.id]: event.target.value }))}><option value="cash">現金</option><option value="credit_card">信用卡</option></select>{paymentValue === "credit_card" ? <select className="expense-budget-select" value={cardValue} disabled={isBusy} onChange={(event) => setCardEdits((current) => ({ ...current, [expense.id]: event.target.value }))}><option value="">請選擇</option>{creditCards.map((card) => <option key={card.id} value={card.name}>{card.name}</option>)}</select> : null}</div></td>

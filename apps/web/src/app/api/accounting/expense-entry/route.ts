@@ -70,14 +70,17 @@ type ExpenseMaintenanceRow = {
 
 type ExpenseForUpdate = {
   id: string;
+  consumption_date: string;
   amount: string | number;
   is_installment: boolean;
+  installment_count: number | null;
   payment_tool_type: PaymentToolType;
   credit_card_id: string | null;
 };
 
 type PaymentScheduleForUpdate = {
   id: string;
+  payment_sequence: number;
   cash_flow_month: string;
   payment_amount: string | number;
   payment_tool_type: PaymentToolType;
@@ -990,6 +993,10 @@ async function updateExpenseDetails(
   const expenseId = String(payload.expenseId || "").trim();
   const itemDescription = String(payload.itemDescription || "").trim();
   const budgetItemId = String(payload.budgetItemId || "").trim();
+  const nextConsumptionDate =
+    payload.consumptionDate != null && String(payload.consumptionDate).trim()
+      ? normalizeDateInput(String(payload.consumptionDate))
+      : null;
 
   if (!expenseId || !itemDescription || !budgetItemId) {
     throw new Error("請填寫品項並選擇預算項目。");
@@ -1005,11 +1012,11 @@ async function updateExpenseDetails(
       : null;
   const newCreditCardName = payload.creditCardName != null ? String(payload.creditCardName).trim() : null;
   const newAmount = payload.amount != null && String(payload.amount) !== "" ? Number(payload.amount) : null;
-  const hasFinancialChange = newPaymentToolType !== null || newAmount !== null;
+  const hasFinancialChange = newPaymentToolType !== null || newAmount !== null || nextConsumptionDate !== null;
 
   if (hasFinancialChange) {
     const [currentExpense] = await supabaseRead<ExpenseForUpdate>(requestConfig, "expenses", {
-      select: "id,amount,is_installment,payment_tool_type,credit_card_id",
+      select: "id,consumption_date,amount,is_installment,installment_count,payment_tool_type,credit_card_id",
       household_id: `eq.${references.householdId}`,
       id: `eq.${expenseId}`,
       status: "eq.active",
@@ -1021,7 +1028,7 @@ async function updateExpenseDetails(
     }
 
     if (currentExpense.is_installment) {
-      throw new Error("分期付款消費不支援修改金額與支付工具。");
+      throw new Error("分期付款消費不支援修改金額、日期與支付工具。");
     }
 
     const resolvedPaymentType = newPaymentToolType ?? currentExpense.payment_tool_type;
@@ -1042,22 +1049,35 @@ async function updateExpenseDetails(
       newCreditCardId = resolvedCreditCard.id;
     }
 
-    const oldTotalAmount = Number(currentExpense.amount);
-    const targetAmount = newAmount ?? oldTotalAmount;
+    const targetAmount = newAmount ?? Number(currentExpense.amount);
+    const targetConsumptionDate = nextConsumptionDate ?? currentExpense.consumption_date;
 
     if (!Number.isFinite(targetAmount) || targetAmount < 0) {
       throw new Error("請輸入有效的消費金額（≥ 0）。");
     }
 
     const schedules = await supabaseRead<PaymentScheduleForUpdate>(requestConfig, "payment_schedules", {
-      select: "id,cash_flow_month,payment_amount,payment_tool_type,credit_card_id",
+      select: "id,payment_sequence,cash_flow_month,payment_amount,payment_tool_type,credit_card_id",
       household_id: `eq.${references.householdId}`,
-      expense_id: `eq.${expenseId}`
+      expense_id: `eq.${expenseId}`,
+      order: "payment_sequence.asc"
     });
 
-    for (const schedule of schedules) {
+    const nextPlans = buildPaymentPlans({
+      amount: targetAmount,
+      consumptionDate: targetConsumptionDate,
+      paymentToolType: resolvedPaymentType,
+      installmentCount: Math.max(1, Math.trunc(Number(currentExpense.installment_count || 1))),
+      creditCard: resolvedCreditCard
+    });
+
+    if (nextPlans.length !== schedules.length) {
+      throw new Error("付款排程數量不一致，請先檢查這筆消費的分期資料。");
+    }
+
+    for (const [index, schedule] of schedules.entries()) {
       const oldAmt = Number(schedule.payment_amount);
-      const newAmt = oldTotalAmount > 0 ? (oldAmt / oldTotalAmount) * targetAmount : targetAmount;
+      const nextPlan = nextPlans[index];
 
       await addCashFlowDelta(requestConfig, references.householdId, schedule.cash_flow_month, {
         cashExpense: schedule.payment_tool_type === "cash" ? -oldAmt : 0,
@@ -1077,20 +1097,23 @@ async function updateExpenseDetails(
         "payment_schedules",
         { household_id: `eq.${references.householdId}`, id: `eq.${schedule.id}` },
         {
-          payment_amount: newAmt,
+          payment_sequence: nextPlan.sequence,
+          payment_date: nextPlan.paymentDate,
+          cash_flow_month: nextPlan.cashFlowMonth,
+          payment_amount: nextPlan.amount,
           payment_tool_type: resolvedPaymentType,
           credit_card_id: newCreditCardId,
           updated_at: new Date().toISOString()
         }
       );
 
-      await addCashFlowDelta(requestConfig, references.householdId, schedule.cash_flow_month, {
-        cashExpense: resolvedPaymentType === "cash" ? newAmt : 0,
-        creditCardPayment: resolvedPaymentType === "credit_card" ? newAmt : 0
+      await addCashFlowDelta(requestConfig, references.householdId, nextPlan.cashFlowMonth, {
+        cashExpense: resolvedPaymentType === "cash" ? nextPlan.amount : 0,
+        creditCardPayment: resolvedPaymentType === "credit_card" ? nextPlan.amount : 0
       });
 
       if (resolvedPaymentType === "credit_card" && resolvedCreditCard) {
-        await addBillEstimateDelta(requestConfig, references.householdId, resolvedCreditCard, schedule.cash_flow_month, newAmt, 1);
+        await addBillEstimateDelta(requestConfig, references.householdId, resolvedCreditCard, nextPlan.cashFlowMonth, nextPlan.amount, 1);
       }
     }
 
@@ -1099,6 +1122,8 @@ async function updateExpenseDetails(
       "expenses",
       { household_id: `eq.${references.householdId}`, id: `eq.${expenseId}`, status: "eq.active" },
       {
+        consumption_date: targetConsumptionDate,
+        budget_month: monthKeyFromDate(targetConsumptionDate),
         amount: targetAmount,
         payment_tool_type: resolvedPaymentType,
         credit_card_id: newCreditCardId,

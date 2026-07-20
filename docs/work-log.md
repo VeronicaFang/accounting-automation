@@ -963,3 +963,22 @@ Previous grouped-invoice work completed invoice grouping/backfill and made invoi
   - `npm run typecheck` from `apps/web`: passed.
   - `npm test` from `apps/web`: passed; dashboard filter coverage now checks statement-vs-estimated bill splitting.
   - `git diff --check`: passed.
+
+### Expense Consumption Date Editing
+
+- Date: 2026-07-20
+- Goal:
+  - Allow correcting an existing expense consumption date from the Expense Details page when the imported/manual date is wrong and causes the bill month to be assigned incorrectly.
+- Changes:
+  - Expense Details manual rows now show `消費日` as an editable date input.
+  - Saving a row now sends `consumptionDate` when the date is changed.
+  - `updateExpenseDetails` now treats a date change as a financial schedule change: it updates `expenses.consumption_date`, recalculates `expenses.budget_month`, moves `payment_schedules.payment_date` / `cash_flow_month`, subtracts the old cash-flow and bill-estimate deltas, and adds the recalculated deltas.
+  - Date recalculation reuses `buildPaymentPlans`, so credit-card cutoff/payment-day rules determine the corrected bill month.
+- Scope note:
+  - This update applies to non-installment expense rows. Existing installment rows remain blocked from direct row edits because changing one date can affect multiple future schedules.
+- Local verification:
+  - `npm test` from `apps/web`: passed.
+  - `npm run typecheck` from `apps/web`: passed.
+  - `git diff --check`: passed.
+- Follow-up:
+  - After production deploy, test the Amazon / Owala row by changing `2026-04-01` to `2026-04-23`; verify the expense keeps the new date, the budget month remains `2026-04`, and the credit-card bill estimate moves according to the 中信 cutoff/payment rule.
