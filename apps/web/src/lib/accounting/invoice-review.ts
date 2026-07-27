@@ -209,6 +209,27 @@ export type InvoiceDraftGroup = {
   merchantName: string;
 };
 
+export type InvoiceGroupConfirmationPreflight = {
+  invoiceNumber: string;
+  paymentToolType: InvoiceDraftPaymentToolType;
+  creditCardId?: string;
+  installmentCount?: number;
+  lines: Array<{
+    draftId: string;
+    budgetItemId: string;
+  }>;
+};
+
+export type InvoiceGroupConfirmationIssue = {
+  invoiceNumber: string;
+  consumptionDate: string;
+  merchantName: string;
+  draftId?: string;
+  sourceOrder?: number;
+  itemDescription?: string;
+  reason: string;
+};
+
 export function buildInvoiceDraftGroups(drafts: InvoiceDraftReviewItem[]): InvoiceDraftGroup[] {
   return groupInvoiceLines(
     drafts.map((draft) => ({
@@ -227,6 +248,60 @@ export function buildInvoiceDraftGroups(drafts: InvoiceDraftReviewItem[]): Invoi
       merchantName: group.lines[0]?.merchantName ?? ""
     }))
     .sort((a, b) => a.consumptionDate.localeCompare(b.consumptionDate) || a.invoiceNumber.localeCompare(b.invoiceNumber));
+}
+
+export function collectInvoiceGroupConfirmationIssues(
+  group: InvoiceDraftGroup,
+  confirmation: InvoiceGroupConfirmationPreflight
+): InvoiceGroupConfirmationIssue[] {
+  const issues: InvoiceGroupConfirmationIssue[] = [];
+  const baseIssue = {
+    invoiceNumber: group.invoiceNumber,
+    consumptionDate: group.consumptionDate,
+    merchantName: group.merchantName || "未知商家"
+  };
+
+  if (confirmation.invoiceNumber !== group.invoiceNumber) {
+    issues.push({ ...baseIssue, reason: "送出的發票號碼與畫面上的發票號碼不一致。" });
+  }
+
+  if (confirmation.paymentToolType === "credit_card" && !String(confirmation.creditCardId ?? "").trim()) {
+    issues.push({ ...baseIssue, reason: "付款方式是信用卡，但尚未選擇信用卡。" });
+  }
+
+  if (confirmation.paymentToolType !== "cash" && confirmation.paymentToolType !== "credit_card") {
+    issues.push({ ...baseIssue, reason: "付款方式不是支援的類型。" });
+  }
+
+  const installmentCount = Number(confirmation.installmentCount ?? 1);
+  if (!Number.isFinite(installmentCount) || installmentCount < 1) {
+    issues.push({ ...baseIssue, reason: "分期數必須大於或等於 1。" });
+  }
+
+  if (group.itemLines.length === 0) {
+    issues.push({ ...baseIssue, reason: "發票沒有可入帳的正數品項。" });
+  }
+
+  const positiveTotal = group.itemLines.reduce((sum, line) => sum + line.amount, 0);
+  if (positiveTotal + group.discountTotal < 0) {
+    issues.push({ ...baseIssue, reason: "折扣金額超過正數品項總額，請檢查折扣與品項金額。" });
+  }
+
+  const submittedLineByDraftId = new Map(confirmation.lines.map((line) => [line.draftId, line]));
+  for (const line of group.itemLines) {
+    const submittedLine = submittedLineByDraftId.get(line.id);
+    if (!submittedLine || !String(submittedLine.budgetItemId ?? "").trim()) {
+      issues.push({
+        ...baseIssue,
+        draftId: line.id,
+        sourceOrder: line.sourceOrder,
+        itemDescription: line.itemDescription,
+        reason: `品項「${line.itemDescription || line.id}」尚未選擇預算項目。`
+      });
+    }
+  }
+
+  return issues;
 }
 export function buildInvoiceDraftConfirmationInputs(
   drafts: InvoiceDraftReviewItem[],

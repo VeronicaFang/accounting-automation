@@ -6,6 +6,7 @@ import { PageHeader } from "@/components/page-header";
 import { TaskWorkbench } from "@/components/task-workbench";
 import {
   buildInvoiceDraftGroups,
+  collectInvoiceGroupConfirmationIssues,
   type InvoiceDraftBudgetItemLookup,
   type InvoiceDraftCreditCardLookup,
   type InvoiceDraftPaymentToolType,
@@ -43,6 +44,7 @@ export function ReviewClient() {
   const [itemEdits, setItemEdits] = useState<Record<string, ItemEdit>>({});
   const [groupEdits, setGroupEdits] = useState<Record<string, GroupEdit>>({});
   const [selectedInvoiceNumbers, setSelectedInvoiceNumbers] = useState<string[]>([]);
+  const [invoiceValidationIssues, setInvoiceValidationIssues] = useState<ReturnType<typeof collectInvoiceGroupConfirmationIssues>>([]);
   const [state, setState] = useState<LoadState>("signed-out");
   const [error, setError] = useState<string | null>(null);
   const [message, setMessage] = useState<Message>({ tone: "muted", text: "登入 Supabase 後可審核待確認發票。" });
@@ -74,6 +76,7 @@ export function ReviewClient() {
       }];
     })));
     setSelectedInvoiceNumbers(nextGroups.map((group) => group.invoiceNumber));
+    setInvoiceValidationIssues([]);
     if (updateMessage) setMessage({ tone: "success", text: nextGroups.length > 0 ? `已載入 ${nextGroups.length} 張待確認發票。` : "目前沒有待確認發票。" });
     setState("ready");
   }
@@ -99,14 +102,17 @@ export function ReviewClient() {
 
   function updateItemEdit(draftId: string, patch: Partial<ItemEdit>) {
     setItemEdits((current) => ({ ...current, [draftId]: { ...current[draftId], ...patch } }));
+    setInvoiceValidationIssues((current) => current.filter((issue) => issue.draftId !== draftId));
   }
 
   function updateGroupEdit(invoiceNumber: string, patch: Partial<GroupEdit>) {
     setGroupEdits((current) => ({ ...current, [invoiceNumber]: { ...current[invoiceNumber], ...patch } }));
+    setInvoiceValidationIssues((current) => current.filter((issue) => issue.invoiceNumber !== invoiceNumber));
   }
 
   function toggleGroup(invoiceNumber: string, checked: boolean) {
     setSelectedInvoiceNumbers((current) => checked ? [...new Set([...current, invoiceNumber])] : current.filter((value) => value !== invoiceNumber));
+    setInvoiceValidationIssues([]);
   }
 
   async function postAction(accessToken: string, body: Record<string, unknown>) {
@@ -135,12 +141,19 @@ export function ReviewClient() {
         lines: group.itemLines.map((line) => ({ draftId: line.id, budgetItemId: itemEdits[line.id]?.budgetItemId ?? "", notes: itemEdits[line.id]?.notes ?? "" }))
       };
     });
+    const nextValidationIssues = selectedGroups.flatMap((group, index) => collectInvoiceGroupConfirmationIssues(group, payloadGroups[index]));
+    setInvoiceValidationIssues(nextValidationIssues);
+    if (nextValidationIssues.length > 0) {
+      setMessage({ tone: "error", text: `有 ${nextValidationIssues.length} 個發票確認問題，請先依下方清單修正。` });
+      return;
+    }
 
     setIsSubmitting(true);
     setMessage({ tone: "muted", text: "正在依發票群組寫入正式支出..." });
     try {
       const result = await postAction(session.accessToken, { action: "confirmInvoiceGroups", groups: payloadGroups });
       setMessage({ tone: "success", text: `已確認 ${result.confirmedGroups ?? 0} 張發票，建立 ${result.insertedExpenses ?? 0} 筆明細。` });
+      setInvoiceValidationIssues([]);
       await loadReviewData(session.accessToken, () => true, false);
     } catch (caughtError) {
       setMessage({ tone: "error", text: caughtError instanceof Error ? caughtError.message : "確認發票失敗。" });
@@ -169,6 +182,28 @@ export function ReviewClient() {
       <div className={`entry-message entry-message-${message.tone}`}>{message.text}</div>
       {error ? <p className="error-text">{error}</p> : null}
       <TaskWorkbench tasks={tasks} />
+
+      {invoiceValidationIssues.length > 0 ? (
+        <section className="surface section-block invoice-validation-panel">
+          <div className="section-heading"><h2>待修正發票</h2><span>{invoiceValidationIssues.length} 個問題</span></div>
+          <p className="muted">以下問題會讓整批確認失敗；請依發票號碼修正後再重新確認。</p>
+          <div className="table-scroll">
+            <table className="data-table invoice-validation-table">
+              <thead><tr><th>日期 / 發票</th><th>商家</th><th>品項</th><th>問題</th></tr></thead>
+              <tbody>
+                {invoiceValidationIssues.map((issue, index) => (
+                  <tr key={`${issue.invoiceNumber}-${issue.draftId ?? index}-${issue.reason}`}>
+                    <td><strong>{issue.consumptionDate}</strong><small>{issue.invoiceNumber}</small></td>
+                    <td>{issue.merchantName}</td>
+                    <td>{issue.itemDescription ? <><small>第 {issue.sourceOrder} 列</small>{issue.itemDescription}</> : <span className="muted">整張發票</span>}</td>
+                    <td className="invoice-validation-reason">{issue.reason}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </section>
+      ) : null}
 
       <section className="surface section-block review-section">
         <div className="section-heading"><h2>發票草稿</h2><span>已選 {selectedGroups.length} 張 / {formatCurrency(selectedTotal)}</span></div>

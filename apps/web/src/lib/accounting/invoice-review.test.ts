@@ -3,6 +3,7 @@ import assert from "node:assert/strict";
 import {
   buildInvoiceDraftConfirmationInputs,
   buildInvoiceDraftGroups,
+  collectInvoiceGroupConfirmationIssues,
   mapInvoiceDraftReviewItems,
   type InvoiceDraftConfirmation
 } from "./invoice-review.ts";
@@ -202,4 +203,25 @@ assert.equal(invoiceGroups[0].invoiceNumber, "AA123");
 assert.equal(invoiceGroups[0].paidTotal, 146);
 assert.equal(invoiceGroups[0].itemLines.length, 2);
 assert.equal(invoiceGroups[0].discountLines.length, 1);
-console.log("invoice review: 9 assertions passed");
+const missingCardIssues = collectInvoiceGroupConfirmationIssues(invoiceGroups[0], {
+  invoiceNumber: "AA123",
+  paymentToolType: "credit_card",
+  creditCardId: "",
+  installmentCount: 1,
+  lines: invoiceGroups[0].itemLines.map((line) => ({ draftId: line.id, budgetItemId: "budget-1" }))
+});
+assert.equal(missingCardIssues.length, 1);
+assert.equal(missingCardIssues[0].invoiceNumber, "AA123");
+assert.match(missingCardIssues[0].reason, /信用卡/);
+
+const missingBudgetIssues = collectInvoiceGroupConfirmationIssues(invoiceGroups[0], {
+  invoiceNumber: "AA123",
+  paymentToolType: "cash",
+  installmentCount: 1,
+  lines: invoiceGroups[0].itemLines.map((line, index) => ({ draftId: line.id, budgetItemId: index === 0 ? "" : "budget-1" }))
+});
+assert.equal(missingBudgetIssues.length, 1);
+assert.equal(missingBudgetIssues[0].draftId, "draft-1");
+assert.match(missingBudgetIssues[0].reason, /預算項目/);
+
+console.log("invoice review: 15 assertions passed");

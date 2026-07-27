@@ -18,6 +18,27 @@
 - Production domain: `https://accounting-automation-ten.vercel.app`
 - GitHub repo: `VeronicaFang/accounting-automation`
 - Production branch: `main`
+## 2026-07-27
+
+### Invoice Confirmation Issue Inventory
+
+- Commit: `this commit fix: list invoice confirmation validation issues`
+- Scope:
+  - Review page now preflights selected invoice groups before calling the confirm API.
+  - Invoice-specific blocking issues are listed in a visible table with date, invoice number, merchant, item, and reason.
+  - Covered issues include missing credit card for credit-card payments, missing budget item on positive invoice items, unsupported payment type, invalid installment count, missing positive items, and discounts exceeding positive item totals.
+  - Editing an invoice payment setting or item budget clears the related issue from the list so the user can re-submit after fixing it.
+  - Added focused unit coverage for missing-credit-card and missing-budget-item issue collection.
+- Local verification:
+  - `node --experimental-strip-types apps/web/src/lib/accounting/invoice-review.test.ts`: passed.
+  - `npm run typecheck` from `apps/web`: passed.
+  - `npm test` from `apps/web`: passed.
+  - `git diff --check`: passed.
+  - `npm run build` from `apps/web`: Next compiled successfully, then failed locally with known Windows/Codex `spawn EPERM` during the post-compile build step.
+- Production deployment status:
+  - Awaiting local commit and user manual push.
+  - User should run `git push origin main` from the repo folder after Codex commits.
+  - After push, Codex should check Vercel deployments and confirm `READY` before treating production as updated.
 ## 2026-07-17
 
 ### Cash Flow Page Enhancement

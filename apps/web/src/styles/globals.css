@@ -922,6 +922,31 @@ textarea {
   gap: 6px;
 }
 
+.invoice-validation-panel {
+  border-color: rgba(185, 28, 28, 0.28);
+  background: #fff8f8;
+}
+
+.invoice-validation-table td {
+  vertical-align: top;
+  white-space: normal;
+}
+
+.invoice-validation-table strong,
+.invoice-validation-table small {
+  display: block;
+}
+
+.invoice-validation-table small {
+  margin-top: 3px;
+  color: var(--muted);
+}
+
+.invoice-validation-reason {
+  color: var(--danger);
+  font-weight: 800;
+}
+
 .setting-tile {
   border: 1px solid var(--line);
   border-radius: 8px;
