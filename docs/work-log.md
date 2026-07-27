@@ -1002,3 +1002,22 @@ Previous grouped-invoice work completed invoice grouping/backfill and made invoi
   - `git diff --check`: passed.
 - Scope note:
   - Existing incorrect database rows were not changed; the user will adjust current data manually.
+
+### Invoice Group Confirmation Error Context
+
+- Date: 2026-07-27
+- Goal:
+  - Make failed invoice group confirmations identify the invoice number that caused a batch confirmation failure.
+- Finding:
+  - `confirmInvoiceGroups` confirmed selected invoice groups one by one through the `confirm_invoice_group` RPC, but it let RPC errors bubble up without the current `invoiceNumber`.
+  - The Review page already displays API error text, so the missing piece was backend error context.
+- Changes:
+  - Wrapped each `confirm_invoice_group` RPC call with per-invoice error handling.
+  - Error messages now include `確認發票 <invoiceNumber> 失敗：...`.
+  - The known discount allocation failure is translated to `折扣金額超過最高金額品項，請展開這張發票檢查折扣與品項金額。`.
+- Local verification:
+  - `npm test` from `apps/web`: passed.
+  - `npm run typecheck` from `apps/web`: passed.
+  - `git diff --check`: passed.
+- Follow-up:
+  - After production deploy, re-run invoice confirmation with the same selected batch. If a group fails, the Review page should show the exact invoice number to inspect.

@@ -1380,20 +1380,29 @@ async function confirmInvoiceGroups(
   let confirmedDrafts = 0;
 
   for (const group of groups) {
-    const result = await supabaseRpc<{ insertedExpenses: number }>(requestConfig, "confirm_invoice_group", {
-      p_household_id: references.householdId,
-      p_invoice_number: group.invoiceNumber,
-      p_payment_tool_type: group.paymentToolType,
-      p_credit_card_id: group.creditCardId,
-      p_installment_count: group.installmentCount,
-      p_lines: group.lines.map((line) => ({
-        draft_id: line.draftId,
-        budget_item_id: line.budgetItemId,
-        notes: line.notes
-      }))
-    });
-    insertedExpenses += Number(result.insertedExpenses ?? 0);
-    confirmedDrafts += group.lines.length;
+    try {
+      const result = await supabaseRpc<{ insertedExpenses: number }>(requestConfig, "confirm_invoice_group", {
+        p_household_id: references.householdId,
+        p_invoice_number: group.invoiceNumber,
+        p_payment_tool_type: group.paymentToolType,
+        p_credit_card_id: group.creditCardId,
+        p_installment_count: group.installmentCount,
+        p_lines: group.lines.map((line) => ({
+          draft_id: line.draftId,
+          budget_item_id: line.budgetItemId,
+          notes: line.notes
+        }))
+      });
+      insertedExpenses += Number(result.insertedExpenses ?? 0);
+      confirmedDrafts += group.lines.length;
+    } catch (caughtError) {
+      const rawMessage = caughtError instanceof Error ? caughtError.message : "未知錯誤";
+      const reason = rawMessage.includes("Invoice discount exceeds the highest positive item")
+        ? "折扣金額超過最高金額品項，請展開這張發票檢查折扣與品項金額。"
+        : rawMessage;
+
+      throw new Error(`確認發票 ${group.invoiceNumber} 失敗：${reason}`);
+    }
   }
 
   return { confirmedGroups: groups.length, confirmedDrafts, insertedExpenses };
