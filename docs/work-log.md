@@ -20,6 +20,25 @@
 - Production branch: `main`
 ## 2026-07-27
 
+### Spending Analysis Annual Remaining Budget Definition
+
+- Commit: `this commit fix: update spending analysis remaining budget`
+- Scope:
+  - Spending Analysis summary card no longer shows movable budget.
+  - Replaced it with Annual Remaining Budget.
+  - Definition: remaining annual budget from non-over-budget items minus cumulative overrun from over-budget items.
+  - Updated advisor recommendation text to use the same annual remaining budget definition.
+  - Added test coverage for the new calculation: non-over remaining 50,000 minus overrun 15,676 equals 34,324.
+- Local verification:
+  - `node --experimental-strip-types src/lib/accounting/spending-analysis.test.ts` from `apps/web`: passed.
+  - `npm run typecheck` from `apps/web`: passed.
+  - `npm test` from `apps/web`: passed.
+  - `git diff --check`: passed.
+  - `npm run build` from `apps/web`: Next compiled successfully, then failed locally with known Windows/Codex `spawn EPERM` during the post-compile build step.
+- Production deployment status:
+  - Awaiting local commit and user manual push.
+  - User should run `git push origin main` from the repo folder after Codex commits.
+  - After push, Codex should check Vercel deployments and confirm `READY` before treating production as updated.
 ### Expense List Sorting And Invoice Expansion Controls
 
 - Commit: `this commit feat: add expense list sorting controls`

@@ -103,6 +103,7 @@ assert.equal(monthly.items.find((item) => item.budgetItemId === "food")?.periodA
 assert.equal(monthly.summary.selectedTotal, 6000);
 assert.equal(monthly.summary.overBudgetCount, 1);
 assert.equal(monthly.summary.overrunTotal, 15676);
+assert.equal(monthly.summary.annualRemainingBudget, 34324);
 
 const quarterly = summarizeSpendingTrends(expenses, budgets, {
   year: "2026",
@@ -116,5 +117,6 @@ assert.equal(quarterly.periods.length, 4);
 assert.equal(quarterly.items.length, 1);
 assert.equal(quarterly.items[0].periodAmounts[0].amount, 2000);
 assert.equal(quarterly.items[0].annualUsed, 2000);
+assert.equal(quarterly.summary.annualRemainingBudget, 118000);
 
-console.log("spending analysis: 10 assertions passed");
+console.log("spending analysis: 12 assertions passed");

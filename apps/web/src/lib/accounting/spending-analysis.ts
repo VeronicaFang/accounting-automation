@@ -39,7 +39,7 @@ export type SpendingAnalysisSummary = {
   annualBudget: number;
   overBudgetCount: number;
   overrunTotal: number;
-  movableBudgetTotal: number;
+  annualRemainingBudget: number;
   highestGrowthItem: SpendingTrendItem | null;
 };
 
@@ -149,9 +149,11 @@ export function summarizeSpendingTrends(
     });
 
   const overBudgetItems = items.filter((item) => item.overrunAmount > 0);
-  const movableBudgetTotal = items
+  const overrunTotal = overBudgetItems.reduce((sum, item) => sum + item.overrunAmount, 0);
+  const nonOverBudgetRemaining = items
     .filter((item) => item.overrunAmount === 0 && item.annualRemaining > 0)
     .reduce((sum, item) => sum + item.annualRemaining, 0);
+  const annualRemainingBudget = nonOverBudgetRemaining - overrunTotal;
   const highestGrowthItem = [...items]
     .filter((item) => item.periodAmounts.some((period) => period.amount > 0))
     .sort((a, b) => b.projectedAnnualAmount - b.annualBudget - (a.projectedAnnualAmount - a.annualBudget))[0] ?? null;
@@ -164,8 +166,8 @@ export function summarizeSpendingTrends(
       annualUsed: items.reduce((sum, item) => sum + item.annualUsed, 0),
       annualBudget: items.reduce((sum, item) => sum + item.annualBudget, 0),
       overBudgetCount: overBudgetItems.length,
-      overrunTotal: overBudgetItems.reduce((sum, item) => sum + item.overrunAmount, 0),
-      movableBudgetTotal,
+      overrunTotal,
+      annualRemainingBudget,
       highestGrowthItem
     }
   };

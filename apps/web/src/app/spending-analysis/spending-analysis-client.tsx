@@ -46,7 +46,7 @@ function getPeriodLink(item: SpendingTrendItem, periodKey: string, mode: PeriodM
   return `/expenses?month=all&budget=${budget}`;
 }
 
-function buildRecommendation(items: SpendingTrendItem[], movableBudgetTotal: number): string[] {
+function buildRecommendation(items: SpendingTrendItem[], annualRemainingBudget: number): string[] {
   const overItems = items.filter((item) => item.overrunAmount > 0);
   const nearItems = items.filter((item) => item.status === "near_limit");
   const projectedRisk = items
@@ -70,7 +70,7 @@ function buildRecommendation(items: SpendingTrendItem[], movableBudgetTotal: num
     messages.push(`${item.budgetItemName} 依目前月均花費推估全年約 ${formatCurrency(item.projectedAnnualAmount)}，可能超過年度預算 ${formatCurrency(item.projectedAnnualAmount - item.annualBudget)}。`);
   }
 
-  messages.push(`尚未超標項目仍有 ${formatCurrency(movableBudgetTotal)} 可作為預算挪移空間；挪移前仍應確認是否會影響必要支出或現金流安全。`);
+  messages.push(`年度剩餘預算仍有 ${formatCurrency(annualRemainingBudget)} 代表未超標項目剩餘扣除已超標金額後的可用空間；挪移前仍應確認是否會影響必要支出或現金流安全。`);
   return messages;
 }
 
@@ -165,8 +165,8 @@ export function SpendingAnalysisClient() {
     [analysis.items]
   );
   const recommendations = useMemo(
-    () => buildRecommendation(analysis.items, analysis.summary.movableBudgetTotal),
-    [analysis.items, analysis.summary.movableBudgetTotal]
+    () => buildRecommendation(analysis.items, analysis.summary.annualRemainingBudget),
+    [analysis.items, analysis.summary.annualRemainingBudget]
   );
 
   return (
@@ -232,9 +232,9 @@ export function SpendingAnalysisClient() {
           <small>合計超標 {formatCurrency(analysis.summary.overrunTotal)}</small>
         </div>
         <div className="budget-summary-card budget-summary-good">
-          <span>尚可挪移預算</span>
-          <strong>{formatCurrency(analysis.summary.movableBudgetTotal)}</strong>
-          <small>未超標項目的年度剩餘</small>
+          <span>年度剩餘預算</span>
+          <strong>{formatCurrency(analysis.summary.annualRemainingBudget)}</strong>
+          <small>未超標項目剩餘 - 已超標累計</small>
         </div>
         <div className="budget-summary-card budget-summary-warning">
           <span>年度預算使用率</span>
