@@ -5,7 +5,7 @@ import { useSearchParams } from "next/navigation";
 
 import { PageHeader } from "@/components/page-header";
 import { filterExpenses, getDefaultExpenseMonths, monthKeyFromDateValue } from "@/lib/accounting/dashboard-filters";
-import { buildExpenseDisplayRows } from "@/lib/accounting/invoice-grouping";
+import { buildExpenseDisplayRows, sortExpenseDisplayRows, type ExpenseDisplaySortDirection, type ExpenseDisplaySortKey } from "@/lib/accounting/invoice-grouping";
 import { isStoredSupabaseSessionValid, readStoredSupabaseSession } from "@/lib/auth/supabase-auth";
 import { fetchSupabaseRows } from "@/lib/data/supabase-rest";
 import { getSupabaseExpenses, getSupabaseInstallmentSchedulesByMonth, type InstallmentScheduleRecord } from "@/lib/data/supabase-repository";
@@ -35,6 +35,8 @@ type Message = {
 type MonthFilterValue = "" | "all" | string;
 type SourceFilterValue = "" | "invoice" | "manual";
 type PaymentToolFilterValue = "" | "cash" | "credit_card";
+
+type ExpenseSortOption = `${ExpenseDisplaySortKey}:${ExpenseDisplaySortDirection}`;
 
 type InvoicePaymentEdit = {
   paymentToolType: "cash" | "credit_card";
@@ -127,6 +129,7 @@ export function ExpensesClient() {
   const [invoicePaymentEdits, setInvoicePaymentEdits] = useState<Record<string, InvoicePaymentEdit>>({});
   const [installmentSchedules, setInstallmentSchedules] = useState<InstallmentScheduleRecord[]>([]);
   const [expandedInvoices, setExpandedInvoices] = useState<Set<string>>(new Set());
+  const [sortOption, setSortOption] = useState<ExpenseSortOption>("date:desc");
   const [selectedExpenseIds, setSelectedExpenseIds] = useState<Set<string>>(new Set());
 
   async function loadExpenses(accessToken: string, isCurrent = () => true) {
@@ -255,7 +258,12 @@ export function ExpensesClient() {
       query: searchText || undefined
     });
   }, [activeTag, cardCutoffDayByName, defaultMonths, expenses, paymentToolFilter, queryBillMonth, searchText, selectedBudget, selectedCard, selectedMonth, sourceFilter]);
-  const displayRows = useMemo(() => buildExpenseDisplayRows(visibleExpenses), [visibleExpenses]);
+  const displayRows = useMemo(() => {
+    const [sortKey, direction] = sortOption.split(":") as [ExpenseDisplaySortKey, ExpenseDisplaySortDirection];
+    return sortExpenseDisplayRows(buildExpenseDisplayRows(visibleExpenses), sortKey, direction);
+  }, [sortOption, visibleExpenses]);
+  const visibleInvoiceNumbers = useMemo(() => displayRows.filter((row) => row.kind === "invoice").map((row) => row.invoiceNumber), [displayRows]);
+  const expandedVisibleInvoiceCount = visibleInvoiceNumbers.filter((invoiceNumber) => expandedInvoices.has(invoiceNumber)).length;
   const visibleExpenseIds = useMemo(() => Array.from(new Set(displayRows.flatMap((row) => row.kind === "manual" ? [row.expense.id] : row.expenses.map((expense) => expense.id)))), [displayRows]);
   const selectedVisibleExpenseIds = useMemo(() => visibleExpenseIds.filter((id) => selectedExpenseIds.has(id)), [selectedExpenseIds, visibleExpenseIds]);
   const allVisibleSelected = visibleExpenseIds.length > 0 && selectedVisibleExpenseIds.length === visibleExpenseIds.length;
@@ -323,6 +331,16 @@ export function ExpensesClient() {
       if (next.has(invoiceNumber)) next.delete(invoiceNumber);
       else next.add(invoiceNumber);
       return next;
+    });
+  }
+  function expandAllVisibleInvoices() {
+    setExpandedInvoices((current) => new Set([...current, ...visibleInvoiceNumbers]));
+  }
+
+  function collapseAllVisibleInvoices() {
+    setExpandedInvoices((current) => {
+      const visible = new Set(visibleInvoiceNumbers);
+      return new Set(Array.from(current).filter((invoiceNumber) => !visible.has(invoiceNumber)));
     });
   }
   const activeContext = [
@@ -816,6 +834,33 @@ export function ExpensesClient() {
             <span>全選目前列表</span>
           </label>
           <span className="muted">已選 {selectedVisibleExpenseIds.length} 筆明細</span>
+          <div className="expense-list-tools" aria-label="列表檢視工具">
+            <label>
+              <span>排序</span>
+              <select value={sortOption} onChange={(event) => setSortOption(event.target.value as ExpenseSortOption)}>
+                <option value="date:desc">消費日：新到舊</option>
+                <option value="date:asc">消費日：舊到新</option>
+                <option value="amount:desc">金額：高到低</option>
+                <option value="amount:asc">金額：低到高</option>
+              </select>
+            </label>
+            <button
+              className="secondary-action"
+              type="button"
+              disabled={visibleInvoiceNumbers.length === 0 || expandedVisibleInvoiceCount === visibleInvoiceNumbers.length}
+              onClick={expandAllVisibleInvoices}
+            >
+              展開全部發票
+            </button>
+            <button
+              className="secondary-action"
+              type="button"
+              disabled={expandedVisibleInvoiceCount === 0}
+              onClick={collapseAllVisibleInvoices}
+            >
+              收合全部發票
+            </button>
+          </div>
           <button
             className="secondary-action danger-action"
             type="button"

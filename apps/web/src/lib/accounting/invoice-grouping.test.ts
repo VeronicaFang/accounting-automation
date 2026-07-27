@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 
-import { allocateInvoiceDiscounts, buildExpenseDisplayRows, groupInvoiceLines } from "./invoice-grouping.ts";
+import { allocateInvoiceDiscounts, buildExpenseDisplayRows, groupInvoiceLines, sortExpenseDisplayRows } from "./invoice-grouping.ts";
 
 const lines = [
   { id: "1", invoiceNumber: "AW99003017", sourceOrder: 1, itemDescription: "Corn", originalAmount: 55 },
@@ -99,4 +99,13 @@ const mixedPaymentRows = buildExpenseDisplayRows([
 assert.equal(mixedPaymentRows.length, 2);
 assert.equal(mixedPaymentRows[0].kind, "manual");
 assert.equal(mixedPaymentRows[1].kind, "manual");
-console.log("invoice grouping: 26 assertions passed");
+
+const sortedByDateAsc = sortExpenseDisplayRows(displayRows, "date", "asc");
+assert.equal(sortedByDateAsc[0].kind, "invoice");
+assert.equal(sortedByDateAsc[1].kind, "manual");
+
+const sortedByAmountDesc = sortExpenseDisplayRows(displayRows, "amount", "desc");
+assert.equal(sortedByAmountDesc[0].kind, "manual");
+assert.equal(sortedByAmountDesc[1].kind, "invoice");
+
+console.log("invoice grouping: 30 assertions passed");

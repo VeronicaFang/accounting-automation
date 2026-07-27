@@ -100,6 +100,45 @@ export type ExpenseDisplayRow =
       creditCardName?: string;
       installmentCount: number;
     };
+export type ExpenseDisplaySortKey = "date" | "amount";
+export type ExpenseDisplaySortDirection = "asc" | "desc";
+
+function getExpenseDisplayRowDate(row: ExpenseDisplayRow): string {
+  return row.kind === "manual" ? row.expense.consumptionDate : row.expenses[0]?.consumptionDate ?? "";
+}
+
+function getExpenseDisplayRowAmount(row: ExpenseDisplayRow): number {
+  return row.kind === "manual" ? row.expense.amount : row.paidTotal;
+}
+
+function getExpenseDisplayRowStableKey(row: ExpenseDisplayRow): string {
+  return row.kind === "manual" ? row.expense.id : row.invoiceNumber;
+}
+
+export function sortExpenseDisplayRows(
+  rows: ExpenseDisplayRow[],
+  sortKey: ExpenseDisplaySortKey,
+  direction: ExpenseDisplaySortDirection
+): ExpenseDisplayRow[] {
+  const multiplier = direction === "asc" ? 1 : -1;
+
+  return [...rows].sort((a, b) => {
+    const primary = sortKey === "amount"
+      ? getExpenseDisplayRowAmount(a) - getExpenseDisplayRowAmount(b)
+      : getExpenseDisplayRowDate(a).localeCompare(getExpenseDisplayRowDate(b));
+
+    if (primary !== 0) {
+      return primary * multiplier;
+    }
+
+    const dateTieBreaker = getExpenseDisplayRowDate(a).localeCompare(getExpenseDisplayRowDate(b));
+    if (dateTieBreaker !== 0) {
+      return dateTieBreaker * -1;
+    }
+
+    return getExpenseDisplayRowStableKey(a).localeCompare(getExpenseDisplayRowStableKey(b));
+  });
+}
 
 export function buildExpenseDisplayRows(expenses: ExpenseRecord[]): ExpenseDisplayRow[] {
   const rows: ExpenseDisplayRow[] = [];

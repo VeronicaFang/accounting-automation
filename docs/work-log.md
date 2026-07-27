@@ -20,6 +20,26 @@
 - Production branch: `main`
 ## 2026-07-27
 
+### Expense List Sorting And Invoice Expansion Controls
+
+- Commit: `this commit feat: add expense list sorting controls`
+- Scope:
+  - Expense Details page now supports sorting the visible list by consumption date or amount.
+  - Sort options cover date descending, date ascending, amount descending, and amount ascending.
+  - Manual expenses are sorted by their own amount; invoice rows are sorted by the grouped invoice paid total.
+  - Invoice detail rows remain collapsed by default, with per-invoice expand/collapse preserved.
+  - Added visible controls to expand or collapse all invoice groups in the current filtered list.
+  - Added pure helper coverage for sorting manual and invoice display rows.
+- Local verification:
+  - `node --experimental-strip-types src/lib/accounting/invoice-grouping.test.ts` from `apps/web`: passed.
+  - `npm run typecheck` from `apps/web`: passed.
+  - `npm test` from `apps/web`: passed.
+  - `git diff --check`: passed.
+  - `npm run build` from `apps/web`: Next compiled successfully, then failed locally with known Windows/Codex `spawn EPERM` during the post-compile build step.
+- Production deployment status:
+  - Awaiting local commit and user manual push.
+  - User should run `git push origin main` from the repo folder after Codex commits.
+  - After push, Codex should check Vercel deployments and confirm `READY` before treating production as updated.
 ### Invoice Confirmation Issue Inventory
 
 - Commit: `this commit fix: list invoice confirmation validation issues`

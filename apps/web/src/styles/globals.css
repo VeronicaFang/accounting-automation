@@ -477,6 +477,30 @@ textarea {
   gap: 8px;
   font-weight: 700;
 }
+.expense-list-tools {
+  align-items: center;
+  display: inline-flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-left: auto;
+}
+
+.expense-list-tools label {
+  align-items: center;
+  display: inline-flex;
+  gap: 6px;
+  color: var(--muted);
+  font-weight: 700;
+}
+
+.expense-list-tools select {
+  min-height: 34px;
+  border: 1px solid var(--line);
+  border-radius: 7px;
+  background: #fffefa;
+  color: var(--ink);
+  padding: 6px 8px;
+}
 
 .bulk-row-checkbox,
 .bulk-select-all input {
