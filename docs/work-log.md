@@ -1021,3 +1021,31 @@ Previous grouped-invoice work completed invoice grouping/backfill and made invoi
   - `git diff --check`: passed.
 - Follow-up:
   - After production deploy, re-run invoice confirmation with the same selected batch. If a group fails, the Review page should show the exact invoice number to inspect.
+
+### Invoice Discount Allocation Across Items
+
+- Date: 2026-07-27
+- Goal:
+  - Fix invoice confirmation for invoices where discount rows exceed the single highest positive item but do not exceed the positive item total.
+  - User example: invoice `WZ37766952` has positive rows `55 + 38 = 93`, discount rows `-19 + -55 = -74`, paid total `19`; this should be valid.
+- Finding:
+  - Frontend invoice grouping and Supabase RPC `confirm_invoice_group` both used a highest-positive-item allocation rule.
+  - That rule rejected valid platform coupon cases where discounts need to be applied across multiple positive invoice lines.
+- Changes:
+  - `allocateInvoiceDiscounts` now sorts positive items by amount desc / source order asc and applies discounts across items until each item reaches zero before moving to the next item.
+  - Added a regression test for `WZ37766952`, expecting allocated positive amounts `[0, 19, 0, 0]` and final paid total `19`.
+  - Added migration `supabase/migrations/20260727093000_split_invoice_discounts_across_items.sql` to update Supabase `confirm_invoice_group` with the same split-discount allocation logic.
+  - Updated API error copy so the remaining hard failure is only when total discounts exceed all positive invoice items.
+- Production database update:
+  - Applied Supabase migration directly to project `accounting-automation` (`frbqvouttwlgteizwxub`) via Supabase MCP.
+  - Verified production function no longer contains `Invoice discount exceeds the highest positive item` and now contains `invoice_allocated_lines` plus `Invoice discount exceeds positive items total`.
+  - Verified current production draft `WZ37766952`: positive total `93`, discount total `-74`, paid total `19`, discount check `ok`.
+- Local verification:
+  - `node --experimental-strip-types apps/web/src/lib/accounting/invoice-grouping.test.ts`: passed, 26 assertions.
+  - `npm test` from `apps/web`: passed.
+  - `npm run typecheck` from `apps/web`: passed.
+  - `git diff --check`: passed.
+  - `npm run lint` is not available in this package.
+- Follow-up / To-do:
+  - User still needs to push `main` to trigger Vercel GitHub integration for the API/front-end error copy change.
+  - After Vercel production is ready, retry confirming invoice `WZ37766952`; it should no longer fail for discount allocation.

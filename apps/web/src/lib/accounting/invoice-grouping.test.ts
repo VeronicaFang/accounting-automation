@@ -20,6 +20,15 @@ const tied = allocateInvoiceDiscounts([
   { id: "c", invoiceNumber: "X1", sourceOrder: 3, itemDescription: "Coupon", originalAmount: -10 }
 ]);
 assert.deepEqual(tied.map((line) => line.allocatedAmount), [40, 50, 0]);
+const splitDiscount = allocateInvoiceDiscounts([
+  { id: "delivery", invoiceNumber: "WZ37766952", sourceOrder: 97, itemDescription: "外送費", originalAmount: 55 },
+  { id: "service", invoiceNumber: "WZ37766952", sourceOrder: 98, itemDescription: "服務費和其他費用", originalAmount: 38 },
+  { id: "service-discount", invoiceNumber: "WZ37766952", sourceOrder: 99, itemDescription: "服務費優惠", originalAmount: -19 },
+  { id: "delivery-discount", invoiceNumber: "WZ37766952", sourceOrder: 100, itemDescription: "送餐優惠", originalAmount: -55 }
+]);
+assert.deepEqual(splitDiscount.map((line) => line.allocatedAmount), [0, 19, 0, 0]);
+assert.deepEqual(splitDiscount.map((line) => line.discountApplied), [-55, -19, 0, 0]);
+assert.equal(splitDiscount.reduce((sum, line) => sum + line.allocatedAmount, 0), 19);
 
 const groups = groupInvoiceLines(lines);
 assert.equal(groups[0].invoiceNumber, "AW99003017");
@@ -90,4 +99,4 @@ const mixedPaymentRows = buildExpenseDisplayRows([
 assert.equal(mixedPaymentRows.length, 2);
 assert.equal(mixedPaymentRows[0].kind, "manual");
 assert.equal(mixedPaymentRows[1].kind, "manual");
-console.log("invoice grouping: 22 assertions passed");
+console.log("invoice grouping: 26 assertions passed");

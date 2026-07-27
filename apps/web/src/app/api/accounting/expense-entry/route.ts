@@ -1398,7 +1398,8 @@ async function confirmInvoiceGroups(
     } catch (caughtError) {
       const rawMessage = caughtError instanceof Error ? caughtError.message : "未知錯誤";
       const reason = rawMessage.includes("Invoice discount exceeds the highest positive item")
-        ? "折扣金額超過最高金額品項，請展開這張發票檢查折扣與品項金額。"
+        || rawMessage.includes("Invoice discount exceeds positive items total")
+        ? "折扣金額超過正數品項合計，請展開這張發票檢查折扣與品項金額。"
         : rawMessage;
 
       throw new Error(`確認發票 ${group.invoiceNumber} 失敗：${reason}`);

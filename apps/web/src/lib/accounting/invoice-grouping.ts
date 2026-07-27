@@ -30,13 +30,28 @@ export function allocateInvoiceDiscounts(lines: InvoiceLineInput[]): AllocatedIn
     throw new Error("Invoice must contain at least one positive item.");
   }
 
-  const target = [...positive].sort(
-    (a, b) => b.originalAmount - a.originalAmount || a.sourceOrder - b.sourceOrder
-  )[0];
+  const positiveTotal = positive.reduce((sum, line) => sum + line.originalAmount, 0);
   const discountTotal = discounts.reduce((sum, line) => sum + line.originalAmount, 0);
 
-  if (target.originalAmount + discountTotal < 0) {
-    throw new Error("Invoice discount exceeds the highest positive item.");
+  if (positiveTotal + discountTotal < 0) {
+    throw new Error("Invoice discount exceeds positive items total.");
+  }
+
+  const discountById = new Map<string, number>();
+  let remainingDiscount = Math.abs(discountTotal);
+  const sortedPositive = [...positive].sort(
+    (a, b) => b.originalAmount - a.originalAmount || a.sourceOrder - b.sourceOrder
+  );
+
+  for (const line of sortedPositive) {
+    if (remainingDiscount <= 0) {
+      discountById.set(line.id, 0);
+      continue;
+    }
+
+    const applied = Math.min(line.originalAmount, remainingDiscount);
+    discountById.set(line.id, -applied);
+    remainingDiscount -= applied;
   }
 
   return lines.map((line) => {
@@ -44,7 +59,7 @@ export function allocateInvoiceDiscounts(lines: InvoiceLineInput[]): AllocatedIn
       return { ...line, lineType: "discount", allocatedAmount: 0, discountApplied: 0 };
     }
 
-    const discountApplied = line.id === target.id ? discountTotal : 0;
+    const discountApplied = discountById.get(line.id) ?? 0;
     return {
       ...line,
       lineType: "item",
