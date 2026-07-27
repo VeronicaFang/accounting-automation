@@ -939,15 +939,30 @@ function findMerchantItemRule(row: InvoiceDraftInput, rules: MerchantItemRuleRow
 }
 
 type ExistingInvoiceDraftIdentityRow = {
+  invoice_number: string | null;
   source_line_key: string;
   consumption_date: string;
   review_status: string;
 };
 
 type ExistingInvoiceExpenseIdentityRow = {
+  invoice_number: string | null;
   source_line_key: string | null;
+  consumption_date: string;
   status: string;
 };
+
+function uniqueValues(values: string[]): string[] {
+  return [...new Set(values.map((value) => value.trim()).filter(Boolean))];
+}
+
+function chunkValues<T>(values: T[], size: number): T[][] {
+  const chunks: T[][] = [];
+  for (let index = 0; index < values.length; index += size) {
+    chunks.push(values.slice(index, index + size));
+  }
+  return chunks;
+}
 
 async function existingInvoiceImportKeys(
   requestConfig: SupabaseRequestConfig,
@@ -955,22 +970,41 @@ async function existingInvoiceImportKeys(
   rows: InvoiceDraftInput[]
 ): Promise<ExistingInvoiceImportKeys> {
   if (rows.length === 0) return { sourceLineKeys: new Set(), invoiceDateKeys: new Set() };
-  const quotedSourceLineKeys = rows.map((row) => row.sourceLineKey).map((key) => `"${key.replace(/"/g, '\\"')}"`).join(",");
-  const [draftRows, expenseRows] = await Promise.all([
-    supabaseRead<ExistingInvoiceDraftIdentityRow>(requestConfig, "invoice_drafts", {
-      select: "source_line_key,consumption_date,review_status",
-      household_id: `eq.${householdId}`,
-      source_line_key: `in.(${quotedSourceLineKeys})`
-    }),
-    supabaseRead<ExistingInvoiceExpenseIdentityRow>(requestConfig, "expenses", {
-      select: "source_line_key,status",
-      household_id: `eq.${householdId}`,
-      source_line_key: `in.(${quotedSourceLineKeys})`
-    })
-  ]);
+
+  const invoiceNumbers = uniqueValues(rows.map((row) => row.invoiceNumber || row.sourceRecordId));
+  const draftRows: ExistingInvoiceDraftIdentityRow[] = [];
+  const expenseRows: ExistingInvoiceExpenseIdentityRow[] = [];
+
+  for (const chunk of chunkValues(invoiceNumbers, 50)) {
+    const [draftChunk, expenseChunk] = await Promise.all([
+      supabaseRead<ExistingInvoiceDraftIdentityRow>(requestConfig, "invoice_drafts", {
+        select: "invoice_number,source_line_key,consumption_date,review_status",
+        household_id: "eq." + householdId,
+        invoice_number: buildInFilter(chunk)
+      }),
+      supabaseRead<ExistingInvoiceExpenseIdentityRow>(requestConfig, "expenses", {
+        select: "invoice_number,source_line_key,consumption_date,status",
+        household_id: "eq." + householdId,
+        invoice_number: buildInFilter(chunk)
+      })
+    ]);
+    draftRows.push(...draftChunk);
+    expenseRows.push(...expenseChunk);
+  }
+
   return buildExistingInvoiceImportKeys(
-    draftRows.map((row) => ({ sourceLineKey: row.source_line_key, consumptionDate: row.consumption_date, reviewStatus: row.review_status })),
-    expenseRows.map((row) => ({ sourceLineKey: row.source_line_key, status: row.status }))
+    draftRows.map((row) => ({
+      invoiceNumber: row.invoice_number,
+      sourceLineKey: row.source_line_key,
+      consumptionDate: row.consumption_date,
+      reviewStatus: row.review_status
+    })),
+    expenseRows.map((row) => ({
+      invoiceNumber: row.invoice_number,
+      sourceLineKey: row.source_line_key,
+      consumptionDate: row.consumption_date,
+      status: row.status
+    }))
   );
 }
 function findDefaultMealBudgetItem(references: EntryReferences): BudgetItemRow | null {

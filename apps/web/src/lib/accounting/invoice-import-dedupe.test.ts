@@ -19,7 +19,7 @@ assert.equal(
       invoiceDateKeys: new Set(["BK08413127|2026-06-06"])
     }
   ),
-  false
+  true
 );
 
 assert.equal(
@@ -55,6 +55,7 @@ assert.equal(
 const deletedOnlyKeys = buildExistingInvoiceImportKeys(
   [
     {
+      invoiceNumber: "AW14290451",
       sourceLineKey: "AW14290451|23415683|2026-06-23|toast|39|1",
       consumptionDate: "2026-06-23",
       reviewStatus: "deleted"
@@ -77,7 +78,7 @@ assert.equal(
 
 const activeExpenseKeys = buildExistingInvoiceImportKeys(
   [],
-  [{ sourceLineKey: "AW14290451|23415683|2026-06-23|toast|39|1", status: "active" }]
+  [{ invoiceNumber: "AW14290451", sourceLineKey: "AW14290451|23415683|2026-06-23|toast|39|1", consumptionDate: "2026-06-23", status: "active" }]
 );
 assert.equal(
   shouldSkipInvoiceImportRow(
@@ -90,9 +91,11 @@ assert.equal(
   ),
   true
 );
+
 const confirmedKeys = buildExistingInvoiceImportKeys(
   [
     {
+      invoiceNumber: "AW14290451",
       sourceLineKey: "AW14290451|23415683|2026-06-23|toast|39|1",
       consumptionDate: "2026-06-23",
       reviewStatus: "confirmed"
@@ -106,18 +109,17 @@ assert.equal(
     {
       sourceRecordId: "AW14290451",
       consumptionDate: "2026-06-23",
-      sourceLineKey: "AW14290451|23415683|2026-06-23|toast|39|1"
+      sourceLineKey: "AW14290451|23415683|2026-06-23|different-item|39|1"
     },
     confirmedKeys
   ),
   true
 );
 
-
 const parsed = parseInvoiceText([
-  "發票日期,發票號碼,賣方統一編號,賣方名稱,消費明細_金額,消費明細_品名",
-  "20260605,AW99003017,60383907,統一超商,55,糯玉米",
-  "20260605,AW99003017,60383907,統一超商,-1,OPEN錢包聯邦"
+  "invoice_date,invoice_number,merchant_tax_id,merchant_name,amount,item_description",
+  "20260605,AW99003017,60383907,seven,55,corn",
+  "20260605,AW99003017,60383907,seven,-1,discount"
 ].join("\n"));
 
 assert.equal(parsed[0].invoiceNumber, "AW99003017");

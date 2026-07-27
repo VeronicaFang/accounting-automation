@@ -1049,3 +1049,55 @@ Previous grouped-invoice work completed invoice grouping/backfill and made invoi
 - Follow-up / To-do:
   - User still needs to push `main` to trigger Vercel GitHub integration for the API/front-end error copy change.
   - After Vercel production is ready, retry confirming invoice `WZ37766952`; it should no longer fail for discount allocation.
+
+### Spending Trend Analysis Page
+
+- Date: 2026-07-27
+- Goal:
+  - Add a page that shows actual expense amounts by budget item across months or quarters, with bar charts and family-finance management recommendations.
+- Product decisions:
+  - Page name: `消費趨勢分析`.
+  - Default lens: actual spending by `budget_month` / consumption month, not credit-card payment month.
+  - First version uses CSS bar charts instead of an external chart package.
+  - Each budget item and monthly bar links back to Expense Details with matching budget/month filters where supported.
+- Changes:
+  - Added `/spending-analysis` route and sidebar entry `消費分析`.
+  - Added filters for year, month/quarter mode, budget group, budget item, and payment tool.
+  - Added summary cards for selected-period spend, over-budget count/amount, movable remaining budget, and annual budget usage ratio.
+  - Added an advisor panel that highlights over-budget items, near-limit items, projected annual risk, and movable budget capacity.
+  - Added per-budget-item monthly/quarterly bar cards showing annual budget, used amount, remaining/overrun, average amount, and projected annual spend.
+  - Added pure calculation helper `spending-analysis.ts` and regression test coverage.
+- Local verification:
+  - `node --experimental-strip-types src/lib/accounting/spending-analysis.test.ts`: passed, 10 assertions.
+  - `npm test` from `apps/web`: passed.
+  - `npm run typecheck` from `apps/web`: passed.
+- Follow-up / To-do:
+  - Run the page in browser after production deploy and confirm the bar chart values match known budget item totals, especially `24. 餐費` month-by-month.
+  - Consider a second version with comparison against monthly target budget and automatic budget-transfer suggestions.
+
+### Invoice Import Draft Read 400 Fix
+
+- Date: 2026-07-27
+- User report:
+  - Importing `1535437_20260727094608.csv` on the invoice import page showed `讀取 invoice_drafts 失敗：400 Bad Request`.
+- Finding:
+  - The import path read existing drafts/expenses with one large PostgREST filter on full `source_line_key` values.
+  - For this file, local parsing produced 175 rows and 77 invoice numbers. The old `source_line_key in (...)` filter was 9,416 characters and included item text with Chinese characters, parentheses, and long Shopee descriptions.
+  - That made the REST filter fragile and could return 400 before drafts were written/read correctly.
+  - The current duplicate definition should be invoice-number based: `invoice number + consumption date`, not full item text.
+- Changes:
+  - `existingInvoiceImportKeys` now queries existing candidate rows by `invoice_number` in chunks of 50 instead of querying by full `source_line_key`.
+  - Existing rows are compared in application code by both exact `source_line_key` and `invoice number + consumption date`.
+  - Deleted drafts still do not block reimport; confirmed drafts and active expenses do block reimport.
+  - Updated `invoice-import-dedupe.test.ts` to use ASCII CSV fixture headers so the test is not vulnerable to terminal/source encoding issues.
+- Local verification:
+  - Parsed `C:/Users/AA018507/Downloads/1535437_20260727094608.csv`: 175 rows, 77 invoice numbers.
+  - New first invoice-number chunk filter length: 654 characters vs old full source-line-key filter length: 9,416 characters.
+  - `node --experimental-strip-types src/lib/accounting/invoice-import-dedupe.test.ts`: passed.
+  - `npm test` from `apps/web`: passed.
+  - `git diff --check`: passed.
+  - `npm run typecheck` currently fails on an existing unrelated `src/lib/navigation.ts(18,74)` navigation group literal type error.
+- Deployment note:
+  - Production update remains manual: user runs `cd C:\Users\AA018507\Documents\Codex\記帳軟體\accounting-automation-github; git push origin main` to trigger Vercel GitHub integration.
+- Follow-up:
+  - After push/deploy, retry importing the same CSV and confirm the app reaches the review page with pending drafts or a clear skipped-duplicate count instead of `讀取 invoice_drafts 失敗：400 Bad Request`.
