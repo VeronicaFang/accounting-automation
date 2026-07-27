@@ -1101,3 +1101,25 @@ Previous grouped-invoice work completed invoice grouping/backfill and made invoi
   - Production update remains manual: user runs `cd C:\Users\AA018507\Documents\Codex\記帳軟體\accounting-automation-github; git push origin main` to trigger Vercel GitHub integration.
 - Follow-up:
   - After push/deploy, retry importing the same CSV and confirm the app reaches the review page with pending drafts or a clear skipped-duplicate count instead of `讀取 invoice_drafts 失敗：400 Bad Request`.
+
+### Navigation Labels and Settings Consolidation
+
+- Date: 2026-07-27
+- Goal:
+  - Adjust front-end navigation labels to match the current product language.
+  - Merge merchant/category rules into System Settings so related configuration is managed from one page.
+- Changes:
+  - Renamed sidebar `首頁` to `年度財務總覽`.
+  - Renamed `帳單` to `信用卡帳單檢視`.
+  - Renamed `匯入發票` to `待確認發票明細`.
+  - Renamed `設定` to `系統設定`.
+  - Removed the separate `規則設定` sidebar item.
+  - `/settings` now renders both credit-card/system settings and the merchant payment/category rules list.
+  - `/rules` now redirects to `/settings` so old links do not break.
+- Local verification:
+  - `npm run typecheck` from `apps/web`: passed.
+  - `npm test` from `apps/web`: passed.
+  - `git diff --check`: passed.
+  - `npm run build` compiled successfully, then hit the known local Windows `spawn EPERM` issue.
+- Follow-up / To-do:
+  - After production deploy, verify the sidebar no longer shows `規則設定`, and confirm `/settings` shows both credit-card settings and merchant rules.

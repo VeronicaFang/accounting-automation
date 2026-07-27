@@ -56,7 +56,7 @@ function getLookupLabel<T extends { id: string; name: string; legacy_id: string 
   return row?.legacy_name ?? row?.legacy_id ?? row?.name ?? "";
 }
 
-export function RulesClient() {
+export function RulesClient({ showHeader = true }: { showHeader?: boolean }) {
   const [rules, setRules] = useState<MerchantPaymentRuleRow[]>([]);
   const [budgetItems, setBudgetItems] = useState<BudgetItemRow[]>([]);
   const [creditCards, setCreditCards] = useState<CreditCardRow[]>([]);
@@ -130,11 +130,13 @@ export function RulesClient() {
 
   return (
     <>
-      <PageHeader
-        eyebrow="規則"
-        title="商戶與分類規則"
-        description="查看已累積的店家預設付款方式、信用卡與預算項目。"
-      />
+      {showHeader ? (
+        <PageHeader
+          eyebrow="規則"
+          title="商戶與分類規則"
+          description="查看目前店家對應的支付工具、信用卡與預算項目規則。"
+        />
+      ) : null}
 
       <div className={`entry-message entry-message-${message.tone}`}>{message.text}</div>
 
