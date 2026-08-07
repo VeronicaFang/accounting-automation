@@ -463,6 +463,46 @@ textarea {
   width: 52px;
 }
 
+.expense-filter-summary {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+  margin-bottom: 12px;
+}
+
+.expense-filter-summary > div {
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: #fffefa;
+  padding: 12px 14px;
+}
+
+.expense-filter-summary span,
+.expense-filter-summary strong,
+.expense-filter-summary small {
+  display: block;
+}
+
+.expense-filter-summary span,
+.expense-filter-summary small {
+  color: var(--muted);
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.expense-filter-summary strong {
+  margin: 4px 0;
+  color: var(--good);
+  font-size: 24px;
+  line-height: 1.1;
+}
+
+@media (max-width: 760px) {
+  .expense-filter-summary {
+    grid-template-columns: 1fr;
+  }
+}
+
 .bulk-delete-toolbar {
   align-items: center;
   display: flex;

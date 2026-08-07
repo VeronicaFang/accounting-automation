@@ -1183,3 +1183,20 @@ Previous grouped-invoice work completed invoice grouping/backfill and made invoi
   - `npm run build` compiled successfully, then hit the known local Windows `spawn EPERM` issue.
 - Follow-up / To-do:
   - After production deploy, verify the sidebar no longer shows `規則設定`, and confirm `/settings` shows both credit-card settings and merchant rules.
+
+### Expense Filter Total Summary
+
+- Date: 2026-08-07
+- Goal:
+  - Show the total amount of the currently visible expense details when the user searches a merchant/item keyword or applies month, budget, payment-tool, source, or tag filters.
+- Changes:
+  - Added a filtered-result total card above the expense list on `/expenses`.
+  - The amount uses the already-filtered active expense rows, so it follows the same scope as the visible list and search result count.
+  - Added a matching result-count card and responsive styling for desktop/mobile layouts.
+- Local verification:
+  - `npm run typecheck` from `apps/web`: passed.
+  - `npm test` from `apps/web`: passed.
+  - `git diff --check` from the repository root: passed.
+  - `npm run build` from `apps/web`: compiled successfully, then hit the known local Windows `spawn EPERM` issue.
+- Follow-up / To-do:
+  - After production deploy, search a keyword such as `寶可夢` on `消費明細` and confirm the displayed total equals the sum of the listed rows.

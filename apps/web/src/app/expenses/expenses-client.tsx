@@ -258,6 +258,10 @@ export function ExpensesClient() {
       query: searchText || undefined
     });
   }, [activeTag, cardCutoffDayByName, defaultMonths, expenses, paymentToolFilter, queryBillMonth, searchText, selectedBudget, selectedCard, selectedMonth, sourceFilter]);
+  const visibleExpenseTotal = useMemo(
+    () => visibleExpenses.reduce((total, expense) => total + expense.amount, 0),
+    [visibleExpenses]
+  );
   const displayRows = useMemo(() => {
     const [sortKey, direction] = sortOption.split(":") as [ExpenseDisplaySortKey, ExpenseDisplaySortDirection];
     return sortExpenseDisplayRows(buildExpenseDisplayRows(visibleExpenses), sortKey, direction);
@@ -821,6 +825,18 @@ export function ExpensesClient() {
         <div className="section-heading">
           <h2>消費列表</h2>
           <span>{visibleExpenses.length} 筆</span>
+        </div>
+        <div className="expense-filter-summary">
+          <div>
+            <span>目前篩選合計</span>
+            <strong>{formatCurrency(visibleExpenseTotal)}</strong>
+            <small>依目前月份、搜尋、預算項目與支付工具條件加總</small>
+          </div>
+          <div>
+            <span>符合明細</span>
+            <strong>{visibleExpenses.length} 筆</strong>
+            <small>{searchText ? `搜尋「${searchText}」` : "套用目前篩選條件"}</small>
+          </div>
         </div>
         <div className="bulk-delete-toolbar">
           <label className="bulk-select-all">
