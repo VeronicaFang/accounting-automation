@@ -189,6 +189,7 @@ assert.equal(annualFinancialSummary.annualBudget, 1600);
 assert.equal(annualFinancialSummary.realizedBudget, 1280);
 assert.equal(annualFinancialSummary.unrecordedCreditCardSpend, -130);
 assert.equal(annualFinancialSummary.unrealizedBudget, 320);
+assert.equal(annualFinancialSummary.consumptionWaterGap, -430);
 assert.equal(annualFinancialSummary.budgetUsageRatio, 0.8);
 assert.equal(annualFinancialSummary.consumptionWaterRatio, 320 / 750);
 assert.equal(annualFinancialSummary.isConsumptionWaterWarning, false);
@@ -208,6 +209,7 @@ const annualFinancialOveruse = summarizeAnnualFinancialOverview(
   [{ id: "overused", groupName: "over", itemName: "Overused", annualBudget: 1000, usedAmount: 1100, remainingAmount: -100, usageRatio: 1.1, severity: "over_budget" }]
 );
 assert.equal(annualFinancialOveruse.unrealizedBudget, -100);
+assert.equal(annualFinancialOveruse.consumptionWaterGap, -300);
 assert.equal(annualFinancialOveruse.consumptionWaterRatio, null);
 const spendingCapacity = summarizeSpendingCapacity(
   [
@@ -227,4 +229,4 @@ assert.equal(spendingCapacity.closedRemaining, 400);
 assert.equal(spendingCapacity.spendableCashFlow, 250);
 assert.equal(spendingCapacity.shortfall, 150);
 assert.equal(spendingCapacity.surplus, 0);
-console.log("dashboard filters: 67 assertions passed");
+console.log("dashboard filters: 69 assertions passed");

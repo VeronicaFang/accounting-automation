@@ -1256,3 +1256,20 @@ Previous grouped-invoice work completed invoice grouping/backfill and made invoi
 - Follow-up / To-do:
   - After production deploy, revisit 2026-08 富邦 bill drill-down and confirm the `安心護照 / 5,565` corrected row no longer appears in `分期付款（本月應繳）`.
   - If the 2026-08 富邦 bill amount itself still includes 5,565 after deploy, inspect `credit_card_bill_estimates` and `cash_flow_months` for a failed historical delete rollback.
+
+### Home Consumption Water Gap Display Fix
+
+- Date: 2026-08-07
+- User report:
+  - On the Home annual financial overview, `消費水位警戒` displayed `已超用 11,530`, which matched `尚未實現的預算金額 -11,530` even though the helper text says the water metric is `尚未實現的預算金額 - 年度淨剩餘金額`.
+- Finding:
+  - The summary already calculated `尚未實現的預算金額` and `年度淨剩餘金額` separately.
+  - The Home UI fallback for negative unrealized budget reused `abs(unrealizedBudget)`, causing the water card to duplicate the budget card instead of showing the formula result.
+- Changes:
+  - Added `consumptionWaterGap = unrealizedBudget - annualNetRemaining` to the annual financial summary.
+  - Updated the Home `消費水位警戒` card to display `缺口 X` when the gap is positive, otherwise `可承受 X`.
+  - Kept the helper text as `尚未實現的預算金額 - 年度淨剩餘金額`.
+- Local verification:
+  - Added regression assertions for the gap calculation, including an overused-budget case.
+- Follow-up / To-do:
+  - After production deploy, verify the screenshot case no longer shows the same `11,530` in both cards. With the shown data, the water gap should be based on `-11,530 - 59,245`, so it should display a separate可承受 amount rather than duplicate `11,530`.

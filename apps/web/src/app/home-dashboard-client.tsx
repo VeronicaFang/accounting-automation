@@ -143,11 +143,10 @@ function AnnualFinancialOverview({ rows, items }: { rows: ReturnType<typeof buil
   const summary = summarizeAnnualFinancialOverview(rows, items);
   const topOverBudgetItems = summary.overBudget.items.slice(0, 6);
   const movableItems = summary.movableItems.slice(0, 8);
-  const hasBudgetOveruse = summary.unrealizedBudget < 0;
-  const waterDisplay = hasBudgetOveruse
-    ? `已超用 ${formatCurrency(Math.abs(summary.unrealizedBudget))}`
-    : formatPercent(summary.consumptionWaterRatio);
-  const isWaterRisk = hasBudgetOveruse || summary.isConsumptionWaterWarning;
+  const waterDisplay = summary.consumptionWaterGap > 0
+    ? `缺口 ${formatCurrency(summary.consumptionWaterGap)}`
+    : `可承受 ${formatCurrency(Math.abs(summary.consumptionWaterGap))}`;
+  const isWaterRisk = summary.consumptionWaterGap > 0;
   const waterSubtitle = "尚未實現的預算金額 - 年度淨剩餘金額";
 
   return (

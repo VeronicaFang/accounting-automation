@@ -61,6 +61,7 @@ export type AnnualFinancialSummary = {
   realizedBudget: number;
   unrecordedCreditCardSpend: number;
   unrealizedBudget: number;
+  consumptionWaterGap: number;
   budgetUsageRatio: number;
   consumptionWaterRatio: number | null;
   isConsumptionWaterWarning: boolean;
@@ -128,6 +129,7 @@ export function summarizeAnnualFinancialOverview(
   const realizedBudget = items.reduce((total, item) => total + item.usedAmount, 0);
   const unrecordedCreditCardSpend = annualSpend - realizedBudget;
   const unrealizedBudget = annualBudget - realizedBudget;
+  const consumptionWaterGap = unrealizedBudget - annualNetRemaining;
   const budgetUsageRatio = annualBudget > 0 ? 1 - unrealizedBudget / annualBudget : 0;
   const consumptionWaterRatio = annualNetRemaining > 0 && unrealizedBudget > 0 ? unrealizedBudget / annualNetRemaining : null;
   const movableItems = items
@@ -144,6 +146,7 @@ export function summarizeAnnualFinancialOverview(
     realizedBudget,
     unrecordedCreditCardSpend,
     unrealizedBudget,
+    consumptionWaterGap,
     budgetUsageRatio,
     consumptionWaterRatio,
     isConsumptionWaterWarning: consumptionWaterRatio === null || consumptionWaterRatio > 0.9,
