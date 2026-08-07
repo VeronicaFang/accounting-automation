@@ -143,11 +143,12 @@ function AnnualFinancialOverview({ rows, items }: { rows: ReturnType<typeof buil
   const summary = summarizeAnnualFinancialOverview(rows, items);
   const topOverBudgetItems = summary.overBudget.items.slice(0, 6);
   const movableItems = summary.movableItems.slice(0, 8);
-  const waterSubtitle = summary.consumptionWaterRatio === null
-    ? "年度淨剩餘金額不足，應先降支出或補收入。"
-    : summary.isConsumptionWaterWarning
-      ? "超過 90%，代表尚未實現預算接近年度剩餘金額。"
-      : "低於 90%，尚未實現預算仍在年度剩餘金額可承受範圍內。";
+  const hasBudgetOveruse = summary.unrealizedBudget < 0;
+  const waterDisplay = hasBudgetOveruse
+    ? `已超用 ${formatCurrency(Math.abs(summary.unrealizedBudget))}`
+    : formatPercent(summary.consumptionWaterRatio);
+  const isWaterRisk = hasBudgetOveruse || summary.isConsumptionWaterWarning;
+  const waterSubtitle = "尚未實現的預算金額 - 年度淨剩餘金額";
 
   return (
     <section className="surface section-block annual-control-panel">
@@ -175,9 +176,9 @@ function AnnualFinancialOverview({ rows, items }: { rows: ReturnType<typeof buil
           <strong>{formatCurrency(summary.annualNetRemaining)}</strong>
           <small>年度收入 - 年度消費總額。</small>
         </div>
-        <div className={`annual-control-card ${summary.isConsumptionWaterWarning ? "annual-control-danger" : "annual-control-good"}`}>
+        <div className={`annual-control-card ${isWaterRisk ? "annual-control-danger" : "annual-control-good"}`}>
           <span>消費水位警戒</span>
-          <strong>{formatPercent(summary.consumptionWaterRatio)}</strong>
+          <strong>{waterDisplay}</strong>
           <small>{waterSubtitle}</small>
         </div>
       </div>

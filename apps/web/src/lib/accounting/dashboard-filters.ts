@@ -129,7 +129,7 @@ export function summarizeAnnualFinancialOverview(
   const unrecordedCreditCardSpend = annualSpend - realizedBudget;
   const unrealizedBudget = annualBudget - realizedBudget;
   const budgetUsageRatio = annualBudget > 0 ? 1 - unrealizedBudget / annualBudget : 0;
-  const consumptionWaterRatio = annualNetRemaining > 0 ? unrealizedBudget / annualNetRemaining : null;
+  const consumptionWaterRatio = annualNetRemaining > 0 && unrealizedBudget > 0 ? unrealizedBudget / annualNetRemaining : null;
   const movableItems = items
     .filter((item) => getBudgetOverrunAmount(item) === 0 && item.remainingAmount > 0)
     .sort((a, b) => b.remainingAmount - a.remainingAmount);
