@@ -1235,3 +1235,24 @@ Previous grouped-invoice work completed invoice grouping/backfill and made invoi
   - `npm run typecheck` from `apps/web`: passed.
   - `git diff --check`: passed.
   - `npm run build` from `apps/web`: compiled successfully, then hit the known local Windows `spawn EPERM` issue.
+### Installment Schedule Corrected Row Display Fix
+
+- Date: 2026-08-07
+- User report:
+  - In `/expenses?billMonth=2026-08&card=富邦`, the `分期付款（本月應繳）` section still showed a `富邦人壽 / 安心護照 / 5,565` row after the related expense detail had been deleted.
+- Finding:
+  - The delete flow subtracts each payment schedule amount from `cash_flow_months` and `credit_card_bill_estimates`, then marks related `payment_schedules.payment_status` as `corrected` and `expenses.status` as `cancelled`.
+  - The installment detail query only filtered by `cash_flow_month` and `credit_card_id`; it did not exclude `payment_status = corrected`.
+  - Therefore the stale row can still appear in the installment detail section even after deletion. Based on the delete flow, the bill estimate should already have been decremented if the frontend delete action completed successfully.
+- Changes:
+  - Updated `buildInstallmentScheduleQuery` to add `payment_status = neq.corrected`.
+  - Added a regression assertion so corrected installment schedules are not included in bill drill-down display.
+- Local verification:
+  - `node --experimental-strip-types src/lib/accounting/dashboard-filters.test.ts`: passed.
+  - `npm test` from `apps/web`: passed.
+  - `npm run typecheck` from `apps/web`: passed.
+  - `git diff --check`: passed.
+  - `npm run build` from `apps/web`: compiled successfully, then hit the known local Windows `spawn EPERM` issue.
+- Follow-up / To-do:
+  - After production deploy, revisit 2026-08 富邦 bill drill-down and confirm the `安心護照 / 5,565` corrected row no longer appears in `分期付款（本月應繳）`.
+  - If the 2026-08 富邦 bill amount itself still includes 5,565 after deploy, inspect `credit_card_bill_estimates` and `cash_flow_months` for a failed historical delete rollback.

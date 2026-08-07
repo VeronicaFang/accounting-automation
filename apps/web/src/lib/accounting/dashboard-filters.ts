@@ -267,6 +267,7 @@ export function buildInstallmentScheduleQuery(cashFlowMonth: string, creditCardI
     select: "id,expense_id,payment_sequence,payment_amount,cash_flow_month,credit_card_id,expenses(merchant_name,item_description,installment_count)",
     cash_flow_month: `eq.${cashFlowMonth}`,
     credit_card_id: `eq.${creditCardId}`,
+    payment_status: "neq.corrected",
     order: "payment_sequence.asc"
   };
 }

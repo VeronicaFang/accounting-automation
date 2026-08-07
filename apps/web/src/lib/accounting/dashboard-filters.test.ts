@@ -129,6 +129,7 @@ assert.equal(
 const installmentQuery = dashboardFilters.buildInstallmentScheduleQuery("2026-06", "card-fubon");
 assert.equal(installmentQuery.cash_flow_month, "eq.2026-06");
 assert.equal(installmentQuery.credit_card_id, "eq.card-fubon");
+assert.equal(installmentQuery.payment_status, "neq.corrected", "已刪除或修正的分期排程不應顯示在本月應繳清單");
 assert.equal(installmentQuery.payment_sequence, undefined, "帳單鑽取必須包含第 1 期");
 
 const annual = buildAnnualDashboardMonths(
@@ -226,4 +227,4 @@ assert.equal(spendingCapacity.closedRemaining, 400);
 assert.equal(spendingCapacity.spendableCashFlow, 250);
 assert.equal(spendingCapacity.shortfall, 150);
 assert.equal(spendingCapacity.surplus, 0);
-console.log("dashboard filters: 66 assertions passed");
+console.log("dashboard filters: 67 assertions passed");
