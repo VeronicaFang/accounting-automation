@@ -63,6 +63,18 @@ assert.equal(taobaoRows[0].paymentToolType, "credit_card");
 assert.equal(taobaoRows[0].creditCardName, "CTBC");
 assert.equal(taobaoRows[0].merchantName, "淘寶");
 
+const pinduoduoRows = parseManualExpenseText(
+  "消費日\t購買品項\t消費金額\t消費通路\t預算項目\t支付方式\t信用卡\t備註\n" +
+    "2026/8/3\t小卡收納冊\tNT$13\t拼多多\t12. 動動用品與衣物\t信用卡\tUnion\t\n" +
+    "2026/7/25\t泰摩小旋風 01S\tNT$2,111\t拼多多\t16. 家人過節\t信用卡\tUnion\t"
+);
+
+assert.deepEqual(
+  pinduoduoRows.map((row) => row.amount),
+  [13, 2111]
+);
+assert.equal(pinduoduoRows[0].creditCardName, "Union");
+
 assert.deepEqual(
   buildPaymentPlans({
     amount: 1000,
@@ -87,4 +99,4 @@ assert.deepEqual(splitInstallments(100, 3), [
   { sequence: 3, amount: 33.33 }
 ]);
 
-console.log("entry utils: 11 assertions passed");
+console.log("entry utils: 14 assertions passed");

@@ -1200,3 +1200,22 @@ Previous grouped-invoice work completed invoice grouping/backfill and made invoi
   - `npm run build` from `apps/web`: compiled successfully, then hit the known local Windows `spawn EPERM` issue.
 - Follow-up / To-do:
   - After production deploy, search a keyword such as `寶可夢` on `消費明細` and confirm the displayed total equals the sum of the listed rows.
+### Manual Batch Amount Currency Parsing Fix
+
+- Date: 2026-08-07
+- User report:
+  - Batch manual expense import parsed pasted amounts such as `NT$13` and `NT$2,111` as `0`, so imported rows appeared as zero-dollar expenses.
+- Finding:
+  - `parseManualExpenseText` uses `parseAmount` in `entry-utils.ts`.
+  - The old parser only removed comma, `$`, and whitespace. Values with the `NT$` prefix became strings like `NT13`, failed `Number(...)`, and fell back to `0`.
+- Changes:
+  - Updated manual amount parsing to remove comma separators and non-numeric currency/unit characters while preserving digits, decimal points, and minus signs.
+  - Added regression coverage for `NT$13` and `NT$2,111` in manual batch import rows.
+- Local verification:
+  - `node --experimental-strip-types src/lib/accounting/entry-utils.test.ts`: passed.
+  - `npm test` from `apps/web`: passed.
+  - `npm run typecheck` from `apps/web`: passed.
+  - `git diff --check`: passed.
+  - `npm run build` from `apps/web`: compiled successfully, then hit the known local Windows `spawn EPERM` issue.
+- Follow-up / To-do:
+  - After production deploy, retry the pasted Pinduoduo/Taobao batch and confirm amounts are populated as 13, 116, 495, 72, 48, 93, 2111, etc. instead of 0.

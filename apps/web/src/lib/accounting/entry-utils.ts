@@ -312,7 +312,11 @@ function pickField(row: Record<string, string>, names: string[]): string {
 }
 
 function parseAmount(value: string): number {
-  const amount = Number(String(value || "").replace(/[,$\s]/g, ""));
+  const normalized = String(value || "")
+    .trim()
+    .replace(/[，,]/g, "")
+    .replace(/[^\d.-]/g, "");
+  const amount = Number(normalized);
 
   return Number.isFinite(amount) ? amount : 0;
 }
