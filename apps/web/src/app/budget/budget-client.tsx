@@ -121,7 +121,7 @@ function BudgetSummary({ items, year }: { items: BudgetStatus[]; year: string })
     .sort((a, b) => b.remainingAmount - a.remainingAmount);
   const nonOverBudgetRemaining = nonOverBudgetItems.reduce((total, item) => total + item.remainingAmount, 0);
   const budgetOverrunRateBase = totalUsed + nonOverBudgetRemaining;
-  const budgetOverrunRate = budgetOverrunRateBase > 0 ? totalBudget / budgetOverrunRateBase : null;
+  const budgetOverrunRate = totalBudget > 0 ? budgetOverrunRateBase / totalBudget : null;
 
   return (
     <section className="budget-overview-summary">
@@ -140,10 +140,10 @@ function BudgetSummary({ items, year }: { items: BudgetStatus[]; year: string })
         <strong>{formatCurrency(nonOverBudgetRemaining)}</strong>
         <small>只加總尚未超標且仍有剩餘的預算項目。</small>
       </div>
-      <div className={`budget-summary-card ${budgetOverrunRate !== null && budgetOverrunRate < 1 ? "budget-summary-danger" : "budget-summary-good"}`}>
+      <div className={`budget-summary-card ${budgetOverrunRate !== null && budgetOverrunRate > 1 ? "budget-summary-danger" : "budget-summary-good"}`}>
         <span>預算超支率</span>
         <strong>{budgetOverrunRate === null ? "0.0%" : formatPercent(budgetOverrunRate)}</strong>
-        <small>A / (B + C)</small>
+        <small>(B + C) / A</small>
       </div>
       <div className="budget-summary-card budget-summary-wide budget-summary-danger">
         <span>已超支預算項目({year})</span>

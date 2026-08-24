@@ -1486,3 +1486,19 @@ Previous grouped-invoice work completed invoice grouping/backfill and made invoi
   - `git diff --check`: passed, with Windows line-ending warnings only.
   - UTF-8 check for `budget-client.tsx`, `globals.css`, and `work-log.md`: passed.
   - `npm run build` from `apps/web`: compiled successfully, then hit the known local Windows `spawn EPERM` issue.
+
+### Budget Page Overrun Rate Formula Correction
+
+- Date: 2026-08-24
+- User request:
+  - Correct the Budget page `預算超支率` formula from `A / (B + C)` to `(B + C) / A`.
+- Changes:
+  - Updated `BudgetSummary` so `預算超支率 = (2026累積花費的預算 + 2026未超標項目的剩餘預算) / 2026年度編列總預算`.
+  - Updated the helper text under the card to `(B + C) / A`.
+  - Updated the warning style so the card is marked as danger only when the ratio is greater than 100%.
+- Local verification:
+  - `npm test` from `apps/web`: passed.
+  - `npm run typecheck` from `apps/web`: passed.
+  - `git diff --check`: passed, with Windows line-ending warnings only.
+  - UTF-8 check for `budget-client.tsx` and `work-log.md`: passed.
+  - `npm run build` from `apps/web`: compiled successfully, then hit the known local Windows `spawn EPERM` issue.
