@@ -1375,6 +1375,10 @@ textarea {
   color: var(--good);
 }
 
+.budget-summary-good .annual-decision-list strong {
+  color: var(--good);
+}
+
 .annual-list-amount {
   font-size: 13px;
   font-weight: 800;
