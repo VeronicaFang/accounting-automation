@@ -184,15 +184,15 @@ const annualFinancialSummary = summarizeAnnualFinancialOverview(
 );
 
 assert.equal(annualFinancialSummary.annualIncome, 1900);
-assert.equal(annualFinancialSummary.annualSpend, 1150);
-assert.equal(annualFinancialSummary.annualNetRemaining, 750);
+assert.equal(annualFinancialSummary.annualSpend, 1280);
+assert.equal(annualFinancialSummary.annualNetRemaining, 620);
 assert.equal(annualFinancialSummary.annualBudget, 1600);
 assert.equal(annualFinancialSummary.realizedBudget, 1280);
-assert.equal(annualFinancialSummary.unrecordedCreditCardSpend, -130);
+assert.equal(annualFinancialSummary.unrecordedCreditCardSpend, 0);
 assert.equal(annualFinancialSummary.unrealizedBudget, 320);
-assert.equal(annualFinancialSummary.consumptionWaterGap, -400);
+assert.equal(annualFinancialSummary.consumptionWaterGap, -270);
 assert.equal(annualFinancialSummary.budgetUsageRatio, 0.8);
-assert.equal(annualFinancialSummary.consumptionWaterRatio, 350 / 750);
+assert.equal(annualFinancialSummary.consumptionWaterRatio, 350 / 620);
 assert.equal(annualFinancialSummary.isConsumptionWaterWarning, false);
 assert.equal(annualFinancialSummary.movableTotal, 350);
 assert.deepEqual(annualFinancialSummary.movableItems.map((item) => item.id), ["travel", "rent"]);
@@ -210,7 +210,7 @@ const annualFinancialOveruse = summarizeAnnualFinancialOverview(
   [{ id: "overused", groupName: "over", itemName: "Overused", annualBudget: 1000, usedAmount: 1100, remainingAmount: -100, usageRatio: 1.1, severity: "over_budget" }]
 );
 assert.equal(annualFinancialOveruse.unrealizedBudget, -100);
-assert.equal(annualFinancialOveruse.consumptionWaterGap, -200);
+assert.equal(annualFinancialOveruse.consumptionWaterGap, -100);
 assert.equal(annualFinancialOveruse.consumptionWaterRatio, null);
 const cutoffExpenses: ExpenseRecord[] = [
   { id: "rent-before", consumptionDate: "2026-01-10", budgetMonth: "2026-01", merchantName: "Rent", itemDescription: "Paid rent", budgetItemId: "rent", budgetItemName: "01. Rent", amount: 400, paymentToolType: "cash", status: "active" },
@@ -233,10 +233,12 @@ const annualFinancialByCutoff = summarizeAnnualFinancialOverview(
 );
 assert.equal(annualFinancialByCutoff.cutoffDate, "2026-01-15");
 assert.equal(annualFinancialByCutoff.realizedBudget, 530);
+assert.equal(annualFinancialByCutoff.annualSpend, 530);
+assert.equal(annualFinancialByCutoff.annualNetRemaining, 1370);
 assert.equal(annualFinancialByCutoff.unrealizedBudget, 1070);
 assert.equal(annualFinancialByCutoff.movableTotal, 1100);
-assert.equal(annualFinancialByCutoff.remainingDisposableAmount, -350);
-assert.equal(annualFinancialByCutoff.consumptionWaterGap, 350);
+assert.equal(annualFinancialByCutoff.remainingDisposableAmount, 270);
+assert.equal(annualFinancialByCutoff.consumptionWaterGap, -270);
 assert.deepEqual(annualFinancialByCutoff.movableItems.map((item) => item.id), ["rent", "travel"]);
 assert.deepEqual(annualFinancialByCutoff.overBudget.items.map((item) => item.id), ["over"]);
 const spendingCapacity = summarizeSpendingCapacity(
@@ -257,4 +259,4 @@ assert.equal(spendingCapacity.closedRemaining, 400);
 assert.equal(spendingCapacity.spendableCashFlow, 250);
 assert.equal(spendingCapacity.shortfall, 150);
 assert.equal(spendingCapacity.surplus, 0);
-console.log("dashboard filters: 77 assertions passed");
+console.log("dashboard filters: 79 assertions passed");

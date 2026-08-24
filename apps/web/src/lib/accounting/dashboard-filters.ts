@@ -172,10 +172,10 @@ export function summarizeAnnualFinancialOverview(
   const cutoffDate = dateKeyFromDateValue(asOfDate);
   const cutoffItems = buildBudgetStatusesAtCutoff(items, expenses, cutoffDate, year);
   const annualIncome = rows.reduce((total, row) => total + row.income, 0);
-  const annualSpend = rows.reduce((total, row) => total + row.estimatedSpend, 0);
-  const annualNetRemaining = annualIncome - annualSpend;
   const annualBudget = items.reduce((total, item) => total + item.annualBudget, 0);
   const realizedBudget = cutoffItems.reduce((total, item) => total + item.usedAmount, 0);
+  const annualSpend = realizedBudget;
+  const annualNetRemaining = annualIncome - annualSpend;
   const categorizedAnnualSpend = items.reduce((total, item) => total + item.usedAmount, 0);
   const unrecordedCreditCardSpend = annualSpend - categorizedAnnualSpend;
   const unrealizedBudget = annualBudget - realizedBudget;

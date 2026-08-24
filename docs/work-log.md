@@ -1298,3 +1298,19 @@ Previous grouped-invoice work completed invoice grouping/backfill and made invoi
   - `npm run typecheck` from `apps/web`: passed.
 - Follow-up / To-do:
   - After production deploy, open Home and change the cutoff date from today to a later date such as `2026-09-01`; confirm `已發生預算`, `尚未實現的預算金額`, `未超標項目的剩餘預算`, and `剩餘可支配金額` update together.
+### Annual Overview Cumulative Spend Cutoff Fix
+
+- Date: 2026-08-24
+- User request:
+  - `年度淨剩餘金額` should be `年度收入 - 累積消費總額`.
+  - `累積消費總額` should only include consumption on or before the cutoff date, otherwise future budget is deducted twice.
+- Changes:
+  - Changed annual overview summary so the top spend card now represents cutoff-date cumulative spend rather than full-year projected spend.
+  - `年度淨剩餘金額` now uses `annualIncome - cutoffDateRealizedBudget`.
+  - Updated Home card label from `年度消費總額` to `累積消費總額` and updated helper text.
+  - Kept the separate reconciliation note for unrecorded credit-card bill details as a full-year bill-vs-categorized-spend warning, not as the cutoff net calculation.
+- Local verification:
+  - Updated dashboard filter tests for the cutoff-date cumulative-spend formula.
+  - `node --experimental-strip-types src/lib/accounting/dashboard-filters.test.ts`: passed.
+- Follow-up / To-do:
+  - After production deploy, verify that changing the cutoff date changes `累積消費總額`, `年度淨剩餘金額`, `已發生預算`, `尚未實現的預算金額`, and `剩餘可支配金額` together.

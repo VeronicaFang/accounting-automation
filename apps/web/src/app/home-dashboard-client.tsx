@@ -180,7 +180,7 @@ function AnnualFinancialOverview({
       <div className="section-heading annual-control-heading">
         <div>
           <h2>年度收支檢視</h2>
-          <span>年度收入扣除年度消費總額後，依切分日期檢查尚未花費的預算與剩餘可支配金額。</span>
+          <span>年度收入扣除截至切分日期的累積消費總額後，檢查尚未花費的預算與剩餘可支配金額。</span>
         </div>
         <div className="annual-heading-actions">
           <label className="annual-cutoff-control">
@@ -198,14 +198,14 @@ function AnnualFinancialOverview({
           <small>全年已入帳與預估收入。</small>
         </div>
         <div className="annual-control-card annual-control-spend">
-          <span>年度消費總額</span>
+          <span>累積消費總額</span>
           <strong>{formatCurrency(summary.annualSpend)}</strong>
-          <small>真正年度消費金額，現金 + 信用卡，包含已發生帳單與預期帳單。</small>
+          <small>截至切分日期以前已發生的消費金額。</small>
         </div>
         <div className={`annual-control-card ${summary.annualNetRemaining < 0 ? "annual-control-danger" : "annual-control-good"}`}>
           <span>年度淨剩餘金額</span>
           <strong>{formatCurrency(summary.annualNetRemaining)}</strong>
-          <small>年度收入 - 年度消費總額。</small>
+          <small>年度收入 - 累積消費總額。</small>
         </div>
         <div className={`annual-control-card ${isDisposableRisk ? "annual-control-danger" : "annual-control-good"}`}>
           <span>剩餘可支配金額</span>
@@ -240,7 +240,7 @@ function AnnualFinancialOverview({
       <div className="annual-definition-note">
         <strong>未記錄信用卡帳單消費明細：{formatCurrency(summary.unrecordedCreditCardSpend)}</strong>
         <p>
-          年度消費總額才是真正年度消費金額；未記錄信用卡帳單消費明細等於年度消費總額扣除全年已入預算分類的消費明細。
+          累積消費總額只計算截至切分日期以前已發生的消費，避免把尚未實現的預算重複扣除。未記錄信用卡帳單消費明細仍用全年帳單與全年預算分類金額做對帳提醒。
         </p>
         <p>
           若此數字不是 0，代表信用卡真實帳單金額與系統內消費明細或 payment schedules 排程金額不同；可能是帳單上有未記錄消費、退款折抵、手續費、分期入帳月份差異，或帳單調整。現況判斷年度消費時不能只看預算分類金額。
