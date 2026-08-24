@@ -1469,3 +1469,20 @@ Previous grouped-invoice work completed invoice grouping/backfill and made invoi
   - `git diff --check`: passed, with Windows line-ending warnings only.
   - UTF-8 check for `budget-client.tsx`, `globals.css`, and `work-log.md`: passed.
   - `npm run build` from `apps/web`: compiled successfully, then hit the known local Windows `spawn EPERM` issue.
+
+### Budget Page List Amount Hierarchy
+
+- Date: 2026-08-24
+- User request:
+  - In the Budget page list, make the overrun/remaining amount easier to read.
+  - Make the `年度預算 / 累積消費` number smaller and label it as `已編列 / 實際消費`.
+- Changes:
+  - Scoped the visual adjustment to the Budget page summary lists.
+  - Added `已編列 / 實際消費` labels above the right-side budget/used pair.
+  - Enlarged the middle `超支 X` / `剩餘 X` amount and reduced the right-side pair size.
+- Local verification:
+  - `npm test` from `apps/web`: passed.
+  - `npm run typecheck` from `apps/web`: passed.
+  - `git diff --check`: passed, with Windows line-ending warnings only.
+  - UTF-8 check for `budget-client.tsx`, `globals.css`, and `work-log.md`: passed.
+  - `npm run build` from `apps/web`: compiled successfully, then hit the known local Windows `spawn EPERM` issue.

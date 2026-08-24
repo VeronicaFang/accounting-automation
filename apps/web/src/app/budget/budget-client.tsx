@@ -149,12 +149,15 @@ function BudgetSummary({ items, year }: { items: BudgetStatus[]; year: string })
         <span>已超支預算項目({year})</span>
         <strong>{overBudget.items.length} 項 / {formatCurrency(overBudget.totalOverrun)}</strong>
         {overBudget.items.length > 0 ? (
-          <ul className="annual-decision-list">
+          <ul className="annual-decision-list budget-summary-annual-list">
             {overBudget.items.map((item) => (
               <li key={item.id}>
                 <Link href={`/expenses?month=all&budget=${encodeURIComponent(item.itemName)}`}>{item.itemName}</Link>
                 <span className="annual-list-amount annual-list-danger">超支 {formatCurrency(getBudgetOverrunAmount(item))}</span>
-                <strong>{formatCurrency(item.annualBudget)} / {formatCurrency(item.usedAmount)}</strong>
+                <strong>
+                  <span className="budget-pair-label">已編列 / 實際消費</span>
+                  <span>{formatCurrency(item.annualBudget)} / {formatCurrency(item.usedAmount)}</span>
+                </strong>
               </li>
             ))}
           </ul>
@@ -167,12 +170,15 @@ function BudgetSummary({ items, year }: { items: BudgetStatus[]; year: string })
         <strong>{formatCurrency(nonOverBudgetRemaining)}</strong>
         <small>只加總尚未超標且仍有剩餘的預算項目，不扣抵已超標項目。</small>
         {nonOverBudgetItems.length > 0 ? (
-          <ul className="annual-decision-list">
+          <ul className="annual-decision-list budget-summary-annual-list">
             {nonOverBudgetItems.map((item) => (
               <li key={item.id}>
                 <Link href={`/expenses?month=all&budget=${encodeURIComponent(item.itemName)}`}>{item.itemName}</Link>
                 <span className="annual-list-amount annual-list-good">剩餘 {formatCurrency(item.remainingAmount)}</span>
-                <strong>{formatCurrency(item.annualBudget)} / {formatCurrency(item.usedAmount)}</strong>
+                <strong>
+                  <span className="budget-pair-label">已編列 / 實際消費</span>
+                  <span>{formatCurrency(item.annualBudget)} / {formatCurrency(item.usedAmount)}</span>
+                </strong>
               </li>
             ))}
           </ul>

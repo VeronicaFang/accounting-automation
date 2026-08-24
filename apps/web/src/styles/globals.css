@@ -1379,6 +1379,26 @@ textarea {
   color: var(--good);
 }
 
+.budget-summary-annual-list .annual-list-amount {
+  font-size: 15px;
+}
+
+.budget-summary-annual-list strong {
+  display: grid;
+  gap: 2px;
+  font-size: 12px;
+}
+
+.budget-summary-annual-list strong > span:last-child {
+  font-size: 13px;
+}
+
+.budget-pair-label {
+  color: var(--muted);
+  font-size: 10px;
+  font-weight: 800;
+}
+
 .annual-list-amount {
   font-size: 13px;
   font-weight: 800;
