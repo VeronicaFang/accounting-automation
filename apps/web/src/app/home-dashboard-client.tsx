@@ -174,6 +174,8 @@ function AnnualFinancialOverview({
     ? formatCurrency(summary.remainingDisposableAmount)
     : `不足 ${formatCurrency(Math.abs(summary.remainingDisposableAmount))}`;
   const isDisposableRisk = summary.remainingDisposableAmount < 0;
+  const disposableFormula = `${formatCurrency(summary.annualNetRemaining)} - ${formatCurrency(summary.movableTotal)} = ${disposableDisplay}`;
+  const unrealizedFormula = `${formatCurrency(summary.movableTotal)} - ${formatCurrency(summary.overBudget.totalOverrun)} = ${formatCurrency(summary.unrealizedBudget)}`;
 
   return (
     <section className="surface section-block annual-control-panel">
@@ -210,7 +212,7 @@ function AnnualFinancialOverview({
         <div className={`annual-control-card ${isDisposableRisk ? "annual-control-danger" : "annual-control-good"}`}>
           <span>剩餘可支配金額</span>
           <strong>{disposableDisplay}</strong>
-          <small>年度淨剩餘金額 - 未超標項目的剩餘預算。</small>
+          <small>{disposableFormula}</small>
         </div>
       </div>
 
@@ -226,9 +228,9 @@ function AnnualFinancialOverview({
           <small>截至切分日期已發生的預算分類消費。</small>
         </div>
         <div className={summary.unrealizedBudget < 0 ? "annual-decision-card annual-decision-danger" : "annual-decision-card"}>
-          <span>尚未實現的預算金額</span>
+          <span>尚未實現的預算淨額</span>
           <strong>{formatCurrency(summary.unrealizedBudget)}</strong>
-          <small>切分日期隔天起，尚未花費但已編列的預算。</small>
+          <small>{unrealizedFormula}</small>
         </div>
         <div className={`annual-decision-card ${summary.budgetUsageRatio >= 1 ? "annual-decision-danger" : summary.budgetUsageRatio >= 0.9 ? "annual-decision-warning" : "annual-decision-good"}`}>
           <span>年度預算使用狀態</span>
@@ -240,7 +242,7 @@ function AnnualFinancialOverview({
       <div className="annual-definition-note">
         <strong>未記錄信用卡帳單消費明細：{formatCurrency(summary.unrecordedCreditCardSpend)}</strong>
         <p>
-          累積消費總額只計算截至切分日期以前已發生的消費，避免把尚未實現的預算重複扣除。未記錄信用卡帳單消費明細仍用全年帳單與全年預算分類金額做對帳提醒。
+          累積消費總額只計算截至切分日期以前已發生的消費，避免把尚未實現的預算重複扣除。剩餘可支配金額使用未超標項目的剩餘預算計算；尚未實現的預算淨額則等於未超標項目的剩餘預算扣除已超支預算項目。
         </p>
         <p>
           若此數字不是 0，代表信用卡真實帳單金額與系統內消費明細或 payment schedules 排程金額不同；可能是帳單上有未記錄消費、退款折抵、手續費、分期入帳月份差異，或帳單調整。現況判斷年度消費時不能只看預算分類金額。

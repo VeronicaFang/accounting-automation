@@ -1314,3 +1314,25 @@ Previous grouped-invoice work completed invoice grouping/backfill and made invoi
   - `node --experimental-strip-types src/lib/accounting/dashboard-filters.test.ts`: passed.
 - Follow-up / To-do:
   - After production deploy, verify that changing the cutoff date changes `累積消費總額`, `年度淨剩餘金額`, `已發生預算`, `尚未實現的預算金額`, and `剩餘可支配金額` together.
+
+### Annual Overview Number Reconciliation Labels
+
+- Date: 2026-08-24
+- User report:
+  - On the Home annual financial overview, `年度淨剩餘金額`, `尚未實現的預算金額`, and `剩餘可支配金額` could not be reconciled from the visible labels.
+- Finding:
+  - The three numbers are not the same calculation.
+  - `剩餘可支配金額` uses `年度淨剩餘金額 - 未超標項目的剩餘預算`.
+  - `尚未實現的預算淨額` uses `未超標項目的剩餘預算 - 已超支預算項目`.
+  - Example from the reported screen: `275,419 - 318,031 = 不足 42,612`; and `318,031 - 100,471 = 217,560`.
+- Changes:
+  - Renamed the card from `尚未實現的預算金額` to `尚未實現的預算淨額` to make clear it is already net of over-budget items.
+  - Added explicit formula text below `剩餘可支配金額`.
+  - Added explicit formula text below `尚未實現的預算淨額`.
+  - Updated the definition note to explain that `未超標項目的剩餘預算` is the bridge between the two calculations.
+- Local verification:
+  - `npm test` from `apps/web`: passed.
+  - `npm run typecheck` from `apps/web`: passed.
+  - `git diff --check`: passed, with Windows line-ending warnings only.
+  - UTF-8 check for `home-dashboard-client.tsx` and `work-log.md`: passed.
+  - `npm run build` from `apps/web`: compiled successfully, then hit the known local Windows `spawn EPERM` issue.
