@@ -168,8 +168,8 @@ function AnnualFinancialOverview({
   onCutoffDateChange: (value: string) => void;
 }) {
   const summary = summarizeAnnualFinancialOverview(rows, items, expenses, asOfDate);
-  const topOverBudgetItems = summary.overBudget.items.slice(0, 6);
-  const movableItems = summary.movableItems.slice(0, 8);
+  const overBudgetItems = summary.overBudget.items;
+  const movableItems = summary.movableItems;
   const disposableDisplay = summary.remainingDisposableAmount >= 0
     ? formatCurrency(summary.remainingDisposableAmount)
     : `不足 ${formatCurrency(Math.abs(summary.remainingDisposableAmount))}`;
@@ -252,11 +252,12 @@ function AnnualFinancialOverview({
         <div className="annual-decision-card annual-decision-danger">
           <span>已超支預算項目</span>
           <strong>{summary.overBudget.items.length} 項 / {formatCurrency(summary.overBudget.totalOverrun)}</strong>
-          {topOverBudgetItems.length > 0 ? (
+          {overBudgetItems.length > 0 ? (
             <ul className="annual-decision-list">
-              {topOverBudgetItems.map((item) => (
+              {overBudgetItems.map((item) => (
                 <li key={item.id}>
                   <Link href={`/expenses?month=all&budget=${encodeURIComponent(item.itemName)}`}>{item.itemName}</Link>
+                  <span className="annual-list-amount annual-list-danger">超支 {formatCurrency(getBudgetOverrunAmount(item))}</span>
                   <strong>{formatCurrency(item.annualBudget)} / {formatCurrency(item.usedAmount)}</strong>
                 </li>
               ))}
@@ -274,6 +275,7 @@ function AnnualFinancialOverview({
               {movableItems.map((item) => (
                 <li key={item.id}>
                   <Link href={`/expenses?month=all&budget=${encodeURIComponent(item.itemName)}`}>{item.itemName}</Link>
+                  <span className="annual-list-amount annual-list-good">剩餘 {formatCurrency(item.remainingAmount)}</span>
                   <strong>{formatCurrency(item.annualBudget)} / {formatCurrency(item.usedAmount)}</strong>
                 </li>
               ))}

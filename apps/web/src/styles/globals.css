@@ -1351,9 +1351,9 @@ textarea {
 .annual-decision-list li {
   align-items: center;
   border-top: 1px solid var(--line);
-  display: flex;
+  display: grid;
   gap: 10px;
-  justify-content: space-between;
+  grid-template-columns: minmax(180px, 1fr) minmax(96px, auto) minmax(132px, auto);
   padding-top: 8px;
 }
 
@@ -1367,9 +1367,26 @@ textarea {
   color: var(--danger);
   font-size: 13px;
   margin: 0;
+  text-align: right;
+  white-space: nowrap;
 }
 
 .annual-decision-good .annual-decision-list strong {
+  color: var(--good);
+}
+
+.annual-list-amount {
+  font-size: 13px;
+  font-weight: 800;
+  text-align: right;
+  white-space: nowrap;
+}
+
+.annual-list-danger {
+  color: var(--danger);
+}
+
+.annual-list-good {
   color: var(--good);
 }
 .annual-dashboard {
@@ -2301,6 +2318,12 @@ textarea {
   .annual-decision-grid,
   .annual-budget-lists,
   .budget-overview-summary { grid-template-columns: 1fr; }
+  .annual-decision-list li {
+    grid-template-columns: 1fr auto;
+  }
+  .annual-decision-list a {
+    grid-column: 1 / -1;
+  }
   .budget-inline-edit,
   .budget-table-actions {
     align-items: stretch;

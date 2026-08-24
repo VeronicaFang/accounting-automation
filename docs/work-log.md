@@ -1406,3 +1406,24 @@ Previous grouped-invoice work completed invoice grouping/backfill and made invoi
   - `git diff --check`: passed, with Windows line-ending warnings only.
   - UTF-8 check for `home-dashboard-client.tsx` and `work-log.md`: passed.
   - `npm run build` from `apps/web`: compiled successfully, then hit the known local Windows `spawn EPERM` issue.
+
+### Annual Budget List Full Rows And Remaining Column
+
+- Date: 2026-08-24
+- User request:
+  - Add a remaining-budget amount in the gap between the item name and `年度編列預算 / 累積消費金額`.
+  - Check why the over-budget list only showed a few rows even though the summary count was higher.
+- Finding:
+  - The Home annual overview limited the over-budget list to the first 6 rows and the movable-budget list to the first 8 rows.
+- Changes:
+  - Removed the row limits so all over-budget and movable-budget items are shown.
+  - Added a middle amount column: over-budget rows show `超支 X`; movable-budget rows show `剩餘 X`.
+  - Kept the right column as `年度編列預算 / 累積消費金額`.
+  - Updated responsive CSS so the three-column list remains readable on narrow screens.
+- Local verification:
+  - `npm test` from `apps/web`: passed.
+  - `npm run typecheck` from `apps/web`: passed.
+  - `git diff --check`: passed, with Windows line-ending warnings only.
+  - UTF-8 check for `home-dashboard-client.tsx`, `globals.css`, and `work-log.md`: passed.
+  - Confirmed the old `slice(0, 6)` / `slice(0, 8)` list limits are no longer present.
+  - `npm run build` from `apps/web`: compiled successfully, then hit the known local Windows `spawn EPERM` issue.
