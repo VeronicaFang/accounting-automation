@@ -1217,6 +1217,32 @@ textarea {
   margin-top: 18px;
 }
 
+.annual-heading-actions {
+  align-items: end;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  justify-content: flex-end;
+}
+
+.annual-cutoff-control {
+  display: grid;
+  gap: 4px;
+}
+
+.annual-cutoff-control span {
+  color: var(--muted);
+  font-size: 12px;
+  font-weight: 900;
+}
+
+.annual-cutoff-control input {
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  font: inherit;
+  min-height: 38px;
+  padding: 8px 10px;
+}
 .annual-control-heading {
   align-items: center;
 }

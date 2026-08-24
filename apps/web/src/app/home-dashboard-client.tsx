@@ -30,7 +30,7 @@ import {
   getSupabaseHouseholds,
   type SupabaseHouseholdRow
 } from "@/lib/data/supabase-repository";
-import type { BudgetStatus } from "@/lib/types";
+import type { BudgetStatus, ExpenseRecord } from "@/lib/types";
 
 type DashboardStatus = "signed-out" | "expired" | "loading" | "connected" | "error";
 
@@ -139,24 +139,56 @@ function formatPercent(value: number | null): string {
   return `${(value * 100).toFixed(1)}%`;
 }
 
-function AnnualFinancialOverview({ rows, items }: { rows: ReturnType<typeof buildAnnualDashboardMonths>; items: BudgetStatus[] }) {
-  const summary = summarizeAnnualFinancialOverview(rows, items);
+function formatDateInputValue(date = new Date()): string {
+  return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}-${String(date.getDate()).padStart(2, "0")}`;
+}
+
+function parseDateInputValue(value: string): Date {
+  const [year, month, day] = value.split("-").map(Number);
+  if (!year || !month || !day) {
+    return new Date();
+  }
+
+  return new Date(year, month - 1, day);
+}
+
+function AnnualFinancialOverview({
+  rows,
+  items,
+  expenses,
+  asOfDate,
+  cutoffDateInput,
+  onCutoffDateChange
+}: {
+  rows: ReturnType<typeof buildAnnualDashboardMonths>;
+  items: BudgetStatus[];
+  expenses: ExpenseRecord[];
+  asOfDate: Date;
+  cutoffDateInput: string;
+  onCutoffDateChange: (value: string) => void;
+}) {
+  const summary = summarizeAnnualFinancialOverview(rows, items, expenses, asOfDate);
   const topOverBudgetItems = summary.overBudget.items.slice(0, 6);
   const movableItems = summary.movableItems.slice(0, 8);
-  const waterDisplay = summary.consumptionWaterGap > 0
-    ? `缺口 ${formatCurrency(summary.consumptionWaterGap)}`
-    : `可承受 ${formatCurrency(Math.abs(summary.consumptionWaterGap))}`;
-  const isWaterRisk = summary.consumptionWaterGap > 0;
-  const waterSubtitle = "尚未實現的預算金額 - 年度淨剩餘金額";
+  const disposableDisplay = summary.remainingDisposableAmount >= 0
+    ? formatCurrency(summary.remainingDisposableAmount)
+    : `不足 ${formatCurrency(Math.abs(summary.remainingDisposableAmount))}`;
+  const isDisposableRisk = summary.remainingDisposableAmount < 0;
 
   return (
     <section className="surface section-block annual-control-panel">
       <div className="section-heading annual-control-heading">
         <div>
           <h2>年度收支檢視</h2>
-          <span>年度收入扣除年度消費總額後，檢查尚未實現預算是否仍在年度剩餘金額可承受範圍內。</span>
+          <span>年度收入扣除年度消費總額後，依切分日期檢查尚未花費的預算與剩餘可支配金額。</span>
         </div>
-        <Link className="secondary-action" href="/cash-flow">查看月度現金流</Link>
+        <div className="annual-heading-actions">
+          <label className="annual-cutoff-control">
+            <span>切分日期</span>
+            <input type="date" value={cutoffDateInput} onChange={(event) => onCutoffDateChange(event.target.value)} />
+          </label>
+          <Link className="secondary-action" href="/cash-flow">查看月度現金流</Link>
+        </div>
       </div>
 
       <div className="annual-control-grid annual-financial-grid">
@@ -175,10 +207,10 @@ function AnnualFinancialOverview({ rows, items }: { rows: ReturnType<typeof buil
           <strong>{formatCurrency(summary.annualNetRemaining)}</strong>
           <small>年度收入 - 年度消費總額。</small>
         </div>
-        <div className={`annual-control-card ${isWaterRisk ? "annual-control-danger" : "annual-control-good"}`}>
-          <span>消費水位警戒</span>
-          <strong>{waterDisplay}</strong>
-          <small>{waterSubtitle}</small>
+        <div className={`annual-control-card ${isDisposableRisk ? "annual-control-danger" : "annual-control-good"}`}>
+          <span>剩餘可支配金額</span>
+          <strong>{disposableDisplay}</strong>
+          <small>年度淨剩餘金額 - 未超標項目的剩餘預算。</small>
         </div>
       </div>
 
@@ -191,27 +223,27 @@ function AnnualFinancialOverview({ rows, items }: { rows: ReturnType<typeof buil
         <div className="annual-decision-card">
           <span>已發生預算</span>
           <strong>{formatCurrency(summary.realizedBudget)}</strong>
-          <small>已入預算分類的消費明細金額。</small>
+          <small>截至切分日期已發生的預算分類消費。</small>
         </div>
         <div className={summary.unrealizedBudget < 0 ? "annual-decision-card annual-decision-danger" : "annual-decision-card"}>
           <span>尚未實現的預算金額</span>
           <strong>{formatCurrency(summary.unrealizedBudget)}</strong>
-          <small>年度預算金額 - 已發生預算。</small>
+          <small>切分日期隔天起，尚未花費但已編列的預算。</small>
         </div>
         <div className={`annual-decision-card ${summary.budgetUsageRatio >= 1 ? "annual-decision-danger" : summary.budgetUsageRatio >= 0.9 ? "annual-decision-warning" : "annual-decision-good"}`}>
           <span>年度預算使用狀態</span>
           <strong>{formatPercent(summary.budgetUsageRatio)}</strong>
-          <small>1 - 尚未實現預算 / 年度預算金額。</small>
+          <small>截至切分日期已發生預算 / 年度預算金額。</small>
         </div>
       </div>
 
       <div className="annual-definition-note">
         <strong>未記錄信用卡帳單消費明細：{formatCurrency(summary.unrecordedCreditCardSpend)}</strong>
         <p>
-          年度消費總額才是真正年度消費金額，等於已發生預算金額加上尚未記錄進消費明細或預算分類的信用卡帳單支出。
+          年度消費總額才是真正年度消費金額；未記錄信用卡帳單消費明細等於年度消費總額扣除全年已入預算分類的消費明細。
         </p>
         <p>
-          若此數字不是 0，代表信用卡真實帳單金額與系統內消費明細或 payment schedules 排程金額不同；可能是帳單上有未記錄消費、退款折抵、手續費、分期入帳月份差異，或帳單調整。現況判斷年度消費時不能只看已發生預算金額。
+          若此數字不是 0，代表信用卡真實帳單金額與系統內消費明細或 payment schedules 排程金額不同；可能是帳單上有未記錄消費、退款折抵、手續費、分期入帳月份差異，或帳單調整。現況判斷年度消費時不能只看預算分類金額。
         </p>
       </div>
 
@@ -233,9 +265,9 @@ function AnnualFinancialOverview({ rows, items }: { rows: ReturnType<typeof buil
           )}
         </div>
         <div className="annual-decision-card annual-decision-good">
-          <span>尚未超支的預算項目</span>
+          <span>未超標項目的剩餘預算</span>
           <strong>{formatCurrency(summary.movableTotal)}</strong>
-          <small>可進行預算挪移的項目。</small>
+          <small>切分日期隔天起，尚未花費、可進行預算挪移的項目。</small>
           {movableItems.length > 0 ? (
             <ul className="annual-decision-list">
               {movableItems.map((item) => (
@@ -259,6 +291,7 @@ export function HomeDashboardClient({ initialData }: { initialData: AccountingDa
   const [sessionUser, setSessionUser] = useState<SupabaseSessionUser | null>(null);
   const [households, setHouseholds] = useState<SupabaseHouseholdRow[]>([]);
   const [accessToken, setAccessToken] = useState<string | null>(null);
+  const [budgetCutoffDate, setBudgetCutoffDate] = useState(() => formatDateInputValue());
 
   useEffect(() => {
     const session = readStoredSupabaseSession(window.localStorage);
@@ -317,8 +350,10 @@ export function HomeDashboardClient({ initialData }: { initialData: AccountingDa
     };
   }, [emptyDashboard, initialData]);
 
-  const { billEstimates, budgetStatuses, cashFlowMonths, reviewTasks } = dashboardData;
-  const displayMonth = monthKeyFromDateValue();
+  const { billEstimates, budgetStatuses, cashFlowMonths, expenses, reviewTasks } = dashboardData;
+  const today = new Date();
+  const budgetCutoff = parseDateInputValue(budgetCutoffDate);
+  const displayMonth = monthKeyFromDateValue(today);
   const currentCashFlow = cashFlowMonths.find((month) => month.month === displayMonth) ?? {
     month: displayMonth,
     income: 0,
@@ -360,7 +395,14 @@ export function HomeDashboardClient({ initialData }: { initialData: AccountingDa
       {sessionUser ? <p className="muted">Supabase user id: {sessionUser.userId}</p> : null}
       {error ? <p className="error-text">{error}</p> : null}
 
-      <AnnualFinancialOverview rows={annualRows} items={budgetStatuses} />
+      <AnnualFinancialOverview
+        rows={annualRows}
+        items={budgetStatuses}
+        expenses={expenses}
+        asOfDate={budgetCutoff}
+        cutoffDateInput={budgetCutoffDate}
+        onCutoffDateChange={setBudgetCutoffDate}
+      />
 
       <StatStrip
         stats={[

@@ -6,13 +6,14 @@ import {
   reviewTasks
 } from "@/lib/mock-data";
 import { isSupabaseDashboardConfigured } from "./supabase-repository";
-import type { BillEstimate, BudgetStatus, CashFlowMonth, ReviewTask } from "@/lib/types";
+import type { BillEstimate, BudgetStatus, CashFlowMonth, ExpenseRecord, ReviewTask } from "@/lib/types";
 
 export type AccountingDashboardData = {
   currentMonth: string;
   cashFlowMonths: CashFlowMonth[];
   billEstimates: BillEstimate[];
   budgetStatuses: BudgetStatus[];
+  expenses: ExpenseRecord[];
   reviewTasks: ReviewTask[];
   dataSource: "mock" | "supabase";
 };
@@ -23,6 +24,7 @@ export function getMockDashboardData(): AccountingDashboardData {
     cashFlowMonths,
     billEstimates,
     budgetStatuses,
+    expenses: [],
     reviewTasks,
     dataSource: "mock"
   };

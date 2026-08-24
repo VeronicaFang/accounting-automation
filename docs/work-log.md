@@ -1273,3 +1273,28 @@ Previous grouped-invoice work completed invoice grouping/backfill and made invoi
   - Added regression assertions for the gap calculation, including an overused-budget case.
 - Follow-up / To-do:
   - After production deploy, verify the screenshot case no longer shows the same `11,530` in both cards. With the shown data, the water gap should be based on `-11,530 - 59,245`, so it should display a separate可承受 amount rather than duplicate `11,530`.
+### Annual Overview Cutoff Date Disposable Amount
+
+- Date: 2026-08-24
+- User request:
+  - Add a `剩餘可支配金額` concept to the Home annual financial overview.
+  - `未超標項目的剩餘預算` must be calculated from a date cutoff: default is today, but the user can change it, e.g. to `2026-09-01`.
+- Definition implemented:
+  - The cutoff date itself counts as already occurred.
+  - Expenses after the cutoff date are treated as not yet realized.
+  - `已發生預算` = active expense details in the dashboard year with `consumption_date <= cutoffDate`, grouped by budget item.
+  - `尚未實現的預算金額` = annual budget total - cutoff-date realized budget.
+  - `未超標項目的剩餘預算` = sum of remaining budget for items that are not over budget at the cutoff date.
+  - `剩餘可支配金額` = annual net remaining amount - non-over-budget remaining budget.
+- Changes:
+  - Home dashboard now loads Supabase active expense details in addition to cash flow, bills, review tasks, and budget statuses.
+  - `summarizeAnnualFinancialOverview` now accepts expenses and an `asOfDate` and recalculates budget usage at the cutoff date.
+  - Added a date input in `年度收支檢視`; it defaults to the browser's current date and recalculates the summary when changed.
+  - Replaced the old `消費水位警戒` card with `剩餘可支配金額`.
+- Local verification:
+  - Added dashboard filter tests covering cutoff-date behavior: future expenses after the cutoff are not counted as realized budget.
+  - `node --experimental-strip-types src/lib/accounting/dashboard-filters.test.ts`: passed.
+  - `npm test` from `apps/web`: passed.
+  - `npm run typecheck` from `apps/web`: passed.
+- Follow-up / To-do:
+  - After production deploy, open Home and change the cutoff date from today to a later date such as `2026-09-01`; confirm `已發生預算`, `尚未實現的預算金額`, `未超標項目的剩餘預算`, and `剩餘可支配金額` update together.

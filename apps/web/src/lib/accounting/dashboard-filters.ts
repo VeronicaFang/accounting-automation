@@ -60,6 +60,7 @@ export type AnnualFinancialSummary = {
   annualBudget: number;
   realizedBudget: number;
   unrecordedCreditCardSpend: number;
+  categorizedAnnualSpend: number;
   unrealizedBudget: number;
   consumptionWaterGap: number;
   budgetUsageRatio: number;
@@ -67,6 +68,8 @@ export type AnnualFinancialSummary = {
   isConsumptionWaterWarning: boolean;
   movableItems: BudgetStatus[];
   movableTotal: number;
+  remainingDisposableAmount: number;
+  cutoffDate: string;
   overBudget: OverBudgetSummary;
 };
 
@@ -118,25 +121,73 @@ export function summarizeSpendingCapacity(
     surplus: Math.max(0, spendableCashFlow - plannedRemaining)
   };
 }
+function dateKeyFromDateValue(date = new Date()): string {
+  return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}-${String(date.getDate()).padStart(2, "0")}`;
+}
+
+function severityFromUsageRatio(usageRatio: number): BudgetStatus["severity"] {
+  if (usageRatio >= 1) return "over_budget";
+  if (usageRatio >= 0.9) return "warning";
+  if (usageRatio >= 0.7) return "reminder";
+  return "normal";
+}
+
+function buildBudgetStatusesAtCutoff(items: BudgetStatus[], expenses: ExpenseRecord[], cutoffDate: string, year: string): BudgetStatus[] {
+  if (expenses.length === 0) {
+    return items;
+  }
+
+  const usedByBudgetItemId = new Map<string, number>();
+
+  expenses
+    .filter((expense) => expense.status === "active")
+    .filter((expense) => expense.budgetMonth.startsWith(`${year}-`) || expense.consumptionDate.startsWith(`${year}-`))
+    .filter((expense) => expense.consumptionDate <= cutoffDate)
+    .forEach((expense) => {
+      usedByBudgetItemId.set(expense.budgetItemId, (usedByBudgetItemId.get(expense.budgetItemId) ?? 0) + expense.amount);
+    });
+
+  return items.map((item) => {
+    const usedAmount = usedByBudgetItemId.get(item.id) ?? 0;
+    const remainingAmount = item.annualBudget - usedAmount;
+    const usageRatio = item.annualBudget > 0 ? usedAmount / item.annualBudget : 0;
+
+    return {
+      ...item,
+      usedAmount,
+      remainingAmount,
+      usageRatio,
+      severity: severityFromUsageRatio(usageRatio)
+    };
+  });
+}
+
 export function summarizeAnnualFinancialOverview(
   rows: AnnualDashboardMonth[],
-  items: BudgetStatus[]
+  items: BudgetStatus[],
+  expenses: ExpenseRecord[] = [],
+  asOfDate = new Date()
 ): AnnualFinancialSummary {
+  const year = rows[0]?.month.slice(0, 4) ?? String(asOfDate.getFullYear());
+  const cutoffDate = dateKeyFromDateValue(asOfDate);
+  const cutoffItems = buildBudgetStatusesAtCutoff(items, expenses, cutoffDate, year);
   const annualIncome = rows.reduce((total, row) => total + row.income, 0);
   const annualSpend = rows.reduce((total, row) => total + row.estimatedSpend, 0);
   const annualNetRemaining = annualIncome - annualSpend;
   const annualBudget = items.reduce((total, item) => total + item.annualBudget, 0);
-  const realizedBudget = items.reduce((total, item) => total + item.usedAmount, 0);
-  const unrecordedCreditCardSpend = annualSpend - realizedBudget;
+  const realizedBudget = cutoffItems.reduce((total, item) => total + item.usedAmount, 0);
+  const categorizedAnnualSpend = items.reduce((total, item) => total + item.usedAmount, 0);
+  const unrecordedCreditCardSpend = annualSpend - categorizedAnnualSpend;
   const unrealizedBudget = annualBudget - realizedBudget;
-  const consumptionWaterGap = unrealizedBudget - annualNetRemaining;
-  const budgetUsageRatio = annualBudget > 0 ? 1 - unrealizedBudget / annualBudget : 0;
-  const consumptionWaterRatio = annualNetRemaining > 0 && unrealizedBudget > 0 ? unrealizedBudget / annualNetRemaining : null;
-  const movableItems = items
+  const budgetUsageRatio = annualBudget > 0 ? realizedBudget / annualBudget : 0;
+  const movableItems = cutoffItems
     .filter((item) => getBudgetOverrunAmount(item) === 0 && item.remainingAmount > 0)
     .sort((a, b) => b.remainingAmount - a.remainingAmount);
   const movableTotal = movableItems.reduce((total, item) => total + item.remainingAmount, 0);
-  const overBudget = summarizeOverBudgetItems(items);
+  const remainingDisposableAmount = annualNetRemaining - movableTotal;
+  const consumptionWaterGap = movableTotal - annualNetRemaining;
+  const consumptionWaterRatio = annualNetRemaining > 0 && movableTotal > 0 ? movableTotal / annualNetRemaining : null;
+  const overBudget = summarizeOverBudgetItems(cutoffItems);
 
   return {
     annualIncome,
@@ -145,6 +196,7 @@ export function summarizeAnnualFinancialOverview(
     annualBudget,
     realizedBudget,
     unrecordedCreditCardSpend,
+    categorizedAnnualSpend,
     unrealizedBudget,
     consumptionWaterGap,
     budgetUsageRatio,
@@ -152,6 +204,8 @@ export function summarizeAnnualFinancialOverview(
     isConsumptionWaterWarning: consumptionWaterRatio === null || consumptionWaterRatio > 0.9,
     movableItems,
     movableTotal,
+    remainingDisposableAmount,
+    cutoffDate,
     overBudget
   };
 }

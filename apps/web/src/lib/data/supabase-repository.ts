@@ -91,7 +91,7 @@ export async function getSupabaseDashboardData(
   accessToken?: string,
   budgetYear?: string
 ): Promise<Partial<AccountingDashboardData>> {
-  const [cashFlowRows, billEstimates, reviewTasks, budgetStatuses] = await Promise.all([
+  const [cashFlowRows, billEstimates, reviewTasks, budgetStatuses, expenses] = await Promise.all([
     fetchSupabaseRows<SupabaseCashFlowMonthRow>(
       "cash_flow_months",
       {
@@ -104,7 +104,8 @@ export async function getSupabaseDashboardData(
     ),
     getSupabaseBillEstimates(accessToken),
     getSupabaseReviewTasks(accessToken),
-    getSupabaseBudgetStatuses(accessToken, budgetYear)
+    getSupabaseBudgetStatuses(accessToken, budgetYear),
+    getSupabaseExpenses(accessToken)
   ]);
 
   const cashFlowMonths = mapCashFlowRows(cashFlowRows);
@@ -114,6 +115,7 @@ export async function getSupabaseDashboardData(
     cashFlowMonths,
     billEstimates,
     budgetStatuses,
+    expenses,
     reviewTasks
   };
 }
