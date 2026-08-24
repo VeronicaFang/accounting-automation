@@ -215,6 +215,7 @@ assert.equal(annualFinancialOveruse.consumptionWaterRatio, null);
 const cutoffExpenses: ExpenseRecord[] = [
   { id: "rent-before", consumptionDate: "2026-01-10", budgetMonth: "2026-01", merchantName: "Rent", itemDescription: "Paid rent", budgetItemId: "rent", budgetItemName: "01. Rent", amount: 400, paymentToolType: "cash", status: "active" },
   { id: "rent-after", consumptionDate: "2026-01-20", budgetMonth: "2026-01", merchantName: "Rent", itemDescription: "Future rent", budgetItemId: "rent", budgetItemName: "01. Rent", amount: 500, paymentToolType: "cash", status: "active" },
+  { id: "rent-next-year-budget", consumptionDate: "2026-01-12", budgetMonth: "2027-01", merchantName: "Rent", itemDescription: "Next year budget month", budgetItemId: "rent", budgetItemName: "01. Rent", amount: 999, paymentToolType: "credit_card", status: "active" },
   { id: "travel-after", consumptionDate: "2026-01-20", budgetMonth: "2026-01", merchantName: "Travel", itemDescription: "Future travel", budgetItemId: "travel", budgetItemName: "30. Travel", amount: 250, paymentToolType: "credit_card", status: "active" },
   { id: "over-before", consumptionDate: "2026-01-12", budgetMonth: "2026-01", merchantName: "Over", itemDescription: "Overrun", budgetItemId: "over", budgetItemName: "99. Over", amount: 130, paymentToolType: "cash", status: "active" }
 ];
@@ -241,6 +242,11 @@ assert.equal(annualFinancialByCutoff.remainingDisposableAmount, 270);
 assert.equal(annualFinancialByCutoff.consumptionWaterGap, -270);
 assert.deepEqual(annualFinancialByCutoff.movableItems.map((item) => item.id), ["rent", "travel"]);
 assert.deepEqual(annualFinancialByCutoff.overBudget.items.map((item) => item.id), ["over"]);
+assert.equal(
+  annualFinancialByCutoff.movableItems.find((item) => item.id === "rent")?.remainingAmount,
+  600,
+  "budget_month outside the dashboard year should not reduce current-year movable budget"
+);
 const spendingCapacity = summarizeSpendingCapacity(
   [
     { id: "food", groupName: "living", itemName: "24. Food", annualBudget: 1000, usedAmount: 600, remainingAmount: 400, usageRatio: 0.6, severity: "normal" },

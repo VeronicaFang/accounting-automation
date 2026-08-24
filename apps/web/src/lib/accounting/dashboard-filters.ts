@@ -141,7 +141,7 @@ function buildBudgetStatusesAtCutoff(items: BudgetStatus[], expenses: ExpenseRec
 
   expenses
     .filter((expense) => expense.status === "active")
-    .filter((expense) => expense.budgetMonth.startsWith(`${year}-`) || expense.consumptionDate.startsWith(`${year}-`))
+    .filter((expense) => expense.budgetMonth.startsWith(`${year}-`))
     .filter((expense) => expense.consumptionDate <= cutoffDate)
     .forEach((expense) => {
       usedByBudgetItemId.set(expense.budgetItemId, (usedByBudgetItemId.get(expense.budgetItemId) ?? 0) + expense.amount);

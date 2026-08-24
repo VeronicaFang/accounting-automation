@@ -1370,3 +1370,23 @@ Previous grouped-invoice work completed invoice grouping/backfill and made invoi
   - `npm test` from `apps/web`: passed.
   - `npm run typecheck` from `apps/web`: passed.
   - `npm run build` from `apps/web`: compiled successfully, then hit the known local Windows `spawn EPERM` issue.
+
+### Annual Movable Budget Year Boundary Fix
+
+- Date: 2026-08-24
+- User report:
+  - On Home annual overview, `未超標項目的剩餘預算` included `37. 2025 遞延支付` with `24,163`; the user asked whether this could include fees after `2027-01`.
+  - Expected rule: `未超標項目的剩餘預算` should only count the dashboard year, e.g. 2026 only.
+- Finding:
+  - The cutoff summary rebuilt budget usage from expense details.
+  - It included an expense when either `budget_month` was in the dashboard year or `consumption_date` was in the dashboard year.
+  - That allowed a row with `budget_month = 2027-01` but `consumption_date = 2026-*` to reduce 2026 remaining budget.
+- Changes:
+  - Changed annual cutoff budget usage to include only expense rows whose `budget_month` belongs to the dashboard year.
+  - Added a regression test for `consumption_date = 2026-*` with `budget_month = 2027-01`; it must not reduce 2026 movable budget.
+- Local verification:
+  - `npm test` from `apps/web`: passed.
+  - `npm run typecheck` from `apps/web`: passed.
+  - `git diff --check`: passed, with Windows line-ending warnings only.
+  - UTF-8 check for `dashboard-filters.ts`, `dashboard-filters.test.ts`, and `work-log.md`: passed.
+  - `npm run build` from `apps/web`: compiled successfully, then hit the known local Windows `spawn EPERM` issue.
