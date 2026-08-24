@@ -168,6 +168,7 @@ function AnnualFinancialOverview({
   onCutoffDateChange: (value: string) => void;
 }) {
   const summary = summarizeAnnualFinancialOverview(rows, items, expenses, asOfDate);
+  const dashboardYear = rows[0]?.month.slice(0, 4) ?? String(asOfDate.getFullYear());
   const overBudgetItems = summary.overBudget.items;
   const movableItems = summary.movableItems;
   const disposableDisplay = summary.remainingDisposableAmount >= 0
@@ -227,7 +228,7 @@ function AnnualFinancialOverview({
           <small>截至切分日期已花費且已歸類到預算項目的消費。</small>
         </div>
         <div className="annual-decision-card annual-decision-good">
-          <span>未超標項目的剩餘預算</span>
+          <span>未超標項目的剩餘預算 ({dashboardYear})</span>
           <strong>{formatCurrency(summary.movableTotal)}</strong>
           <small>切分日期後尚未花費，且目前沒有超標的預算剩餘。</small>
         </div>
@@ -250,7 +251,7 @@ function AnnualFinancialOverview({
 
       <div className="annual-budget-lists">
         <div className="annual-decision-card annual-decision-danger">
-          <span>已超支預算項目</span>
+          <span>已超支預算項目({dashboardYear})</span>
           <strong>{summary.overBudget.items.length} 項 / {formatCurrency(summary.overBudget.totalOverrun)}</strong>
           {overBudgetItems.length > 0 ? (
             <ul className="annual-decision-list">
@@ -267,7 +268,7 @@ function AnnualFinancialOverview({
           )}
         </div>
         <div className="annual-decision-card annual-decision-good">
-          <span>未超標項目的剩餘預算</span>
+          <span>未超標項目的剩餘預算 ({dashboardYear})</span>
           <strong>{formatCurrency(summary.movableTotal)}</strong>
           <small>切分日期隔天起，尚未花費、可進行預算挪移的項目。</small>
           {movableItems.length > 0 ? (

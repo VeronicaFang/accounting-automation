@@ -1427,3 +1427,26 @@ Previous grouped-invoice work completed invoice grouping/backfill and made invoi
   - UTF-8 check for `home-dashboard-client.tsx`, `globals.css`, and `work-log.md`: passed.
   - Confirmed the old `slice(0, 6)` / `slice(0, 8)` list limits are no longer present.
   - `npm run build` from `apps/web`: compiled successfully, then hit the known local Windows `spawn EPERM` issue.
+
+### Annual Budget List Year Label
+
+- Date: 2026-08-24
+- User request:
+  - Rename `未超標項目的剩餘預算` and `已超支預算項目` to show the calculation year, e.g. `(2026)`.
+  - Check that both sections are calculated on a 2026 annual basis.
+- Finding:
+  - Home builds annual rows from `displayMonth` year; on the current screen this is 2026.
+  - `summarizeAnnualFinancialOverview` uses the same year from the annual rows.
+  - The previous `Annual Movable Budget Year Boundary Fix` already limited cutoff budget usage to expense rows whose `budget_month` belongs to the dashboard year.
+- Changes:
+  - Added a dynamic `dashboardYear` label in Home annual overview.
+  - Updated card/list labels to `未超標項目的剩餘預算 (year)` and `已超支預算項目(year)`.
+- Local verification:
+  - Confirmed Home annual rows are built from `displayMonth` year; on the current screen this is 2026.
+  - Confirmed annual summary uses the same year from `rows[0].month`.
+  - Confirmed cutoff budget usage is limited by `expense.budgetMonth.startsWith(year)`.
+  - `npm test` from `apps/web`: passed.
+  - `npm run typecheck` from `apps/web`: passed.
+  - `git diff --check`: passed, with Windows line-ending warnings only.
+  - UTF-8 check for `home-dashboard-client.tsx` and `work-log.md`: passed.
+  - `npm run build` from `apps/web`: compiled successfully, then hit the known local Windows `spawn EPERM` issue.
