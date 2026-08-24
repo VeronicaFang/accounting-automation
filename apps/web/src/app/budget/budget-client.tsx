@@ -153,7 +153,10 @@ function BudgetSummary({ items, year }: { items: BudgetStatus[]; year: string })
             {overBudget.items.map((item) => (
               <li key={item.id}>
                 <Link href={`/expenses?month=all&budget=${encodeURIComponent(item.itemName)}`}>{item.itemName}</Link>
-                <span className="annual-list-amount annual-list-danger">超支 {formatCurrency(getBudgetOverrunAmount(item))}</span>
+                <span className="annual-list-amount annual-list-danger">
+                  <span className="annual-list-label">超支金額</span>
+                  <span>超支 {formatCurrency(getBudgetOverrunAmount(item))}</span>
+                </span>
                 <strong>
                   <span className="budget-pair-label">已編列 / 實際消費</span>
                   <span>{formatCurrency(item.annualBudget)} / {formatCurrency(item.usedAmount)}</span>
@@ -174,7 +177,10 @@ function BudgetSummary({ items, year }: { items: BudgetStatus[]; year: string })
             {nonOverBudgetItems.map((item) => (
               <li key={item.id}>
                 <Link href={`/expenses?month=all&budget=${encodeURIComponent(item.itemName)}`}>{item.itemName}</Link>
-                <span className="annual-list-amount annual-list-good">剩餘 {formatCurrency(item.remainingAmount)}</span>
+                <span className="annual-list-amount annual-list-good">
+                  <span className="annual-list-label">剩餘預算</span>
+                  <span>剩餘 {formatCurrency(item.remainingAmount)}</span>
+                </span>
                 <strong>
                   <span className="budget-pair-label">已編列 / 實際消費</span>
                   <span>{formatCurrency(item.annualBudget)} / {formatCurrency(item.usedAmount)}</span>

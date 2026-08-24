@@ -1400,10 +1400,18 @@ textarea {
 }
 
 .annual-list-amount {
+  display: grid;
+  gap: 2px;
   font-size: 13px;
   font-weight: 800;
   text-align: right;
   white-space: nowrap;
+}
+
+.annual-list-label {
+  color: var(--muted);
+  font-size: 10px;
+  font-weight: 800;
 }
 
 .annual-list-danger {

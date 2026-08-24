@@ -1502,3 +1502,20 @@ Previous grouped-invoice work completed invoice grouping/backfill and made invoi
   - `git diff --check`: passed, with Windows line-ending warnings only.
   - UTF-8 check for `budget-client.tsx` and `work-log.md`: passed.
   - `npm run build` from `apps/web`: compiled successfully, then hit the known local Windows `spawn EPERM` issue.
+
+### Annual Budget List Column Labels
+
+- Date: 2026-08-24
+- User request:
+  - Add Chinese labels to the budget list number columns, such as `已編列 / 實際消費`.
+- Changes:
+  - Added `超支金額` and `剩餘預算` labels above the middle amount column.
+  - Added `已編列 / 實際消費` labels above the right amount pair on the Home annual financial overview.
+  - Kept the Budget page consistent with the same middle-column labels.
+  - Added shared CSS for compact right-aligned labels.
+- Local verification:
+  - `npm test` from `apps/web`: passed.
+  - `npm run typecheck` from `apps/web`: passed.
+  - `git diff --check`: passed, with Windows line-ending warnings only.
+  - UTF-8 check for `home-dashboard-client.tsx`, `budget-client.tsx`, `globals.css`, and `work-log.md`: passed.
+  - `npm run build` from `apps/web`: compiled successfully, then hit the known local Windows `spawn EPERM` issue.
