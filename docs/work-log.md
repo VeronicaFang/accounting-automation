@@ -1390,3 +1390,19 @@ Previous grouped-invoice work completed invoice grouping/backfill and made invoi
   - `git diff --check`: passed, with Windows line-ending warnings only.
   - UTF-8 check for `dashboard-filters.ts`, `dashboard-filters.test.ts`, and `work-log.md`: passed.
   - `npm run build` from `apps/web`: compiled successfully, then hit the known local Windows `spawn EPERM` issue.
+
+### Annual Budget List Amount Format
+
+- Date: 2026-08-24
+- User request:
+  - In the Home annual overview, show both over-budget and non-over-budget list row amounts as `年度編列預算 / 累積消費金額`.
+- Changes:
+  - Updated the `已超支預算項目` row amount display from overrun amount to `annualBudget / usedAmount`.
+  - Updated the `未超標項目的剩餘預算` row amount display from remaining amount to `annualBudget / usedAmount`.
+  - Kept the section summary totals unchanged.
+- Local verification:
+  - `npm test` from `apps/web`: passed.
+  - `npm run typecheck` from `apps/web`: passed.
+  - `git diff --check`: passed, with Windows line-ending warnings only.
+  - UTF-8 check for `home-dashboard-client.tsx` and `work-log.md`: passed.
+  - `npm run build` from `apps/web`: compiled successfully, then hit the known local Windows `spawn EPERM` issue.

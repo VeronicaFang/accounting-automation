@@ -257,7 +257,7 @@ function AnnualFinancialOverview({
               {topOverBudgetItems.map((item) => (
                 <li key={item.id}>
                   <Link href={`/expenses?month=all&budget=${encodeURIComponent(item.itemName)}`}>{item.itemName}</Link>
-                  <strong>{formatCurrency(getBudgetOverrunAmount(item))}</strong>
+                  <strong>{formatCurrency(item.annualBudget)} / {formatCurrency(item.usedAmount)}</strong>
                 </li>
               ))}
             </ul>
@@ -274,7 +274,7 @@ function AnnualFinancialOverview({
               {movableItems.map((item) => (
                 <li key={item.id}>
                   <Link href={`/expenses?month=all&budget=${encodeURIComponent(item.itemName)}`}>{item.itemName}</Link>
-                  <strong>{formatCurrency(item.remainingAmount)}</strong>
+                  <strong>{formatCurrency(item.annualBudget)} / {formatCurrency(item.usedAmount)}</strong>
                 </li>
               ))}
             </ul>
