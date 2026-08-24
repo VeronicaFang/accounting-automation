@@ -1354,3 +1354,19 @@ Previous grouped-invoice work completed invoice grouping/backfill and made invoi
   - `git diff --check`: passed, with Windows line-ending warnings only.
   - UTF-8 check for `home-dashboard-client.tsx` and `work-log.md`: passed.
   - `npm run build` from `apps/web`: compiled successfully, then hit the known local Windows `spawn EPERM` issue.
+
+### Expense Entry Invoice Import Priority
+
+- Date: 2026-08-24
+- User request:
+  - Move the `財政部發票匯入` block to the top of the `新增消費` page because it is used frequently.
+- Changes:
+  - Reordered `expense-entry-client.tsx` so the invoice import block appears immediately after the page message, before manual expense, fixed expense, and manual batch import sections.
+  - Kept invoice import behavior unchanged: file/text input, draft import, and redirect to `/review` remain the same.
+- Local verification:
+  - Confirmed section order: `財政部發票匯入` appears before `新增手動消費`.
+  - UTF-8 check for `expense-entry-client.tsx` and `work-log.md`: passed.
+  - `git diff --check`: passed, with Windows line-ending warnings only.
+  - `npm test` from `apps/web`: passed.
+  - `npm run typecheck` from `apps/web`: passed.
+  - `npm run build` from `apps/web`: compiled successfully, then hit the known local Windows `spawn EPERM` issue.

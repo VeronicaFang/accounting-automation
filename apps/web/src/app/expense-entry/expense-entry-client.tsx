@@ -241,6 +241,34 @@ export function ExpenseEntryClient() {
 
       <section className="surface section-block entry-section">
         <div className="section-heading">
+          <h2>財政部發票匯入</h2>
+          <span>匯入後先進待確認，不直接正式入帳</span>
+        </div>
+        <input
+          type="file"
+          accept=".csv,.txt"
+          onChange={async (event) => {
+            const file = event.target.files?.[0];
+            if (!file) {
+              return;
+            }
+            setInvoiceFileName(file.name);
+            setInvoiceText(await readFileText(file));
+          }}
+        />
+        <textarea
+          className="entry-textarea"
+          placeholder="請貼上財政部發票明細，第一列需包含欄位名稱"
+          value={invoiceText}
+          onChange={(event) => setInvoiceText(event.target.value)}
+        />
+        <button className="primary-action" disabled={isSubmitting} onClick={importInvoices} type="button">
+          匯入待確認清單
+        </button>
+      </section>
+
+      <section className="surface section-block entry-section">
+        <div className="section-heading">
           <h2>新增手動消費</h2>
           <span>直接入帳並自動建立付款排程</span>
         </div>
@@ -424,33 +452,6 @@ export function ExpenseEntryClient() {
         </button>
       </section>
 
-      <section className="surface section-block entry-section">
-        <div className="section-heading">
-          <h2>財政部發票匯入</h2>
-          <span>匯入後先進待確認，不直接正式入帳</span>
-        </div>
-        <input
-          type="file"
-          accept=".csv,.txt"
-          onChange={async (event) => {
-            const file = event.target.files?.[0];
-            if (!file) {
-              return;
-            }
-            setInvoiceFileName(file.name);
-            setInvoiceText(await readFileText(file));
-          }}
-        />
-        <textarea
-          className="entry-textarea"
-          placeholder="請貼上財政部發票明細，第一列需包含欄位名稱"
-          value={invoiceText}
-          onChange={(event) => setInvoiceText(event.target.value)}
-        />
-        <button className="primary-action" disabled={isSubmitting} onClick={importInvoices} type="button">
-          匯入待確認清單
-        </button>
-      </section>
     </>
   );
 }
