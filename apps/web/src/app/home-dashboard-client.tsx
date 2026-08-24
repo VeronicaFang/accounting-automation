@@ -175,7 +175,6 @@ function AnnualFinancialOverview({
     : `不足 ${formatCurrency(Math.abs(summary.remainingDisposableAmount))}`;
   const isDisposableRisk = summary.remainingDisposableAmount < 0;
   const disposableFormula = `${formatCurrency(summary.annualNetRemaining)} - ${formatCurrency(summary.movableTotal)} = ${disposableDisplay}`;
-  const unrealizedFormula = `${formatCurrency(summary.movableTotal)} - ${formatCurrency(summary.overBudget.totalOverrun)} = ${formatCurrency(summary.unrealizedBudget)}`;
 
   return (
     <section className="surface section-block annual-control-panel">
@@ -197,22 +196,22 @@ function AnnualFinancialOverview({
         <div className="annual-control-card annual-control-income">
           <span>年度收入</span>
           <strong>{formatCurrency(summary.annualIncome)}</strong>
-          <small>全年已入帳與預估收入。</small>
+          <small>本年度已入帳收入加上預估收入。</small>
         </div>
         <div className="annual-control-card annual-control-spend">
           <span>累積消費總額</span>
           <strong>{formatCurrency(summary.annualSpend)}</strong>
-          <small>截至切分日期以前已發生的消費金額。</small>
+          <small>截至切分日期以前已發生的現金與信用卡消費。</small>
         </div>
         <div className={`annual-control-card ${summary.annualNetRemaining < 0 ? "annual-control-danger" : "annual-control-good"}`}>
           <span>年度淨剩餘金額</span>
           <strong>{formatCurrency(summary.annualNetRemaining)}</strong>
-          <small>年度收入 - 累積消費總額。</small>
+          <small>年度收入扣除累積消費總額後的剩餘金額。</small>
         </div>
         <div className={`annual-control-card ${isDisposableRisk ? "annual-control-danger" : "annual-control-good"}`}>
           <span>剩餘可支配金額</span>
           <strong>{disposableDisplay}</strong>
-          <small>{disposableFormula}</small>
+          <small>年度淨剩餘金額扣除未超標項目的剩餘預算：{disposableFormula}</small>
         </div>
       </div>
 
@@ -220,29 +219,29 @@ function AnnualFinancialOverview({
         <div className="annual-decision-card">
           <span>年度預算金額</span>
           <strong>{formatCurrency(summary.annualBudget)}</strong>
-          <small>全年設定的預算總額。</small>
+          <small>本年度所有預算項目的編列總額。</small>
         </div>
         <div className="annual-decision-card">
           <span>已發生預算</span>
           <strong>{formatCurrency(summary.realizedBudget)}</strong>
-          <small>截至切分日期已發生的預算分類消費。</small>
+          <small>截至切分日期已花費且已歸類到預算項目的消費。</small>
         </div>
-        <div className={summary.unrealizedBudget < 0 ? "annual-decision-card annual-decision-danger" : "annual-decision-card"}>
-          <span>尚未實現的預算淨額</span>
-          <strong>{formatCurrency(summary.unrealizedBudget)}</strong>
-          <small>{unrealizedFormula}</small>
+        <div className="annual-decision-card annual-decision-good">
+          <span>未超標項目的剩餘預算</span>
+          <strong>{formatCurrency(summary.movableTotal)}</strong>
+          <small>切分日期後尚未花費，且目前沒有超標的預算剩餘。</small>
         </div>
         <div className={`annual-decision-card ${summary.budgetUsageRatio >= 1 ? "annual-decision-danger" : summary.budgetUsageRatio >= 0.9 ? "annual-decision-warning" : "annual-decision-good"}`}>
           <span>年度預算使用狀態</span>
           <strong>{formatPercent(summary.budgetUsageRatio)}</strong>
-          <small>截至切分日期已發生預算 / 年度預算金額。</small>
+          <small>已發生預算占年度預算金額的比例。</small>
         </div>
       </div>
 
       <div className="annual-definition-note">
         <strong>未記錄信用卡帳單消費明細：{formatCurrency(summary.unrecordedCreditCardSpend)}</strong>
         <p>
-          累積消費總額只計算截至切分日期以前已發生的消費，避免把尚未實現的預算重複扣除。剩餘可支配金額使用未超標項目的剩餘預算計算；尚未實現的預算淨額則等於未超標項目的剩餘預算扣除已超支預算項目。
+          累積消費總額只計算截至切分日期以前已發生的消費，避免把尚未實現的預算重複扣除。未超標項目的剩餘預算用來保留今年已編列、尚未花費且目前仍可動用的預算；剩餘可支配金額則用年度淨剩餘金額扣除這筆保留預算。
         </p>
         <p>
           若此數字不是 0，代表信用卡真實帳單金額與系統內消費明細或 payment schedules 排程金額不同；可能是帳單上有未記錄消費、退款折抵、手續費、分期入帳月份差異，或帳單調整。現況判斷年度消費時不能只看預算分類金額。

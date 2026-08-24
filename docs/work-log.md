@@ -1336,3 +1336,21 @@ Previous grouped-invoice work completed invoice grouping/backfill and made invoi
   - `git diff --check`: passed, with Windows line-ending warnings only.
   - UTF-8 check for `home-dashboard-client.tsx` and `work-log.md`: passed.
   - `npm run build` from `apps/web`: compiled successfully, then hit the known local Windows `spawn EPERM` issue.
+
+### Annual Overview Budget Card Definition Wording
+
+- Date: 2026-08-24
+- User request:
+  - Replace the current `尚未實現的預算淨額` card with `未超標項目的剩餘預算`.
+  - Add small definition text under each annual overview number so the cards are easier to interpret.
+- Changes:
+  - The annual overview decision card now displays `未超標項目的剩餘預算` and uses `summary.movableTotal` as its main value.
+  - Updated the small text under annual income, cumulative spend, annual net remaining, remaining disposable amount, annual budget, realized budget, non-over-budget remaining budget, and annual budget usage status.
+  - Kept the remaining disposable formula visible in the small text because it is the direct reconciliation formula.
+  - Updated the definition note so `未超標項目的剩餘預算` is described as the reserved future budget used by the disposable amount calculation.
+- Local verification:
+  - `npm test` from `apps/web`: passed.
+  - `npm run typecheck` from `apps/web`: passed.
+  - `git diff --check`: passed, with Windows line-ending warnings only.
+  - UTF-8 check for `home-dashboard-client.tsx` and `work-log.md`: passed.
+  - `npm run build` from `apps/web`: compiled successfully, then hit the known local Windows `spawn EPERM` issue.
