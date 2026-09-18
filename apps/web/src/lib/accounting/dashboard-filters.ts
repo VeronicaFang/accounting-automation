@@ -319,12 +319,24 @@ export function filterExpenses(expenses: ExpenseRecord[], filters: ExpenseFilter
   return expenses.filter((expense) => expenseMatchesFilters(expense, filters));
 }
 
+export function filterExpensesByPaymentScheduleIds(
+  expenses: ExpenseRecord[],
+  paymentScheduleExpenseIds: string[]
+): ExpenseRecord[] {
+  const linkedExpenseIds = new Set(paymentScheduleExpenseIds);
+
+  return expenses.filter(
+    (expense) => linkedExpenseIds.has(expense.id) ||
+      Boolean(expense.paymentParentExpenseId && linkedExpenseIds.has(expense.paymentParentExpenseId))
+  );
+}
+
 export function buildInstallmentScheduleQuery(cashFlowMonth: string, creditCardId: string): Record<string, string> {
   return {
     select: "id,expense_id,payment_sequence,payment_amount,cash_flow_month,credit_card_id,expenses(merchant_name,item_description,installment_count)",
     cash_flow_month: `eq.${cashFlowMonth}`,
     credit_card_id: `eq.${creditCardId}`,
-    payment_status: "neq.corrected",
+    payment_status: "in.(estimated,reconciled,paid)",
     order: "payment_sequence.asc"
   };
 }

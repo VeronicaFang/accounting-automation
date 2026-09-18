@@ -1519,3 +1519,31 @@ Previous grouped-invoice work completed invoice grouping/backfill and made invoi
   - `git diff --check`: passed, with Windows line-ending warnings only.
   - UTF-8 check for `home-dashboard-client.tsx`, `budget-client.tsx`, `globals.css`, and `work-log.md`: passed.
   - `npm run build` from `apps/web`: compiled successfully, then hit the known local Windows `spawn EPERM` issue.
+
+### Atomic Credit Card Bill Summary Reconciliation
+
+- Date: 2026-09-18
+- User report:
+  - The 2026-09 CTBC bill estimate showed 769, while the linked expense view showed 1,424.
+- Root cause:
+  - `credit_card_bill_estimates` and `cash_flow_months` were maintained with a read-then-upsert sequence.
+  - Concurrent batch-import rows could read the same old summary and overwrite one another, causing lost updates.
+  - The bill drill-down independently recalculated bill month from the current card cutoff day instead of following the stored `payment_schedules` relationship.
+- Confirmed production data before repair:
+  - CTBC 2026-09 has 23 valid payment schedules totaling 1,439.
+  - The cached estimate has 21 details totaling 769, a missing 670.
+  - The former expense total of 1,424 also omitted a 15 payment scheduled into September because it was reclassified from the consumption date.
+- Changes:
+  - Added `apply_payment_summary_delta`, a security-invoker RPC that atomically updates cash-flow and card-bill summaries.
+  - Changed expense and income create/update/delete flows to use the atomic RPC.
+  - Added a reconciliation migration that rebuilds bill estimates and cash-flow totals from valid source schedules.
+  - Changed bill drill-down filtering to use exact payment-schedule expense IDs, including grouped invoice parent IDs.
+  - The drill-down total now shows the payment-schedule total, and the schedule section is named `帳單付款明細（本月應繳）`.
+  - Excluded both corrected and offset schedules from bill drill-down and reconciliation.
+- Local verification:
+  - New regression tests first failed before implementation and passed afterward.
+  - `npm test` from `apps/web`: passed.
+  - `npm run typecheck` from `apps/web`: passed.
+  - The migration executed successfully inside a production-schema transaction followed by `ROLLBACK`; no production data was changed.
+  - Inside that rolled-back transaction, reconciliation produced CTBC 2026-09 = 1,439 / 23 details, and a test delta increased it to 1,449 / 24 details as expected.
+  - `npm run build` compiled successfully, then hit the known local Windows `spawn EPERM` issue.

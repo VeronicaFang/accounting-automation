@@ -4,7 +4,7 @@ import { Fragment, useEffect, useMemo, useState } from "react";
 import { useSearchParams } from "next/navigation";
 
 import { PageHeader } from "@/components/page-header";
-import { filterExpenses, getDefaultExpenseMonths, monthKeyFromDateValue } from "@/lib/accounting/dashboard-filters";
+import { filterExpenses, filterExpensesByPaymentScheduleIds, getDefaultExpenseMonths, monthKeyFromDateValue } from "@/lib/accounting/dashboard-filters";
 import { buildExpenseDisplayRows, sortExpenseDisplayRows, type ExpenseDisplaySortDirection, type ExpenseDisplaySortKey } from "@/lib/accounting/invoice-grouping";
 import { isStoredSupabaseSessionValid, readStoredSupabaseSession } from "@/lib/auth/supabase-auth";
 import { fetchSupabaseRows } from "@/lib/data/supabase-rest";
@@ -241,6 +241,20 @@ export function ExpensesClient() {
 
   const visibleExpenses = useMemo(() => {
     const activeBillMonth = queryBillMonth || undefined;
+    if (activeBillMonth && selectedCard) {
+      const scheduleExpenseIds = installmentSchedules.map((schedule) => schedule.expenseId);
+      const linkedExpenses = filterExpensesByPaymentScheduleIds(expenses, scheduleExpenseIds);
+
+      return filterExpenses(linkedExpenses, {
+        paymentToolType: paymentToolFilter || undefined,
+        creditCardName: selectedCard,
+        budgetItemName: selectedBudget || undefined,
+        merchantTag: activeTag || undefined,
+        sourceType: sourceFilter || undefined,
+        query: searchText || undefined
+      });
+    }
+
     const cutoffDay = activeBillMonth && selectedCard
       ? cardCutoffDayByName.get(selectedCard.toLowerCase())
       : undefined;
@@ -257,10 +271,16 @@ export function ExpensesClient() {
       sourceType: sourceFilter || undefined,
       query: searchText || undefined
     });
-  }, [activeTag, cardCutoffDayByName, defaultMonths, expenses, paymentToolFilter, queryBillMonth, searchText, selectedBudget, selectedCard, selectedMonth, sourceFilter]);
+  }, [activeTag, cardCutoffDayByName, defaultMonths, expenses, installmentSchedules, paymentToolFilter, queryBillMonth, searchText, selectedBudget, selectedCard, selectedMonth, sourceFilter]);
+  const paymentScheduleTotal = useMemo(
+    () => installmentSchedules.reduce((total, schedule) => total + schedule.scheduleAmount, 0),
+    [installmentSchedules]
+  );
   const visibleExpenseTotal = useMemo(
-    () => visibleExpenses.reduce((total, expense) => total + expense.amount, 0),
-    [visibleExpenses]
+    () => queryBillMonth && selectedCard
+      ? paymentScheduleTotal
+      : visibleExpenses.reduce((total, expense) => total + expense.amount, 0),
+    [paymentScheduleTotal, queryBillMonth, selectedCard, visibleExpenses]
   );
   const displayRows = useMemo(() => {
     const [sortKey, direction] = sortOption.split(":") as [ExpenseDisplaySortKey, ExpenseDisplaySortDirection];
@@ -828,9 +848,11 @@ export function ExpensesClient() {
         </div>
         <div className="expense-filter-summary">
           <div>
-            <span>目前篩選合計</span>
+            <span>{queryBillMonth && selectedCard ? "帳單排程合計" : "目前篩選合計"}</span>
             <strong>{formatCurrency(visibleExpenseTotal)}</strong>
-            <small>依目前月份、搜尋、預算項目與支付工具條件加總</small>
+            <small>{queryBillMonth && selectedCard
+              ? `${queryBillMonth} ${selectedCard} 的有效付款排程金額`
+              : "依目前月份、搜尋、預算項目與支付工具條件加總"}</small>
           </div>
           <div>
             <span>符合明細</span>
@@ -978,8 +1000,8 @@ export function ExpensesClient() {
       {installmentSchedules.length > 0 ? (
         <section className="surface section-block">
           <div className="section-heading">
-            <h2>分期付款（本月應繳）</h2>
-            <span>{installmentSchedules.length} 筆・{formatCurrency(installmentSchedules.reduce((s, r) => s + r.scheduleAmount, 0))}</span>
+            <h2>帳單付款明細（本月應繳）</h2>
+            <span>{installmentSchedules.length} 筆・{formatCurrency(paymentScheduleTotal)}</span>
           </div>
           <div className="table-scroll">
             <table className="data-table">

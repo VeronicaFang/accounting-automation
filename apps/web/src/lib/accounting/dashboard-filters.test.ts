@@ -7,6 +7,7 @@ import {
   addMonths,
   buildAnnualDashboardMonths,
   expenseMatchesFilters,
+  filterExpensesByPaymentScheduleIds,
   filterCashFlowMonthsByYear,
   filterFutureBills,
   filterHistoricalBills,
@@ -121,6 +122,31 @@ assert.equal(
   "帳單鑽取應由 payment_schedules 顯示分期本期金額，不應顯示原始消費總額"
 );
 
+const scheduleLinkedExpense = {
+  ...expense,
+  id: "expense-aug-6",
+  consumptionDate: "2026-08-06",
+  budgetMonth: "2026-08",
+  amount: 15,
+  creditCardName: "CTBC"
+};
+const groupedInvoiceExpense = {
+  ...expense,
+  id: "invoice-line-1",
+  paymentParentExpenseId: "invoice-parent-1"
+};
+
+assert.deepEqual(
+  filterExpensesByPaymentScheduleIds([scheduleLinkedExpense], ["expense-aug-6"]).map((item) => item.id),
+  ["expense-aug-6"],
+  "帳單鑽取應依 payment_schedules 的實際關聯顯示，不應以目前結帳日重新推算"
+);
+assert.deepEqual(
+  filterExpensesByPaymentScheduleIds([groupedInvoiceExpense], ["invoice-parent-1"]).map((item) => item.id),
+  ["invoice-line-1"],
+  "發票品項應可透過付款父消費 ID 對應帳單排程"
+);
+
 assert.equal(
   typeof (dashboardFilters as Record<string, unknown>).buildInstallmentScheduleQuery,
   "function",
@@ -130,7 +156,7 @@ assert.equal(
 const installmentQuery = dashboardFilters.buildInstallmentScheduleQuery("2026-06", "card-fubon");
 assert.equal(installmentQuery.cash_flow_month, "eq.2026-06");
 assert.equal(installmentQuery.credit_card_id, "eq.card-fubon");
-assert.equal(installmentQuery.payment_status, "neq.corrected", "已刪除或修正的分期排程不應顯示在本月應繳清單");
+assert.equal(installmentQuery.payment_status, "in.(estimated,reconciled,paid)", "已刪除、修正或沖銷的付款排程不應顯示在本月應繳清單");
 assert.equal(installmentQuery.payment_sequence, undefined, "帳單鑽取必須包含第 1 期");
 
 const annual = buildAnnualDashboardMonths(

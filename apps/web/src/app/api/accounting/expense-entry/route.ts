@@ -28,6 +28,7 @@ import {
 import { parseInvoiceText, type InvoiceDraftInput } from "@/lib/accounting/invoice-import";
 import { validateInvoiceGroupConfirmation, type InvoiceGroupConfirmation } from "@/lib/accounting/invoice-confirmation";
 import { validateInvoicePaymentUpdate } from "@/lib/accounting/invoice-payment";
+import { buildPaymentSummaryDeltaParams, type PaymentSummaryDeltaInput } from "@/lib/accounting/payment-summary";
 import { createSupabaseRestHeaders, getSupabaseRestConfig } from "@/lib/data/supabase-rest";
 
 export const runtime = "nodejs";
@@ -47,20 +48,6 @@ type HouseholdRow = {
 
 type ExpenseInsertResult = {
   id: string;
-};
-
-type CashFlowRow = {
-  cash_flow_month: string;
-  income_total: string | number;
-  cash_expense_total: string | number;
-  credit_card_payment_total: string | number;
-  net_cash_flow: string | number;
-};
-
-type BillEstimateRow = {
-  id: string;
-  estimated_bill_amount: string | number;
-  detail_count: number;
 };
 
 type ExpenseMaintenanceRow = {
@@ -315,7 +302,9 @@ async function supabaseRpc<T>(
     throw new Error(`執行 ${functionName} 失敗：${response.status} ${await response.text()}`);
   }
 
-  return (await response.json()) as T;
+  const responseText = await response.text();
+
+  return (responseText ? JSON.parse(responseText) : undefined) as T;
 }
 async function loadReferences(requestConfig: SupabaseRequestConfig, accessToken: string): Promise<EntryReferences> {
   const [households, budgetItems, creditCards] = await Promise.all([
@@ -397,73 +386,11 @@ function buildLegacyId(prefix: string): string {
   return `${prefix}_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
 }
 
-async function addCashFlowDelta(
+async function applyPaymentSummaryDelta(
   requestConfig: SupabaseRequestConfig,
-  householdId: string,
-  month: string,
-  deltas: { income?: number; cashExpense?: number; creditCardPayment?: number }
+  input: PaymentSummaryDeltaInput
 ) {
-  const [current] = await supabaseRead<CashFlowRow>(requestConfig, "cash_flow_months", {
-    select: "cash_flow_month,income_total,cash_expense_total,credit_card_payment_total,net_cash_flow",
-    household_id: `eq.${householdId}`,
-    cash_flow_month: `eq.${month}`,
-    limit: "1"
-  });
-
-  const incomeTotal = Number(current?.income_total ?? 0) + Number(deltas.income ?? 0);
-  const cashExpenseTotal = Number(current?.cash_expense_total ?? 0) + Number(deltas.cashExpense ?? 0);
-  const creditCardPaymentTotal = Number(current?.credit_card_payment_total ?? 0) + Number(deltas.creditCardPayment ?? 0);
-
-  await supabaseUpsert(
-    requestConfig,
-    "cash_flow_months",
-    [
-      {
-        household_id: householdId,
-        cash_flow_month: month,
-        income_total: incomeTotal,
-        cash_expense_total: cashExpenseTotal,
-        credit_card_payment_total: creditCardPaymentTotal,
-        net_cash_flow: incomeTotal - cashExpenseTotal - creditCardPaymentTotal,
-        generated_at: new Date().toISOString()
-      }
-    ],
-    "household_id,cash_flow_month"
-  );
-}
-
-async function addBillEstimateDelta(
-  requestConfig: SupabaseRequestConfig,
-  householdId: string,
-  creditCard: EntryCreditCard,
-  billMonth: string,
-  amountDelta: number,
-  detailDelta: number
-) {
-  const [current] = await supabaseRead<BillEstimateRow>(requestConfig, "credit_card_bill_estimates", {
-    select: "id,estimated_bill_amount,detail_count",
-    household_id: `eq.${householdId}`,
-    credit_card_id: `eq.${creditCard.id}`,
-    bill_month: `eq.${billMonth}`,
-    limit: "1"
-  });
-
-  await supabaseUpsert(
-    requestConfig,
-    "credit_card_bill_estimates",
-    [
-      {
-        household_id: householdId,
-        credit_card_id: creditCard.id,
-        bill_month: billMonth,
-        estimated_payment_date: buildMonthDate(billMonth, creditCard.payment_day),
-        estimated_bill_amount: Number(current?.estimated_bill_amount ?? 0) + amountDelta,
-        detail_count: Number(current?.detail_count ?? 0) + detailDelta,
-        generated_at: new Date().toISOString()
-      }
-    ],
-    "household_id,credit_card_id,bill_month"
-  );
+  await supabaseRpc(requestConfig, "apply_payment_summary_delta", buildPaymentSummaryDeltaParams(input));
 }
 
 async function createExpenses(
@@ -562,14 +489,16 @@ async function createExpenses(
     insertedPaymentSchedules += paymentPlans.length;
 
     for (const plan of paymentPlans) {
-      await addCashFlowDelta(requestConfig, references.householdId, plan.cashFlowMonth, {
-        cashExpense: input.paymentToolType === "cash" ? plan.amount : 0,
-        creditCardPayment: input.paymentToolType === "credit_card" ? plan.amount : 0
+      await applyPaymentSummaryDelta(requestConfig, {
+        householdId: references.householdId,
+        cashFlowMonth: plan.cashFlowMonth,
+        cashExpenseDelta: input.paymentToolType === "cash" ? plan.amount : 0,
+        creditCardPaymentDelta: input.paymentToolType === "credit_card" ? plan.amount : 0,
+        creditCardId: creditCard?.id,
+        billAmountDelta: creditCard ? plan.amount : 0,
+        billDetailDelta: creditCard ? 1 : 0,
+        estimatedPaymentDate: creditCard ? buildMonthDate(plan.cashFlowMonth, creditCard.payment_day) : null
       });
-
-      if (creditCard) {
-        await addBillEstimateDelta(requestConfig, references.householdId, creditCard, plan.cashFlowMonth, plan.amount, 1);
-      }
     }
   }
 
@@ -689,7 +618,11 @@ async function createIncome(
     }
   ]);
 
-  await addCashFlowDelta(requestConfig, references.householdId, income.incomeMonth, { income: income.incomeAmount });
+  await applyPaymentSummaryDelta(requestConfig, {
+    householdId: references.householdId,
+    cashFlowMonth: income.incomeMonth,
+    incomeDelta: income.incomeAmount
+  });
 
   return {
     insertedIncomes: 1,
@@ -771,12 +704,22 @@ async function updateIncome(
   );
 
   if (current.income_month === next.incomeMonth) {
-    await addCashFlowDelta(requestConfig, references.householdId, next.incomeMonth, {
-      income: next.incomeAmount - previousAmount
+    await applyPaymentSummaryDelta(requestConfig, {
+      householdId: references.householdId,
+      cashFlowMonth: next.incomeMonth,
+      incomeDelta: next.incomeAmount - previousAmount
     });
   } else {
-    await addCashFlowDelta(requestConfig, references.householdId, current.income_month, { income: -previousAmount });
-    await addCashFlowDelta(requestConfig, references.householdId, next.incomeMonth, { income: next.incomeAmount });
+    await applyPaymentSummaryDelta(requestConfig, {
+      householdId: references.householdId,
+      cashFlowMonth: current.income_month,
+      incomeDelta: -previousAmount
+    });
+    await applyPaymentSummaryDelta(requestConfig, {
+      householdId: references.householdId,
+      cashFlowMonth: next.incomeMonth,
+      incomeDelta: next.incomeAmount
+    });
   }
 
   return {
@@ -812,8 +755,10 @@ async function deleteIncome(
     id: `eq.${incomeId}`
   });
 
-  await addCashFlowDelta(requestConfig, references.householdId, current.income_month, {
-    income: -Number(current.income_amount || 0)
+  await applyPaymentSummaryDelta(requestConfig, {
+    householdId: references.householdId,
+    cashFlowMonth: current.income_month,
+    incomeDelta: -Number(current.income_amount || 0)
   });
 
   return {
@@ -1113,18 +1058,20 @@ async function updateExpenseDetails(
       const oldAmt = Number(schedule.payment_amount);
       const nextPlan = nextPlans[index];
 
-      await addCashFlowDelta(requestConfig, references.householdId, schedule.cash_flow_month, {
-        cashExpense: schedule.payment_tool_type === "cash" ? -oldAmt : 0,
-        creditCardPayment: schedule.payment_tool_type === "credit_card" ? -oldAmt : 0
+      const oldCard = schedule.payment_tool_type === "credit_card" && schedule.credit_card_id
+        ? references.creditCards.find((card) => card.id === schedule.credit_card_id)
+        : undefined;
+
+      await applyPaymentSummaryDelta(requestConfig, {
+        householdId: references.householdId,
+        cashFlowMonth: schedule.cash_flow_month,
+        cashExpenseDelta: schedule.payment_tool_type === "cash" ? -oldAmt : 0,
+        creditCardPaymentDelta: schedule.payment_tool_type === "credit_card" ? -oldAmt : 0,
+        creditCardId: oldCard?.id,
+        billAmountDelta: oldCard ? -oldAmt : 0,
+        billDetailDelta: oldCard ? -1 : 0,
+        estimatedPaymentDate: oldCard ? buildMonthDate(schedule.cash_flow_month, oldCard.payment_day) : null
       });
-
-      if (schedule.payment_tool_type === "credit_card" && schedule.credit_card_id) {
-        const oldCard = references.creditCards.find((c) => c.id === schedule.credit_card_id);
-
-        if (oldCard) {
-          await addBillEstimateDelta(requestConfig, references.householdId, oldCard, schedule.cash_flow_month, -oldAmt, -1);
-        }
-      }
 
       await supabasePatch(
         requestConfig,
@@ -1141,14 +1088,18 @@ async function updateExpenseDetails(
         }
       );
 
-      await addCashFlowDelta(requestConfig, references.householdId, nextPlan.cashFlowMonth, {
-        cashExpense: resolvedPaymentType === "cash" ? nextPlan.amount : 0,
-        creditCardPayment: resolvedPaymentType === "credit_card" ? nextPlan.amount : 0
+      await applyPaymentSummaryDelta(requestConfig, {
+        householdId: references.householdId,
+        cashFlowMonth: nextPlan.cashFlowMonth,
+        cashExpenseDelta: resolvedPaymentType === "cash" ? nextPlan.amount : 0,
+        creditCardPaymentDelta: resolvedPaymentType === "credit_card" ? nextPlan.amount : 0,
+        creditCardId: resolvedCreditCard?.id,
+        billAmountDelta: resolvedCreditCard ? nextPlan.amount : 0,
+        billDetailDelta: resolvedCreditCard ? 1 : 0,
+        estimatedPaymentDate: resolvedCreditCard
+          ? buildMonthDate(nextPlan.cashFlowMonth, resolvedCreditCard.payment_day)
+          : null
       });
-
-      if (resolvedPaymentType === "credit_card" && resolvedCreditCard) {
-        await addBillEstimateDelta(requestConfig, references.householdId, resolvedCreditCard, nextPlan.cashFlowMonth, nextPlan.amount, 1);
-      }
     }
 
     await supabasePatch(
@@ -1295,18 +1246,20 @@ async function deleteExpenses(
     for (const schedule of schedules) {
       const amount = Number(schedule.payment_amount || 0);
 
-      await addCashFlowDelta(requestConfig, references.householdId, schedule.cash_flow_month, {
-        cashExpense: schedule.payment_tool_type === "cash" ? -amount : 0,
-        creditCardPayment: schedule.payment_tool_type === "credit_card" ? -amount : 0
+      const creditCard = schedule.payment_tool_type === "credit_card" && schedule.credit_card_id
+        ? references.creditCards.find((card) => card.id === schedule.credit_card_id)
+        : undefined;
+
+      await applyPaymentSummaryDelta(requestConfig, {
+        householdId: references.householdId,
+        cashFlowMonth: schedule.cash_flow_month,
+        cashExpenseDelta: schedule.payment_tool_type === "cash" ? -amount : 0,
+        creditCardPaymentDelta: schedule.payment_tool_type === "credit_card" ? -amount : 0,
+        creditCardId: creditCard?.id,
+        billAmountDelta: creditCard ? -amount : 0,
+        billDetailDelta: creditCard ? -1 : 0,
+        estimatedPaymentDate: creditCard ? buildMonthDate(schedule.cash_flow_month, creditCard.payment_day) : null
       });
-
-      if (schedule.payment_tool_type === "credit_card" && schedule.credit_card_id) {
-        const creditCard = references.creditCards.find((card) => card.id === schedule.credit_card_id);
-
-        if (creditCard) {
-          await addBillEstimateDelta(requestConfig, references.householdId, creditCard, schedule.cash_flow_month, -amount, -1);
-        }
-      }
     }
 
     await supabasePatch(
